@@ -1,0 +1,76 @@
+# dai — Desarrollo Asistido por IA
+# Manifiesto del paquete: qué contiene y DÓNDE instala cada componente.
+# Lo lee install.sh. La regla: un artefacto = un archivo + un destino.
+
+name: dai
+version: 0.1.0
+description: >
+  Metodología de desarrollo asistido por IA. Un protocolo invariante
+  (trazabilidad QUÉ↔CÓMO) con un dial de tres niveles de ceremonia, que
+  escala de un dev solo a una organización grande sin cambiar de método.
+
+# ── Componentes: cada uno declara su origen y su destino de instalación ──
+
+components:
+
+  skills:
+    descripcion: Skills de Claude Code que automatizan cada paso del método.
+    origen: skills/
+    destino: ~/.claude/skills/          # la máquina del dev
+    modo: dai install skills
+    contenido:
+      - doc-to-backlog      # doc (PDF/Word) → backlog candidato de épicas + US
+      - grill-intent        # Gate 0: desafía el problema
+      - grill-epic          # produce una épica y la parte en US
+      - grill-user-story    # produce la US testeable
+      - link-us             # ata branch + implements.yaml al ID
+      - tdd                 # red-green-refactor
+      - dai-review          # review de PR (github/gitlab) + comentario estándar
+
+  templates:
+    descripcion: Los moldes que se copian a un repo de código.
+    origen: templates/
+    destino: <repo-target>/.dai/templates/   # o donde el equipo los quiera
+    modo: dai init <repo>
+    contenido:
+      - formato-us.md               # formato canónico de User Story
+      - epica.md                    # bloque de valor que agrupa varias US
+      - definition-of-ready.md      # gate: cuándo la US entra a implementarse
+      - definition-of-done.md       # gate: cuándo el CÓMO está terminado
+      - adr.md                      # registro de decisión de fondo
+      - pull-request.md             # molde de PR/MR atado al link
+
+  governance:
+    descripcion: Reglas de enforcement (naming de ramas, checks de CI).
+    origen: governance/
+    destino: <repo-target>/.dai/governance/
+    modo: dai init <repo>
+    contenido:
+      - branch-naming.md            # convención de ramas (el ID en el nombre)
+      - ci-rules.md                 # qué valida el CI y qué estampa al mergear
+
+  docs:
+    descripcion: La fuente de verdad conceptual. Lo que el equipo lee.
+    origen: docs/
+    destino: <donde-el-equipo-lee>  # repo, Confluence, GitLab Pages
+    modo: dai docs <destino>
+    contenido:
+      - MANIFIESTO.md               # la constitución (15 artículos)
+      - METODOLOGIA.md              # el protocolo + el dial de niveles
+      - SCRUM-CON-IA.md             # el puente de adopción (10 pasos)
+      - EJEMPLO-END-TO-END.md       # el golden path
+      - glosario.md                 # el vocabulario común del método
+      - guias/po.md                 # guía del PO / funcional
+      - guias/dev.md                # guía del dev / ingeniero
+      - guias/lead.md               # guía del lead / SM / arquitecto
+
+  landing:
+    descripcion: Landing autocontenido (buy-in). Un solo HTML, sin CDN → anda offline.
+    origen: index.html
+    destino: <manual>               # abrir en navegador o publicar por GitHub Pages
+    modo: manual
+    contenido:
+      - index.html                  # la historia completa; se adapta a cualquier escala
+
+# ── Fuente de verdad: si un HTML contradice un .md de docs/, gana el .md ──
+fuente_de_verdad: docs/

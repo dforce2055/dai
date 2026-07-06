@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>dai — Desarrollo Asistido por IA con trazabilidad</title>
+<meta name="description" content="Un método y un CLI para que la IA programe con trazabilidad y sin vibe coding. Separá el QUÉ del CÓMO, linkealos una vez, y que la máquina avise sola cuando se desincronizan. Se adapta a cualquier tamaño de equipo." />
+<style>
+  /* Autocontenido: fuentes del sistema + diagramas en CSS. Sin CDN → anda offline. */
+  :root{
+    --bg:#0b1120; --card:#131c2e; --ink:#eef2f8; --mut:#94a3b8; --line:#263247;
+    --brand:#6366f1; --brand-dark:#4f46e5;
+    --func:#f59e0b; --func-soft:#3a2f12; --func-ink:#fbbf24;   /* el QUÉ */
+    --tech:#0ea5e9; --tech-soft:#10273b; --tech-ink:#7dd3fc;   /* el CÓMO */
+    --ci:#10b981;   --ci-soft:#0f2c22;   --ci-ink:#6ee7b7;     /* la máquina */
+    --danger:#ef4444;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  :root[data-theme="light"]{
+    --bg:#f8fafc; --card:#ffffff; --ink:#0f172a; --mut:#475569; --line:#e2e8f0;
+    --func-soft:#fef3c7; --func-ink:#92400e; --tech-soft:#e0f2fe; --tech-ink:#075985;
+    --ci-soft:#d1fae5; --ci-ink:#065f46;
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --bg:#f8fafc; --card:#ffffff; --ink:#0f172a; --mut:#475569; --line:#e2e8f0;
+      --func-soft:#fef3c7; --func-ink:#92400e; --tech-soft:#e0f2fe; --tech-ink:#075985;
+      --ci-soft:#d1fae5; --ci-ink:#065f46;
+    }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:960px;margin:0 auto;padding:0 20px}
+  a{color:var(--brand);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code,kbd{font-family:var(--mono);font-size:.9em}
+  h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
+  section{padding:64px 0;border-top:1px solid var(--line)}
+  .eyebrow{font-family:var(--mono);font-size:.8rem;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--mut);margin:0 0 8px}
+  h2{font-size:clamp(1.5rem,4vw,2rem);margin:0 0 8px}
+  .lede{color:var(--mut);font-size:1.05rem;max-width:62ch;margin:0 0 28px}
+
+  /* ---------- nav ---------- */
+  nav{position:sticky;top:0;z-index:10;backdrop-filter:blur(10px);
+    background:color-mix(in srgb,var(--bg) 82%,transparent);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;align-items:center;gap:16px;height:56px}
+  nav .logo{font-weight:800;letter-spacing:-.03em}
+  nav .logo b{color:var(--brand)}
+  nav .sp{flex:1}
+  nav a.nl{color:var(--mut);font-size:.9rem}
+  nav a.nl:hover{color:var(--ink);text-decoration:none}
+  .toggle{cursor:pointer;border:1px solid var(--line);background:var(--card);
+    color:var(--ink);border-radius:8px;padding:5px 9px;font-size:.85rem}
+  @media(max-width:640px){nav a.nl{display:none}}
+
+  /* ---------- hero ---------- */
+  .hero{padding:80px 0 64px;text-align:center}
+  .hero h1{font-size:clamp(2.2rem,7vw,3.6rem);margin:0 0 16px;font-weight:900}
+  .hero h1 .g{background:linear-gradient(120deg,var(--brand),var(--tech));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p{color:var(--mut);font-size:1.2rem;max-width:60ch;margin:0 auto 28px}
+  .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .btn{display:inline-block;padding:11px 20px;border-radius:10px;font-weight:600;font-size:.95rem}
+  .btn.p{background:var(--brand);color:#fff}
+  .btn.p:hover{background:var(--brand-dark);text-decoration:none}
+  .btn.s{border:1px solid var(--line);color:var(--ink)}
+  .btn.s:hover{text-decoration:none;border-color:var(--brand)}
+  .install{margin:26px auto 0;max-width:520px;background:var(--card);border:1px solid var(--line);
+    border-radius:12px;padding:14px 16px;font-family:var(--mono);font-size:.9rem;text-align:left;
+    color:var(--ink);overflow-x:auto}
+  .install .c{color:var(--ci-ink)}
+  .install .m{color:var(--mut)}
+
+  /* ---------- pills / cards ---------- */
+  .grid{display:grid;gap:16px}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  @media(max-width:720px){.g3,.g2{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+  .card h3{margin:0 0 6px;font-size:1.05rem}
+  .card p{margin:0;color:var(--mut);font-size:.95rem}
+  .ic{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;
+    font-size:1.1rem;margin-bottom:12px}
+  .ic.d{background:color-mix(in srgb,var(--danger) 18%,transparent)}
+  .ic.b{background:color-mix(in srgb,var(--brand) 20%,transparent)}
+
+  .tag{display:inline-block;font-family:var(--mono);font-size:.72rem;font-weight:600;
+    padding:2px 8px;border-radius:999px;letter-spacing:.02em}
+  .tag.q{background:var(--func-soft);color:var(--func-ink)}
+  .tag.c{background:var(--tech-soft);color:var(--tech-ink)}
+  .tag.m{background:var(--ci-soft);color:var(--ci-ink)}
+
+  /* ---------- QUÉ vs CÓMO ---------- */
+  .split{display:grid;grid-template-columns:1fr auto 1fr;gap:0;align-items:stretch;
+    background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+  @media(max-width:720px){.split{grid-template-columns:1fr}}
+  .side{padding:24px}
+  .side.q{border-right:1px solid var(--line)}
+  @media(max-width:720px){.side.q{border-right:0;border-bottom:1px solid var(--line)}}
+  .side h4{margin:0 0 4px;font-size:1.1rem}
+  .side .who{color:var(--mut);font-size:.85rem;margin:0 0 14px}
+  .side ul{margin:0;padding-left:18px;color:var(--mut);font-size:.92rem}
+  .link{display:grid;place-items:center;padding:0 8px;background:
+    color-mix(in srgb,var(--brand) 10%,transparent)}
+  .link .b{font-family:var(--mono);font-size:.72rem;color:var(--brand);
+    writing-mode:vertical-rl;transform:rotate(180deg);letter-spacing:.1em;font-weight:700}
+  @media(max-width:720px){.link{padding:10px}.link .b{writing-mode:horizontal-tb;transform:none}}
+
+  /* ---------- steps / journey ---------- */
+  .steps{position:relative;margin-top:8px}
+  .step{display:grid;grid-template-columns:44px 1fr;gap:18px;padding:14px 0;position:relative}
+  .step:not(:last-child)::before{content:"";position:absolute;left:21px;top:44px;bottom:-14px;
+    width:2px;background:var(--line)}
+  .num{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;
+    font-weight:800;font-family:var(--mono);background:var(--card);border:1px solid var(--line);z-index:1}
+  .step.q .num{border-color:var(--func);color:var(--func-ink)}
+  .step.c .num{border-color:var(--tech);color:var(--tech-ink)}
+  .step.m .num{border-color:var(--ci);color:var(--ci-ink)}
+  .step .body h3{margin:0 0 3px;font-size:1.08rem}
+  .step .body p{margin:0 0 8px;color:var(--mut);font-size:.95rem}
+  .step .tool{font-family:var(--mono);font-size:.82rem;background:var(--bg);
+    border:1px solid var(--line);border-radius:8px;padding:3px 9px;display:inline-block;color:var(--ink)}
+
+  /* ---------- traceability demo ---------- */
+  .demo{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:8px}
+  .term{font-family:var(--mono);font-size:.86rem;background:#0a0f1e;border-radius:12px;
+    padding:18px 18px;color:#cbd5e1;overflow-x:auto}
+  :root[data-theme="light"] .term{background:#0f172a;color:#e2e8f0}
+  @media(prefers-color-scheme:light){:root:not([data-theme="dark"]) .term{background:#0f172a;color:#e2e8f0}}
+  .term .p{color:#64748b}
+  .term .ok{color:#6ee7b7}
+  .term .warn{color:#fca5a5}
+  .term .cmd{color:#e2e8f0}
+  .term .dim{color:#64748b}
+  .term b{color:#fff;font-weight:600}
+
+  /* ---------- dial ---------- */
+  .dial{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:720px){.dial{grid-template-columns:1fr}}
+  .lvl{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+  .lvl .n{font-family:var(--mono);font-size:.78rem;color:var(--brand);font-weight:700}
+  .lvl h4{margin:6px 0 4px;font-size:1.05rem}
+  .lvl p{margin:0;color:var(--mut);font-size:.9rem}
+
+  /* ---------- start ---------- */
+  ol.start{counter-reset:s;list-style:none;padding:0;margin:0}
+  ol.start li{position:relative;padding:0 0 18px 40px}
+  ol.start li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:0;
+    width:26px;height:26px;border-radius:8px;background:var(--brand);color:#fff;
+    display:grid;place-items:center;font-weight:700;font-size:.85rem}
+  ol.start code{background:var(--card);border:1px solid var(--line);border-radius:7px;
+    padding:2px 7px;display:inline-block}
+  ol.start .d{color:var(--mut);font-size:.9rem}
+
+  footer{border-top:1px solid var(--line);padding:40px 0 60px;color:var(--mut);font-size:.9rem}
+  footer .wrap{display:flex;gap:20px;flex-wrap:wrap;align-items:center}
+  footer .sp{flex:1}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <span class="logo"><b>dai</b> · Desarrollo Asistido por IA</span>
+    <span class="sp"></span>
+    <a class="nl" href="#problema">Problema</a>
+    <a class="nl" href="#flujo">El flujo</a>
+    <a class="nl" href="#traza">Trazabilidad</a>
+    <a class="nl" href="#empezar">Empezar</a>
+    <button class="toggle" id="tg" aria-label="Cambiar tema">◐</button>
+  </div>
+</nav>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero wrap">
+  <h1>La IA programa. <span class="g">@dai te da la trazabilidad.</span></h1>
+  <p>Un método —y un CLI— para desarrollo asistido por IA <b>sin vibe coding</b> y con
+     trazabilidad real: separá el <span class="tag q">QUÉ</span> del
+     <span class="tag c">CÓMO</span>, linkealos una sola vez, y dejá que la máquina
+     avise sola cuando se desincronizan. De un dev solo a una organización entera —
+     el mismo método.</p>
+  <div class="cta">
+    <a class="btn p" href="#empezar">Empezar ahora</a>
+    <a class="btn s" href="https://github.com/dforce2055/dai">Ver en GitHub</a>
+  </div>
+  <div class="install">
+    <span class="m"># instalá el CLI (Node ≥18, cero dependencias)</span><br>
+    <span class="c">npm i -g @dforce2055/dai</span><br>
+    <span class="c">dai init</span>  <span class="m"># configura tu repo: Claude/Copilot + OpenSpec + el link</span>
+  </div>
+</header>
+
+<!-- ══════════ PROBLEMA ══════════ -->
+<section id="problema">
+  <div class="wrap">
+    <p class="eyebrow">El problema</p>
+    <h2>La IA acelera el código. Y también acelera el caos.</h2>
+    <p class="lede">Tres dolores que la IA no resuelve sola — al contrario, los amplifica
+      si no hay método.</p>
+    <div class="grid g3">
+      <div class="card">
+        <div class="ic d">🔌</div>
+        <h3>Desincronización silenciosa</h3>
+        <p>El requerimiento cambia, el código sigue con la versión vieja, y se descubre
+           recién en la demo. Nadie se enteró a tiempo.</p>
+      </div>
+      <div class="card">
+        <div class="ic d">🎲</div>
+        <h3>Vibe coding</h3>
+        <p>La IA construye sobre una idea vaga y sale cualquier cosa. Rápido, sí — pero
+           sin garantía de que sea lo que se pedía.</p>
+      </div>
+      <div class="card">
+        <div class="ic d">🔀</div>
+        <h3>QUÉ y CÓMO mezclados</h3>
+        <p>El funcional se mete en la implementación; el dev redefine el negocio. Se pierde
+           quién es dueño de qué.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ LA IDEA ══════════ -->
+<section id="idea">
+  <div class="wrap">
+    <p class="eyebrow">La idea</p>
+    <h2>Separá el QUÉ del CÓMO. Linkealos una sola vez.</h2>
+    <p class="lede">El requerimiento (el QUÉ) y la implementación (el CÓMO) son cosas
+      distintas, con dueños distintos. dai las mantiene atadas — y la dirección inversa
+      se <b>deriva</b>, nunca se escribe a mano.</p>
+
+    <div class="split">
+      <div class="side q">
+        <span class="tag q">EL QUÉ · funcional</span>
+        <h4 style="margin-top:12px">La User Story</h4>
+        <p class="who">dueño: PO / analista · vive en Jira o ClickUp</p>
+        <ul>
+          <li>Criterios de aceptación testeables</li>
+          <li>Lo produce una skill de IA por interrogación</li>
+          <li>Identidad estable: el ticket del tracker</li>
+        </ul>
+      </div>
+      <div class="link"><span class="b">implements →</span></div>
+      <div class="side">
+        <span class="tag c">EL CÓMO · técnico</span>
+        <h4 style="margin-top:12px">El código + su spec</h4>
+        <p class="who">dueño: dev / ingeniero · vive en el repo</p>
+        <ul>
+          <li>Declara <code>implements: US@versión</code> — una vez</li>
+          <li>Diseño y tareas generados con OpenSpec</li>
+          <li>Se construye con tests primero (TDD)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="grid g3" style="margin-top:16px">
+      <div class="card"><span class="tag q">1</span><h3 style="margin-top:10px">Identidad estable</h3>
+        <p>El QUÉ nace con un ID único (el ticket). Es lo único que lo hace linkeable.</p></div>
+      <div class="card"><span class="tag c">2</span><h3 style="margin-top:10px">Un solo link, a mano</h3>
+        <p>El código apunta al QUÉ. La cobertura inversa (quién implementó qué) la genera la máquina.</p></div>
+      <div class="card"><span class="tag m">3</span><h3 style="margin-top:10px">@version que grita</h3>
+        <p>Número legible + hash de criterios. Si el QUÉ cambia, los CÓMO atrasados se marcan solos.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ EL FLUJO GUIADO ══════════ -->
+<section id="flujo">
+  <div class="wrap">
+    <p class="eyebrow">El flujo</p>
+    <h2>Tu Scrum de siempre — con IA en cada paso</h2>
+    <p class="lede">dai no reemplaza tu proceso: lo potencia. En cada etapa hay una skill
+      de IA o un comando que hace el trabajo pesado. <span class="tag q">QUÉ</span>
+      <span class="tag c">CÓMO</span> <span class="tag m">máquina</span></p>
+
+    <div class="steps">
+      <div class="step q"><div class="num">1</div><div class="body">
+        <h3>Definí el QUÉ</h3>
+        <p>El analista describe la idea. Una skill de IA lo <b>interroga</b> hasta que la
+           User Story es testeable, y la publica en el tracker. La IA no inventa: pregunta.</p>
+        <span class="tool">/grill-intent → /grill-user-story → ClickUp / Jira</span>
+      </div></div>
+
+      <div class="step c"><div class="num">2</div><div class="body">
+        <h3>Abrí el CÓMO, atado al QUÉ</h3>
+        <p>El dev arranca la implementación. dai trae la US del tracker, crea la branch y
+           siembra el link — <b>correcto por construcción</b>, sin tipear el ID a mano.</p>
+        <span class="tool">dai link-us &lt;ID&gt;  →  branch + implements.yaml</span>
+      </div></div>
+
+      <div class="step c"><div class="num">3</div><div class="body">
+        <h3>Diseñá con OpenSpec</h3>
+        <p>OpenSpec toma la US y genera la propuesta, el diseño y las tareas — co-localizados
+           con el link, en la misma branch. El QUÉ se convierte en un plan técnico.</p>
+        <span class="tool">/opsx:propose  →  proposal · design · tasks</span>
+      </div></div>
+
+      <div class="step c"><div class="num">4</div><div class="body">
+        <h3>Implementá con tests primero</h3>
+        <p>TDD en rebanadas verticales: un test, el código mínimo, repetir. La IA escribe el
+           test como spec ejecutable. Anti vibe-coding de verdad.</p>
+        <span class="tool">/tdd  ·  red → green → refactor</span>
+      </div></div>
+
+      <div class="step m"><div class="num">5</div><div class="body">
+        <h3>Verificá la trazabilidad</h3>
+        <p>¿Tu código sigue al día con la US? dai re-deriva el hash de la US viva y compara.
+           Si el QUÉ cambió, te avisa <b>y te dice cómo resincronizar</b>.</p>
+        <span class="tool">dai check  →  ✅ al día  /  ⚠️ atrasado</span>
+      </div></div>
+
+      <div class="step c"><div class="num">6</div><div class="body">
+        <h3>Creá y revisá la PR</h3>
+        <p>dai arma el texto de la PR desde el template, precargado con la US, el estado del
+           check y los enlaces. Tu PR la revisás vos; la de un compañero, con la skill de review.</p>
+        <span class="tool">dai pr  ·  /dai-review (la PR de otro)</span>
+      </div></div>
+
+      <div class="step m"><div class="num">7</div><div class="body">
+        <h3>Mergeá y estampá la cobertura</h3>
+        <p>Al mergear, dai escribe en el tracker <b>quién implementó qué</b>, contra qué
+           versión, con branch y commit. La trazabilidad inversa — nadie la mantiene a mano.</p>
+        <span class="tool">dai stamp  →  cobertura en el tracker</span>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ TRAZABILIDAD (demo) ══════════ -->
+<section id="traza">
+  <div class="wrap">
+    <p class="eyebrow">La pieza que lo cambia todo</p>
+    <h2>Cuando el QUÉ cambia, el desajuste se hace visible solo</h2>
+    <p class="lede">El PO edita un criterio en el tracker. Vos no tocaste una línea de código.
+      Y aun así, dai lo detecta — porque compara el hash de la US viva contra el que dejaste
+      estampado.</p>
+
+    <div class="demo">
+      <div class="term">
+<span class="p">$</span> <span class="cmd">dai check</span>
+<span class="ok">✅ 86ajcjwzk al día (v1)</span>
+
+<span class="dim"># … el PO agrega un criterio de aceptación en el tracker …</span>
+
+<span class="p">$</span> <span class="cmd">dai check</span>
+<span class="warn">⚠️  86ajcjwzk ATRASADO: implementaste 2124e94f, la US viva es 51abbfa0</span>
+
+  <span class="dim">El QUÉ cambió desde que lo implementaste. Para resincronizar:</span>
+    <b>dai link-us 86ajcjwzk --resync</b>  <span class="dim"># re-estampa contra la US viva</span>
+      </div>
+    </div>
+    <p class="lede" style="margin-top:22px">Nadie le avisó al dev. El link versionado lo
+      gritó solo. Esa es la diferencia entre <i>esperar que alguien se dé cuenta</i> y
+      <i>que el sistema te lo diga</i>.</p>
+  </div>
+</section>
+
+<!-- ══════════ SE ADAPTA ══════════ -->
+<section id="escala">
+  <div class="wrap">
+    <p class="eyebrow">Un solo método</p>
+    <h2>Se adapta a cualquier tamaño de equipo</h2>
+    <p class="lede">No hay una versión para equipos chicos y otra para grandes. Hay
+      <b>un protocolo invariante</b> y un dial de ceremonia que sube o baja según la escala.
+      Cada capa se agrega cuando duele, no antes.</p>
+    <div class="dial">
+      <div class="lvl"><span class="n">NIVEL 1</span><h4>Un dev solo</h4>
+        <p>OpenSpec y el CLI, todo local. La US puede vivir como un <code>.md</code>. Cero
+           infraestructura. El link y el check funcionan igual.</p></div>
+      <div class="lvl"><span class="n">NIVEL 2</span><h4>Equipo compacto</h4>
+        <p>Aparece el tracker (ClickUp/Jira) para coordinar. El link referencia la US; el
+           check y el stamp corren a mano o en un hook.</p></div>
+      <div class="lvl"><span class="n">NIVEL 3</span><h4>Organización grande</h4>
+        <p>Muchos repos, equipos separados, CI que estampa cobertura y matriz de ambientes.
+           El mismo protocolo, con más plomería.</p></div>
+    </div>
+    <p class="lede" style="margin-top:20px">El dev que aprende el nivel chico ya sabe el
+      grande. Nadie mantiene dos metodologías.</p>
+  </div>
+</section>
+
+<!-- ══════════ EMPEZAR ══════════ -->
+<section id="empezar">
+  <div class="wrap">
+    <p class="eyebrow">Empezar</p>
+    <h2>De cero a tu primera US trazada</h2>
+    <p class="lede">Requiere Node ≥ 18. El CLI no tiene dependencias — anda incluso en redes
+      corporativas cerradas.</p>
+    <ol class="start">
+      <li><code>npm i -g @dforce2055/dai</code>
+        <div class="d">Instalá el CLI. El comando queda <code>dai</code>.</div></li>
+      <li><code>dai init</code>
+        <div class="d">Scaffolder interactivo: elegís asistente (Claude/Copilot), tracker
+          (md/ClickUp/Jira) y si sumás OpenSpec. Deja el repo listo.</div></li>
+      <li><code>dai link-us &lt;ID&gt;</code>
+        <div class="d">Trae la US del tracker, crea la branch y el link. Implementás con TDD.</div></li>
+      <li><code>dai check</code>  →  <code>dai pr</code>  →  <code>dai stamp</code>
+        <div class="d">Verificás que seguís al día, creás la PR precargada, y al mergear
+          estampás la cobertura. El círculo cerrado.</div></li>
+    </ol>
+    <div class="cta" style="justify-content:flex-start;margin-top:8px">
+      <a class="btn p" href="https://github.com/dforce2055/dai">Documentación completa</a>
+      <a class="btn s" href="https://github.com/dforce2055/dai/blob/main/docs/EJEMPLO-END-TO-END.md">Ver un ejemplo real</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span><b style="color:var(--brand)">dai</b> — Desarrollo Asistido por IA</span>
+    <span class="sp"></span>
+    <a href="https://github.com/dforce2055/dai">GitHub</a>
+    <a href="https://github.com/dforce2055/dai/blob/main/docs/MANIFIESTO.md">Manifiesto</a>
+    <a href="https://github.com/dforce2055/dai/blob/main/LICENSE">GPLv3</a>
+  </div>
+</footer>
+
+<script>
+  // Único JS: toggle de tema (persistente). Todo lo demás es CSS puro.
+  (function(){
+    var r=document.documentElement, t=document.getElementById('tg');
+    try{var s=localStorage.getItem('dai-theme'); if(s) r.setAttribute('data-theme',s);}catch(e){}
+    t.addEventListener('click',function(){
+      var cur=r.getAttribute('data-theme');
+      var m=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
+      var next=(cur||m)==='dark'?'light':'dark';
+      r.setAttribute('data-theme',next);
+      try{localStorage.setItem('dai-theme',next);}catch(e){}
+    });
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+{
+  "name": "@dforce2055/dai",
+  "version": "0.1.0",
+  "description": "Metodología de desarrollo asistido por IA — CLI de acciones deterministas (trazabilidad QUÉ↔CÓMO).",
+  "repository": { "type": "git", "url": "git+https://github.com/dforce2055/dai.git" },
+  "homepage": "https://github.com/dforce2055/dai#readme",
+  "bugs": { "url": "https://github.com/dforce2055/dai/issues" },
+  "keywords": [
+    "ai",
+    "ai-assisted-development",
+    "spec-driven-development",
+    "traceability",
+    "user-story",
+    "openspec",
+    "scrum",
+    "tdd",
+    "methodology",
+    "cli"
+  ],
+  "author": "Diego Pérez <dperez2055@gmail.com>",
+  "license": "GPL-3.0-or-later",
+  "type": "module",
+  "bin": {
+    "dai": "cli/dai.mjs"
+  },
+  "files": [
+    "cli/dai.mjs",
+    "cli/lib",
+    "docs",
+    "templates",
+    "governance",
+    "skills",
+    "index.html",
+    "manifest.yaml",
+    "install.sh",
+    ".env.example",
+    "VERSION",
+    "LICENSE",
+    "README.md",
+    "CONTRIBUTING.md",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "CODE_OF_CONDUCT.md"
+  ],
+  "scripts": {
+    "test": "node --test cli/test/*.test.mjs",
+    "prepublishOnly": "npm test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

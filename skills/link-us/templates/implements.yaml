@@ -1,0 +1,16 @@
+# Link QUÉ↔CÓMO · lo scaffoldea link-us / `dai link-us`, lo versiona git junto al código.
+# Es el ÚNICO link autorado a mano. La cobertura inversa la deriva `dai stamp`.
+# Schema: docs/adr/0004-ubicacion-y-schema-implements.md
+
+change: <change-id>              # ← identidad del CÓMO (nombre local del change/spec). Auto-contenido.
+repo:   <nombre-del-repo>        # ← p. ej. frontend
+
+implements:                      # FORWARD: qué QUÉ del negocio cumple este change
+  - id: ABC-###                 # ← ticket de Jira/ClickUp (identidad del QUÉ). NO tipear a mano: lo pone link-us.
+    version: v1                  # ← spec_version de la US al momento de implementar (nº legible)
+    ac_hash: <autogenerado>      # ← lo calcula `dai ac-hash`. Dispara el ⚠️ si el QUÉ cambia.
+
+introduces:                      # capacidades TÉCNICAS nuevas que agrega este change (opcional)
+  - <capacidad-tecnica>          #   p. ej. guard-carrito-vacio
+
+autor: <dev>                     # quién implementa

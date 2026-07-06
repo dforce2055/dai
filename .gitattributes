@@ -1,0 +1,7 @@
+# Normaliza saltos de línea a LF en el repo
+* text=auto eol=lf
+
+# Binarios: no tocar
+*.png binary
+*.jpg binary
+*.gif binary
