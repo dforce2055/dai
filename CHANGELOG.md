@@ -5,44 +5,42 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado se
 
 ## [0.1.0] — no publicado
 
-Primera versión del paquete.
+Primera versión: metodología completa + CLI de trazabilidad, probado end-to-end contra
+ClickUp y Jira Cloud.
 
 ### Metodología
-- Manifiesto (constitución: 4 valores + 15 artículos), METODOLOGIA (protocolo
-  invariante + dial de niveles N1/N2/N3), SCRUM-CON-IA (los 10 pasos, con `detalle/`),
-  EJEMPLO end-to-end (carrito de compras), glosario, guías por rol (PO/dev/lead).
+- Manifiesto (constitución: 4 valores + 15 artículos), METODOLOGIA (protocolo invariante
+  + dial de niveles N1/N2/N3), SCRUM-CON-IA (los 10 pasos, con `detalle/`), EJEMPLO
+  end-to-end, glosario, guías por rol (PO/dev/lead), landing autocontenido (`index.html`).
 - 7 ADRs: `ac_hash`, agnóstico del asistente, detección/estampado como comandos,
-  ubicación+schema del `implements.yaml`, superficie de comandos+stamp, distribución
-  y licencia, modelo de autenticación.
+  ubicación+schema del `implements.yaml`, superficie de comandos, distribución+licencia,
+  modelo de autenticación.
 
 ### Templates y governance
 - `formato-us`, `epica`, `definition-of-ready`, `definition-of-done`, `adr`,
   `pull-request`; `branch-naming`, `ci-rules`.
 
-### Skills
-- El QUÉ: `doc-to-backlog` (un PDF/Word → backlog candidato de épicas+US),
-  `grill-intent` (Gate 0), `grill-epic` (épicas), `grill-user-story` (la US).
+### Skills (para Claude y Copilot, generadas por `dai init`)
+- El QUÉ: `doc-to-backlog` (un doc → backlog candidato), `grill-intent` (Gate 0),
+  `grill-epic` (épicas), `grill-user-story` (la US — detecta el tracker del `.env` y publica).
 - El CÓMO: `link-us`, `tdd`, `dai-review`.
 
 ### CLI (`dai`, Node, cero dependencias)
-- Trazabilidad: `ac-hash`, `ls`, `link-us`, `check`, `stamp`, `forge` (GitHub/GitLab).
-  `link-us` trae la US del adaptador (sin `--us`); keys agnósticos de tracker.
-- Instalación: `install` (global/local), `init --for claude|copilot|both`
-  (bootstrap del repo: `.dai` + adaptadores de asistente, ADR-0002 capa 3), `docs`, `doctor`.
-- Adaptador de PM: backends `md`, `jira`, `clickup`.
-- 48 tests (`node --test`).
+- **Definir el QUÉ:** `publish` (crea la US en el tracker desde un `.md`).
+- **Trazabilidad:** `link-us` (+ `--resync`), `check`, `stamp`, `ls`, `ac-hash`.
+- **PR y cierre:** `pr` (crea la PR precargada), `forge` (comentar/leer PR en GitHub/GitLab),
+  `done` (cierra la US: vuelve a la base, actualiza y borra la branch).
+- **Setup:** `init` (scaffolder interactivo: asistente + tracker + OpenSpec), `install`,
+  `docs`, `doctor`.
+- Adaptador de tracker: `md`, `jira` (ADF, Jira Cloud), `clickup`. Auth por SSH (git) +
+  token scopeado (forge/tracker), nunca contraseñas.
+- **87 tests** (`node --test`), cero dependencias de runtime.
 
-### Distribución
-- Licencia GPLv3. Publicable en npm (scopeado). `install.sh` como shim de git-clone.
-
-### Calidad y comunidad
-- Auditoría end-to-end: se corrigió el parseo de flags (los booleanos como
-  `--global`/`--force` consumían el argumento siguiente → `--dry-run` podía quedar
-  ignorado), y se robusteció `slugify` (escape unicode en los diacríticos).
+### Distribución y comunidad
+- Licencia **GPLv3**. Publicable en npm (scopeado); `install.sh` como shim de git-clone.
 - `SECURITY.md`, `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `.editorconfig`, `.nvmrc`,
-  `.gitattributes`, templates de PR/issue, y CI de GitHub Actions (Node 18/20/22).
-- Sin links rotos; `files` de npm sin tests ni secretos.
-- Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado: URL, auth,
-  método, body, mapeo de respuesta y manejo de errores (404/no-ok). **64 tests.**
+  `.gitattributes`, templates de PR/issue, CI de GitHub Actions (Node 18/20/22).
+- Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
+  `files` de npm sin tests ni secretos.
 
-[0.1.0]: #
+[0.1.0]: https://github.com/dforce2055/dai/releases/tag/v0.1.0

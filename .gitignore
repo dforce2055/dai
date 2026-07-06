@@ -2,8 +2,17 @@
 .DS_Store
 *.log
 node_modules/
-.dai/          # scaffolding que genera `dai init` en repos target (no acá)
-.env           # SECRETOS del adaptador de PM. Solo se versiona .env.example
-*.tgz          # tarball de `npm pack`
-coverage/      # reportes de cobertura
-scratch/       # borradores locales
+
+# scaffolding que genera `dai init` en repos target (no acá)
+.dai/
+
+# SECRETOS del adaptador de PM. Solo se versiona .env.example
+.env
+.env.local
+
+# tarball de `npm pack`
+*.tgz
+
+# reportes de cobertura · borradores locales
+coverage/
+scratch/
