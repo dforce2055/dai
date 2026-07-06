@@ -80,13 +80,32 @@
   .g3{grid-template-columns:repeat(3,1fr)}
   .g2{grid-template-columns:repeat(2,1fr)}
   @media(max-width:720px){.g3,.g2{grid-template-columns:1fr}}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;
+    transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease}
+  .card:hover{transform:translateY(-4px);border-color:color-mix(in srgb,var(--brand) 55%,var(--line));
+    box-shadow:0 12px 30px -12px color-mix(in srgb,var(--brand) 45%,transparent)}
   .card h3{margin:0 0 6px;font-size:1.05rem}
   .card p{margin:0;color:var(--mut);font-size:.95rem}
+
+  /* ---------- animaciones (reveal al scroll + hover) ---------- */
+  .reveal{transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1)}
+  html.anim .reveal{opacity:0;transform:translateY(20px)}
+  html.anim .reveal.in{opacity:1;transform:none}
+  .lvl,.step .body,.side{transition:transform .25s ease}
+  .lvl:hover{transform:translateY(-4px)}
+  .install{transition:border-color .25s ease}
+  .install:hover{border-color:color-mix(in srgb,var(--ci) 50%,var(--line))}
+  @media (prefers-reduced-motion: reduce){
+    html.anim .reveal{opacity:1 !important;transform:none !important}
+    .card:hover,.lvl:hover{transform:none}
+  }
   .ic{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;
     font-size:1.1rem;margin-bottom:12px}
-  .ic.d{background:color-mix(in srgb,var(--danger) 18%,transparent)}
-  .ic.b{background:color-mix(in srgb,var(--brand) 20%,transparent)}
+  .ic{transition:transform .25s ease}
+  .ic.d{background:linear-gradient(135deg,color-mix(in srgb,var(--brand) 28%,transparent),color-mix(in srgb,var(--tech) 28%,transparent));
+    box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--brand) 24%,transparent)}
+  .ic.b{background:linear-gradient(135deg,color-mix(in srgb,var(--brand) 26%,transparent),color-mix(in srgb,var(--tech) 26%,transparent))}
+  .card:hover .ic{transform:scale(1.08) rotate(-3deg)}
 
   .tag{display:inline-block;font-family:var(--mono);font-size:.72rem;font-weight:600;
     padding:2px 8px;border-radius:999px;letter-spacing:.02em}
@@ -420,7 +439,7 @@
 </footer>
 
 <script>
-  // Único JS: toggle de tema (persistente). Todo lo demás es CSS puro.
+  // JS mínimo: toggle de tema + animaciones de reveal. Nada externo.
   (function(){
     var r=document.documentElement, t=document.getElementById('tg');
     try{var s=localStorage.getItem('dai-theme'); if(s) r.setAttribute('data-theme',s);}catch(e){}
@@ -431,6 +450,26 @@
       r.setAttribute('data-theme',next);
       try{localStorage.setItem('dai-theme',next);}catch(e){}
     });
+
+    // Reveal al hacer scroll (fade + slide up), con stagger por grupo.
+    var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var els=document.querySelectorAll(
+      'section h2, section .lede, .card, .step, .lvl, .split, .demo, .install, ol.start li, .cta');
+    if(reduce || !('IntersectionObserver' in window)){ return; } // sin animar: todo visible
+    r.classList.add('anim');                                     // recién acá ocultamos (fallback sin JS = visible)
+    els.forEach(function(el){
+      el.classList.add('reveal');
+      // stagger: retraso según la posición del elemento entre sus hermanos
+      var i=0,p=el.previousElementSibling;
+      while(p){ i++; p=p.previousElementSibling; }
+      el.style.transitionDelay=Math.min(i,6)*70+'ms';
+    });
+    var io=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
+      });
+    },{threshold:.12, rootMargin:'0px 0px -8% 0px'});
+    els.forEach(function(el){ io.observe(el); });
   })();
 </script>
 </body>
