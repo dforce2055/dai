@@ -244,6 +244,50 @@ async function cmdPublish(file) {
   info(`Próximo paso (el dev abre el CÓMO):  dai link-us ${r.id}`);
 }
 
+// ── done: cierra una US — vuelve a la base, actualiza y borra la branch local ──
+function cmdDone(opts) {
+  const base = opts.base || "main";
+  const branch = gitBranch();
+  if (!branch || branch === "HEAD") fail("no estás en una branch.", 1);
+  if (branch === base) fail(`ya estás en '${base}' — nada que cerrar.`, 1);
+
+  // Redes de seguridad: sin cambios sueltos, sin commits sin pushear.
+  const dirty = (() => { try { return git(["status", "--porcelain"]).length > 0; } catch { return false; } })();
+  if (dirty) fail("tenés cambios sin commitear. Commiteá o stasheá antes de `dai done`.", 1);
+  let remoteExists = false;
+  try { git(["rev-parse", "--verify", `origin/${branch}`]); remoteExists = true; } catch { /* sin branch remota */ }
+  if (remoteExists) {
+    const ahead = Number(git(["rev-list", "--count", `origin/${branch}..${branch}`]) || "0");
+    if (ahead > 0) fail(`tenés ${ahead} commit(s) sin pushear en '${branch}'. Pusheá antes (o esperá el merge).`, 1);
+  }
+
+  // La US que se cierra (informativo) — leerla ANTES de cambiar de branch.
+  const usIds = [];
+  for (const f of discoverImplements(process.cwd())) for (const im of f.implements || []) if (!isPlaceholderId(im.id)) usIds.push(im.id);
+
+  // Ir a la base y actualizar.
+  info(`Cambiando a '${base}' y actualizando…`);
+  try { git(["checkout", base]); } catch (e) { fail(`no pude cambiar a '${base}': ${String(e.message).split("\n")[0]}`, 1); }
+  try { git(["fetch", "--prune"]); } catch { /* sin remoto */ }
+  try { git(["pull", "--ff-only"]); } catch { warn(`no pude hacer 'pull --ff-only' en '${base}' (¿divergió?). Revisá a mano.`); }
+
+  // Chequeo ESTRICTO de merge: la branch tiene que ser ancestro de la base actualizada.
+  let merged = false;
+  try { git(["merge-base", "--is-ancestor", branch, "HEAD"]); merged = true; } catch { merged = false; }
+  if (!merged && !opts.force) {
+    warn(`'${branch}' NO está mergeada en '${base}'. No la borro — usá 'dai done --force' si estás seguro.`);
+    ok(`Quedaste en '${base}', actualizado. La branch '${branch}' se conserva.`);
+    return;
+  }
+  try {
+    git(["branch", merged ? "-d" : "-D", branch]);
+    ok(`Borrada la branch local '${branch}'${merged ? "" : " (forzado, sin merge)"}.`);
+  } catch (e) { fail(`no pude borrar '${branch}': ${String(e.message).split("\n")[0]}`, 1); }
+
+  ok(`Listo — en '${base}', actualizado${usIds.length ? `. US cerrada: ${usIds.join(", ")}` : ""}.`);
+  info("La branch remota (si existe) la maneja el forge (auto-delete on merge) o borrala vos.");
+}
+
 // ── pr: crea TU PROPIA PR/MR precargada desde el template + el link ────────────
 // (Distinto de dai-review, que revisa la PR de OTRO. Tu PR la creás y revisás vos.)
 async function cmdPr(opts) {
@@ -615,6 +659,7 @@ switch (cmd) {
   case "forge":   cmdForge(pos[0], pos[1], opts).catch((e) => fail(String(e.message))); break;
   case "publish": cmdPublish(pos[0]).catch((e) => fail(String(e.message))); break;
   case "pr":      cmdPr(opts).catch((e) => fail(String(e.message))); break;
+  case "done":    cmdDone(opts); break;
   case "install": cmdInstall(opts).catch((e) => fail(String(e.message))); break;
   case "init":    cmdInit(pos[0], opts).catch((e) => fail(String(e.message))); break;
   case "docs":    cmdDocs(pos[0]); break;
@@ -631,6 +676,7 @@ switch (cmd) {
       "  link-us <KEY> --resync       re-estampa el ac_hash contra la US viva (tras un ⚠️ de check)\n" +
       "  check                        compara vs la US viva → atrasado (ADR-0003)\n" +
       "  stamp                        estampa la cobertura en el tracker (ADR-0005)\n" +
+      "  done [--base main] [--force] cierra la US: vuelve a la base, actualiza y borra la branch local (si está mergeada)\n" +
       "  pr [--assignee u] [--base b] [--draft] [--yes]   crea TU PR/MR precargada (muestra + confirma)\n" +
       "  forge comment <ref> --body-file <f> · forge pr <ref>   comentar/leer una PR ajena (github/gitlab)\n\n" +
       "Instalación:\n" +

@@ -121,6 +121,7 @@ Guía completa con salidas reales en [`docs/PROBAR.md`](docs/PROBAR.md); un caso
 | 11 | **Crear la PR** | `dai pr` → pregunta la branch base, arma el texto, lo muestra, confirma, pushea y crea la PR/MR | dev |
 | 12 | **Review de un partner** | skill `/dai-review <PR>` deja un comentario estándar; un humano aprueba | partner |
 | 13 | **Merge + estampar** | al mergear: `dai stamp` → cobertura inversa en el tracker | dev / CI |
+| 14 | **Cerrar la US** | `dai done` → vuelve a la base, actualiza y borra la branch local (si está mergeada) | dev |
 
 > **Paso 3b (publicar):** el MCP crea el issue interactivamente; `dai publish` necesita el
 > token del tracker en `.env` (Jira además `DAI_JIRA_PROJECT`, ClickUp `DAI_CLICKUP_LIST_ID`).
@@ -144,6 +145,7 @@ Guía completa con salidas reales en [`docs/PROBAR.md`](docs/PROBAR.md); un caso
 | `dai ls [--json]` | lista las US que implementa el repo + su link al tracker |
 | `dai pr [--assignee u] [--base b] [--draft] [--yes]` | crea TU PR/MR precargada: pregunta la branch base (default `main`), muestra el texto y confirma antes de publicar |
 | `dai stamp` | estampa la cobertura inversa en el tracker (branch + commit-ancla) |
+| `dai done [--base main] [--force]` | cierra la US: vuelve a la base, `fetch --prune` + `pull`, y borra la branch local **si está mergeada** (chequeo estricto; `--force` la borra igual). Redes: no estar en la base, sin cambios sueltos, sin commits sin pushear |
 | `dai forge comment <ref> --body-file <f>` · `dai forge pr <ref>` | comentar / leer una PR/MR (GitHub/GitLab) |
 | `dai ac-hash <us.md>` | calcula el hash de los criterios de aceptación de una US |
 | `dai doctor` · `dai docs <dest>` · `dai --version` | diagnóstico del entorno · copiar la doc · versión |
