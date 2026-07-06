@@ -42,6 +42,7 @@ Si no viene nada, pedir título y si hay un borrador existente.
    **No asumas el tracker** — depende del `.env`. Si no hay `.env`, preguntá cuál usa el equipo.
 1. **Resolver inputs.** Obtener título e ID del tracker (si existe). Si se refina, leer la US y anotar — para uno mismo — qué secciones del formato faltan o están flojas: rol genérico ("el usuario"), falta el "para", sin flujo de excepción, solución bakeada, ACs vagos.
 2. **Grillar, un eje por vez.** No tirar un cuestionario — preguntar, escuchar, profundizar, y seguir. Cubrir en orden:
+   - **Título** — corto, **3 a 6 palabras**, nombra la capacidad (de ahí sale la branch). Si el título es una frase larga, acortalo: el detalle va en la descripción, no en el título. Ej: "Confirmar acciones con consecuencias", no "Confirmación deliberada antes de ejecutar acciones con consecuencias".
    - **Quién** — el usuario/rol real. Rechazar "el usuario"; conseguir el actor concreto.
    - **Job-to-be-done** — qué intenta lograr de verdad, y el *por qué* (el "para").
    - **Flujos** — happy path primero, después alternativos, después excepciones: "¿qué pasa cuando no es válido / no está permitido / está vacío?"

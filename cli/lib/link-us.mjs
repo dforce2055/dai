@@ -12,14 +12,14 @@ export function isValidKey(key) {
 }
 
 // slug: minúsculas, sin acentos/ñ, no-alfanumérico → guion, recortado.
-export function slugify(s) {
-  return (s || "")
+export function slugify(s, max = 42) {
+  let out = (s || "")
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60)
-    .replace(/-+$/g, "");
+    .replace(/^-+|-+$/g, "");
+  if (out.length > max) { out = out.slice(0, max); const cut = out.lastIndexOf("-"); if (cut > 0) out = out.slice(0, cut); }
+  return out.replace(/-+$/g, "");
 }
 
 export function branchName(key, title) {

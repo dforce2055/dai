@@ -31,7 +31,12 @@
 
 # <Título de la historia>
 
-Corto, orientado a la capacidad de negocio. Nada de "Como usuario quiero un botón".
+**Corto — 3 a 6 palabras.** Nombra la capacidad, no la explica (el detalle va en la
+descripción y los criterios). De él sale el nombre de la branch, así que cuanto más
+conciso, mejor.
+- ✅ "Confirmar acciones con consecuencias" · "Finalizar la compra del carrito"
+- ❌ "Confirmación deliberada antes de ejecutar acciones con consecuencias" (es una frase,
+  no un título) · "Como usuario quiero un botón" (eso es la historia, no el título)
 
 ## Historia
 

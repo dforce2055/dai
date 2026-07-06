@@ -53,3 +53,12 @@ test("renderImplementsYaml + resync: reemplaza ac_hash y version sin tocar el re
   assert.match(resynced, /autor: Dev/);     // resto intacto
   assert.doesNotMatch(resynced, /aaaaaaaa/);
 });
+
+test("slugify corta en palabra completa cuando excede el máximo", () => {
+  const s = slugify("Confirmación deliberada antes de ejecutar acciones con consecuencias");
+  assert.ok(s.length <= 42, "no excede el máximo");
+  assert.ok(!s.endsWith("-"), "no termina en guion");
+  assert.doesNotMatch(s, /conse$/, "no corta a mitad de palabra");
+  // títulos cortos quedan intactos
+  assert.equal(slugify("Modal de confirmación"), "modal-de-confirmacion");
+});
