@@ -40,7 +40,8 @@ conciso, mejor.
 
 ## Historia
 
-> Formato Connextra. El rol debe ser un tipo de usuario **concreto**, nunca "el usuario".
+> Formato Connextra (la user story clásica de *rol / quiero / para*). El rol debe ser un
+> tipo de usuario **concreto**, nunca "el usuario".
 
 Como **<rol concreto>**
 quiero **<capacidad o resultado>**
