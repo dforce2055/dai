@@ -53,7 +53,8 @@ dos son declaraciones/cortesías.
 
 La detección exige un **artefacto-QUÉ con identidad estable y criterios testeables**,
 no necesariamente una US publicada en un tracker. En N3/N2 es la US en Jira/ClickUp;
-en N1 es el `proposal.md` de OpenSpec. El `ac_hash` se calcula igual sobre cualquiera
+en N1 es el `proposal.md` de OpenSpec (los niveles de ceremonia N1/N2/N3 — dev solo /
+equipo compacto / organización grande — están en el [glosario](../glosario.md)). El `ac_hash` se calcula igual sobre cualquiera
 de los tres — no forzamos tracker externo donde el Art. 14 dice no adelantar
 complejidad.
 

@@ -37,7 +37,9 @@
 
 ## Configurable: ¿"done" incluye desplegado?
 
-Cada organización define hasta dónde llega su DoD:
+Cada organización define hasta dónde llega su DoD según su **nivel de ceremonia**
+(**N1** dev solo · **N2** equipo compacto · **N3** organización grande — ver
+[glosario](../docs/glosario.md)):
 
 | | El DoD termina en… |
 |---|---|

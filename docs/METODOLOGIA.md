@@ -135,7 +135,7 @@ duele, no antes.**
 | El QUÉ vive en | `proposal.md` de OpenSpec | ClickUp (US) → el change la referencia | Jira (`ABC-###`, hub) |
 | El link vive en | la carpeta del change (co-localizado) | `implements.yaml` en el repo | `implements.yaml` versionado |
 | Inversa la genera | un comando local | comando / CI liviano | CI estampa cobertura + CD reporta ambiente |
-| Índice central | no hace falta (todo co-localizado) | opcional (ClickUp como vista) | Jira = índice/router (Nivel 1) |
+| Índice central | no hace falta (todo co-localizado) | opcional (ClickUp como vista) | Jira = índice/router de la federación |
 | Roles | 1 persona, ambos sombreros | pocos devs, PO informal | funcional/PO y devs separados |
 | Gates | auto-review | review de un partner | Gate 0 formal + MR review + matriz repo×ambiente |
 | Multi-repo | no | opcional (p. ej. front + back) | sí, es el punto |

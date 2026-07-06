@@ -12,7 +12,8 @@ falta **montar un CI que corra del lado de Jira/ClickUp** antes de poder usar la
 metodología — infraestructura pesada, y una barrera de entrada que contradice el
 Art. 14 (*no adelantar complejidad*).
 
-Además, un equipo que ya está en escala N3 puede **no tener** todavía esa
+Además, un equipo que ya está en escala N3 (organización grande federada; los niveles
+N1/N2/N3 están en el [glosario](../glosario.md)) puede **no tener** todavía esa
 automatización. La trazabilidad federada tiene que funcionar igual, de forma
 **distribuida**, sin depender de que exista un pipeline corriendo.
 

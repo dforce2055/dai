@@ -24,7 +24,7 @@
 | **`implements.yaml`** | El archivo, en el change del repo, que contiene ese link. Lo genera `link-us`. |
 | **Trazabilidad inversa / cobertura** | El mapa "quién implementó este QUÉ". **Se genera, nunca se escribe.** |
 | **Índice / router** | La tabla central que dice qué ID vive en qué repos. Es un router, **no un almacén**: no guarda el detalle. |
-| **Federación (dos niveles)** | Nivel 1 = índice central chico. Nivel 2 = detalle en cada repo, resuelto on-demand. |
+| **Federación (dos niveles)** | Cómo se guarda la trazabilidad a escala: Nivel 1 = índice central chico; Nivel 2 = detalle en cada repo, resuelto on-demand. *(Es un eje distinto de los niveles de ceremonia N1/N2/N3: acá "nivel" es dónde vive el dato, no el tamaño del equipo.)* |
 | **Matriz de trazabilidad** | La vista "repo × versión × estado (al día / atrasado)". Derivada, no mantenida a mano. |
 
 ## El versionado
@@ -54,7 +54,7 @@
 | **HITL (Human-in-the-loop)** | La IA asiste; la persona decide y firma. Los rituales de coordinación son humanos. |
 | **Vibe coding** | Improvisar código sobre una idea vaga. Lo que el método prohíbe (Art. 7). |
 | **Colapso de roles** | Cuando una persona es PO y dev: los gates se aligeran, el link no desaparece. |
-| **Nivel de ceremonia (N1/N2/N3)** | El dial de plomería: solo/compacto/federado. El protocolo no cambia; la maquinaria sí. |
+| **Nivel de ceremonia (N1/N2/N3)** | Los tres niveles de "plomería" según el tamaño del equipo. **N1** — un dev solo, todo local, sin herramientas externas. **N2** — equipo compacto, con tracker (Jira/ClickUp) + `implements.yaml`. **N3** — organización grande, federada: muchos repos, equipos separados, CI que estampa. El protocolo QUÉ↔CÓMO es **el mismo** en los tres; solo cambia la maquinaria. Detalle en [METODOLOGIA §3](METODOLOGIA.md). |
 
 ## Los roles
 

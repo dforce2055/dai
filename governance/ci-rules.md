@@ -28,9 +28,9 @@
 2. **Estampa la cobertura inversa** en el gestor: en el ticket `ABC-###`, deja
    "implementado por `<repo>` @ `<version>` (`ac_hash`) ✅". **Nadie lo escribe a
    mano** (Art. 10).
-3. **Actualiza el índice/router** (Nivel 1): la fila `ABC-### → { repos }`.
+3. **Actualiza el índice/router central** de la federación: la fila `ABC-### → { repos }`.
 
-## Qué hace el CD al desplegar (solo N3)
+## Qué hace el CD al desplegar (solo N3 · organización grande)
 
 Reporta a qué **ambiente** llegó la versión (`dev` / `test` / `pre` / `prod`), para
 armar la matriz **repo × ambiente**. Implementación ≠ despliegue: el CI dice "se
@@ -48,6 +48,10 @@ implementó `@v3`", el CD dice "`@v3` está viva en `pre`".
 
 ## Calibración por nivel
 
-- **N1:** sin CI. La validación es un comando local (`dai` puede ofrecer un pre-commit).
-- **N2:** CI liviano — valida link + tests, estampa en el gestor si hay adaptador.
-- **N3:** CI completo + CD reportando ambientes + índice central publicado.
+> **N1 / N2 / N3** son los niveles de ceremonia según el tamaño del equipo — **N1**
+> un dev solo, **N2** equipo compacto (con tracker), **N3** organización grande
+> (federada). Ver el [glosario](../docs/glosario.md) o [METODOLOGIA §3](../docs/METODOLOGIA.md).
+
+- **N1** (dev solo)**:** sin CI. La validación es un comando local (`dai` puede ofrecer un pre-commit).
+- **N2** (equipo compacto)**:** CI liviano — valida link + tests, estampa en el gestor si hay adaptador.
+- **N3** (organización grande)**:** CI completo + CD reportando ambientes + índice central publicado.
