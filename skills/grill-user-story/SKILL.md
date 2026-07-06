@@ -27,10 +27,11 @@ Esta US es el **QUÉ linkeable**. El `implements.yaml` del repo la va a referenc
 
 Si no viene nada, pedir título y si hay un borrador existente.
 
-## Dos cortes duros (no negociables)
+## Tres cortes duros (no negociables)
 
 1. **Cortar en lo técnico.** Si la charla deriva a tablas, endpoints, migraciones o elección de framework, frenar: "eso es diseño, no ahora". La US nombra *qué necesita el usuario*, nunca *cómo se construye*.
 2. **Cortar en lo no testeable.** Nunca emitir un criterio que no pueda volverse un test. "El usuario tiene una buena experiencia" se rechaza. "Un carrito vacío no se puede finalizar" se acepta — funcional y verificable. Empujar cada AC hasta que sea observable.
+3. **Publicar, no pedir.** Si el tracker está configurado (`DAI_PM=jira|clickup` con token en `.env`), **CREÁ el ticket vos** (por MCP o con `dai publish`). **Nunca** cierres pidiéndole al usuario "pasame el ID/URL del ticket" como si ya existiera — el ticket lo creás vos en este paso. Solo pedís un ID existente si el usuario dijo explícitamente que está refinando una US ya creada.
 
 ## Proceso
 
@@ -47,7 +48,7 @@ Si no viene nada, pedir título y si hay un borrador existente.
    - **Criterios de aceptación** — convertir cada flujo en una condición funcional y testeable, en Gherkin. Aplicar el corte #2 acá, fuerte.
    - **Fuera de scope** — qué NO hace esta historia (mata el scope creep río abajo).
 3. **Chequeo de tamaño (INVEST).** Si los flujos y ACs desbordan y la historia se dispersa, es demasiado grande para una sola US. No seguir empujando: **promoverla a una épica** con `/grill-epic` (que la parte en varias US independientes) y después volver acá para grillar cada US hija. Una US que no entra en un sprint es la señal de que hay una épica adentro.
-4. **Emitir + publicar** (ver abajo).
+4. **Publicar la US en el tracker (PASO OBLIGATORIO, ver abajo).** No termines con "¿la guardo y/o disparo el siguiente paso?": el trabajo de esta skill **incluye dejar la US publicada** en el tracker (con su key), no solo redactarla.
 
 ## Salida — publicar en el tracker (según `DAI_PM`), con fallback a .md
 
