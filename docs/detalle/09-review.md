@@ -7,7 +7,7 @@
 Se muestra lo terminado al PO y stakeholders. La aceptación es **contra los criterios
 de aceptación de la US** — que ya eran tests (paso 4). Si el QUÉ evolucionó mientras
 tanto, el `@version` lo gritó antes (`dai check` en ⚠️), así que **no hay sorpresas**
-del tipo "esto no era lo que pedí".
+del tipo "esto no era lo que pide".
 
 ## Herramientas
 
@@ -20,6 +20,6 @@ El **PO acepta o rechaza** (Art. 5). La demo la corre una persona.
 
 ## Antipatrones
 
-- **Demostrar contra una US atrasada** → aceptás algo que ya no es lo pedido.
+- **Demostrar contra una US atrasada** → aceptas algo que ya no es lo pedido.
 - **Criterios que no eran tests** → la demo se vuelve subjetiva ("a mí me anda").
-- **Descubrir el drift en la demo** → tenía que haber saltado con `dai check` antes.
+- **Descubrir el desajuste en la demo** → tenía que haber saltado con `dai check` antes.

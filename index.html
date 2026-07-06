@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>dai — Desarrollo Asistido por IA con trazabilidad</title>
-<meta name="description" content="Un método y un CLI para que la IA programe con trazabilidad y sin vibe coding. Separá el QUÉ del CÓMO, linkealos una vez, y que la máquina avise sola cuando se desincronizan. Se adapta a cualquier tamaño de equipo." />
+<meta name="description" content="Un método y un CLI para que la IA programe con trazabilidad y sin vibe coding. Separa el QUÉ del CÓMO, linkéalos una vez, y que la máquina avise sola cuando se desincronizan. Se adapta a cualquier tamaño de equipo." />
 <!-- Favicon SVG inline (sin CDN, nítido en cualquier resolución) -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236366f1'/%3E%3Cstop offset='1' stop-color='%230ea5e9'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Ctext x='32' y='48' font-family='ui-sans-serif,system-ui,Arial' font-size='44' font-weight='800' fill='white' text-anchor='middle'%3Ed%3C/text%3E%3C/svg%3E" />
 <meta name="theme-color" content="#6366f1" />
@@ -201,8 +201,8 @@
 <header class="hero wrap">
   <h1>La IA programa. <span class="g">@dai te da la trazabilidad.</span></h1>
   <p>Un método —y un CLI— para desarrollo asistido por IA <b>sin vibe coding</b> y con
-     trazabilidad real: separá el <span class="tag q">QUÉ</span> del
-     <span class="tag c">CÓMO</span>, linkealos una sola vez, y dejá que la máquina
+     trazabilidad real: separa el <span class="tag q">QUÉ</span> del
+     <span class="tag c">CÓMO</span>, linkéalos una sola vez, y deja que la máquina
      avise sola cuando se desincronizan. De un dev solo a una organización entera —
      el mismo método.</p>
   <div class="cta">
@@ -210,7 +210,7 @@
     <a class="btn s" href="https://github.com/dforce2055/dai">Ver en GitHub</a>
   </div>
   <div class="install">
-    <span class="m"># instalá el CLI (Node ≥18, cero dependencias)</span><br>
+    <span class="m"># instala el CLI (Node ≥18, cero dependencias)</span><br>
     <span class="c">npm i -g @dforce2055/dai</span><br>
     <span class="c">dai init</span>  <span class="m"># configura tu repo: Claude/Copilot + OpenSpec + el link</span>
   </div>
@@ -250,7 +250,7 @@
 <section id="idea">
   <div class="wrap">
     <p class="eyebrow">La idea</p>
-    <h2>Separá el QUÉ del CÓMO. Linkealos una sola vez.</h2>
+    <h2>Separa el QUÉ del CÓMO. Linkéalos una sola vez.</h2>
     <p class="lede">El requerimiento (el QUÉ) y la implementación (el CÓMO) son cosas
       distintas, con dueños distintos. dai las mantiene atadas — y la dirección inversa
       se <b>deriva</b>, nunca se escribe a mano.</p>
@@ -301,49 +301,49 @@
 
     <div class="steps">
       <div class="step q"><div class="num">1</div><div class="body">
-        <h3>Definí el QUÉ</h3>
+        <h3>Define el QUÉ</h3>
         <p>El analista describe la idea. Una skill de IA lo <b>interroga</b> hasta que la
            User Story es testeable, y la publica en el tracker. La IA no inventa: pregunta.</p>
         <span class="tool">/grill-intent → /grill-user-story → ClickUp / Jira</span>
       </div></div>
 
       <div class="step c"><div class="num">2</div><div class="body">
-        <h3>Abrí el CÓMO, atado al QUÉ</h3>
+        <h3>Abre el CÓMO, atado al QUÉ</h3>
         <p>El dev arranca la implementación. dai trae la US del tracker, crea la branch y
            siembra el link — <b>correcto por construcción</b>, sin tipear el ID a mano.</p>
         <span class="tool">dai link-us &lt;ID&gt;  →  branch + implements.yaml</span>
       </div></div>
 
       <div class="step c"><div class="num">3</div><div class="body">
-        <h3>Diseñá con OpenSpec</h3>
+        <h3>Diseña con OpenSpec</h3>
         <p>OpenSpec toma la US y genera la propuesta, el diseño y las tareas — co-localizados
            con el link, en la misma branch. El QUÉ se convierte en un plan técnico.</p>
         <span class="tool">/opsx:propose  →  proposal · design · tasks</span>
       </div></div>
 
       <div class="step c"><div class="num">4</div><div class="body">
-        <h3>Implementá con tests primero</h3>
+        <h3>Implementa con tests primero</h3>
         <p>TDD en rebanadas verticales: un test, el código mínimo, repetir. La IA escribe el
            test como spec ejecutable. Anti vibe-coding de verdad.</p>
         <span class="tool">/tdd  ·  red → green → refactor</span>
       </div></div>
 
       <div class="step m"><div class="num">5</div><div class="body">
-        <h3>Verificá la trazabilidad</h3>
+        <h3>Verifica la trazabilidad</h3>
         <p>¿Tu código sigue al día con la US? dai re-deriva el hash de la US viva y compara.
            Si el QUÉ cambió, te avisa <b>y te dice cómo resincronizar</b>.</p>
         <span class="tool">dai check  →  ✅ al día  /  ⚠️ atrasado</span>
       </div></div>
 
       <div class="step c"><div class="num">6</div><div class="body">
-        <h3>Creá y revisá la PR</h3>
+        <h3>Crea y revisa la PR</h3>
         <p>dai arma el texto de la PR desde el template, precargado con la US, el estado del
-           check y los enlaces. Tu PR la revisás vos; la de un compañero, con la skill de review.</p>
+           check y los enlaces. Tu PR la revisas tú; la de un compañero, con la skill de review.</p>
         <span class="tool">dai pr  ·  /dai-review (la PR de otro)</span>
       </div></div>
 
       <div class="step m"><div class="num">7</div><div class="body">
-        <h3>Mergeá y estampá la cobertura</h3>
+        <h3>Mergea y estampa la cobertura</h3>
         <p>Al mergear, dai escribe en el tracker <b>quién implementó qué</b>, contra qué
            versión, con branch y commit. La trazabilidad inversa — nadie la mantiene a mano.</p>
         <span class="tool">dai stamp  →  cobertura en el tracker</span>
@@ -357,7 +357,7 @@
   <div class="wrap">
     <p class="eyebrow">La pieza que lo cambia todo</p>
     <h2>Cuando el QUÉ cambia, el desajuste se hace visible solo</h2>
-    <p class="lede">El PO edita un criterio en el tracker. Vos no tocaste una línea de código.
+    <p class="lede">El PO edita un criterio en el tracker. Tú no tocaste una línea de código.
       Y aun así, dai lo detecta — porque compara el hash de la US viva contra el que dejaste
       estampado.</p>
 
@@ -376,7 +376,7 @@
       </div>
     </div>
     <p class="lede" style="margin-top:22px">Nadie le avisó al dev. El link versionado lo
-      gritó solo. Esa es la diferencia entre <i>esperar que alguien se dé cuenta</i> y
+      avisó solo. Esa es la diferencia entre <i>esperar que alguien se dé cuenta</i> y
       <i>que el sistema te lo diga</i>.</p>
   </div>
 </section>
@@ -414,15 +414,15 @@
       corporativas cerradas.</p>
     <ol class="start">
       <li><code>npm i -g @dforce2055/dai</code>
-        <div class="d">Instalá el CLI. El comando queda <code>dai</code>.</div></li>
+        <div class="d">Instala el CLI. El comando queda <code>dai</code>.</div></li>
       <li><code>dai init</code>
-        <div class="d">Scaffolder interactivo: elegís asistente (Claude/Copilot), tracker
-          (md/ClickUp/Jira) y si sumás OpenSpec. Deja el repo listo.</div></li>
+        <div class="d">Scaffolder interactivo: eliges asistente (Claude/Copilot), tracker
+          (md/ClickUp/Jira) y si sumas OpenSpec. Deja el repo listo.</div></li>
       <li><code>dai link-us &lt;ID&gt;</code>
-        <div class="d">Trae la US del tracker, crea la branch y el link. Implementás con TDD.</div></li>
+        <div class="d">Trae la US del tracker, crea la branch y el link. Implementas con TDD.</div></li>
       <li><code>dai check</code>  →  <code>dai pr</code>  →  <code>dai stamp</code>
-        <div class="d">Verificás que seguís al día, creás la PR precargada, y al mergear
-          estampás la cobertura. El círculo cerrado.</div></li>
+        <div class="d">Verificas que sigues al día, creas la PR precargada, y al mergear
+          estampas la cobertura. El círculo cerrado.</div></li>
     </ol>
     <div class="cta" style="justify-content:flex-start;margin-top:8px">
       <a class="btn p" href="https://github.com/dforce2055/dai">Documentación completa</a>

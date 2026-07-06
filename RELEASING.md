@@ -3,11 +3,11 @@
 > El nombre corto **`dai` está tomado** en el registry público (placeholder de
 > seguridad). Por eso el paquete se publica **scopeado**: `@<tu-usuario>/dai`. El
 > **comando sigue siendo `dai`** (lo define el campo `bin`), así que la ergonomía no
-> cambia: `npm i -g @<tu-usuario>/dai` y usás `dai …`.
+> cambia: `npm i -g @<tu-usuario>/dai` y usas `dai …`.
 
-## 1. Confirmá el scope
+## 1. Confirma el scope
 
-En `package.json`, `"name"` está como **`@dforce2055/dai`** (provisional). Cambialo por
+En `package.json`, `"name"` está como **`@dforce2055/dai`** (provisional). Cámbialo por
 tu scope real de npm — tiene que coincidir con tu **usuario** o una **org** que
 poseas, o el `publish` falla:
 
@@ -26,7 +26,7 @@ npm whoami         # confirma que estás logueado
 
 ```bash
 npm test                   # 48 tests (también corre solo en prepublishOnly)
-npm pack --dry-run         # revisá QUÉ se publica (sin tests, sin .env)
+npm pack --dry-run         # revisa QUÉ se publica (sin tests, sin .env)
 node cli/dai.mjs --version # dai v0.1.0
 ```
 
@@ -36,7 +36,7 @@ node cli/dai.mjs --version # dai v0.1.0
 npm publish        # `publishConfig.access = public` ya hace público el scopeado
 ```
 
-Verificá:
+Verifica:
 
 ```bash
 npx @TU-USUARIO/dai --version
@@ -53,8 +53,8 @@ git push --tags
 ## 5b. Activar los badges de npm y CI
 
 Están **comentados** en el README (hasta acá no existían el paquete ni el repo → se
-verían rotos). Una vez publicado en npm y pusheado a GitHub, des-comentá este bloque
-al principio del `README.md` (ajustá el scope si tu usuario npm difiere):
+verían rotos). Una vez publicado en npm y pusheado a GitHub, des-comenta este bloque
+al principio del `README.md` (ajusta el scope si tu usuario npm difiere):
 
 ```markdown
 [![npm](https://img.shields.io/npm/v/@TU-USUARIO/dai.svg)](https://www.npmjs.com/package/@TU-USUARIO/dai)
@@ -66,7 +66,7 @@ primer `npm publish`.
 
 ## 6. Próxima versión
 
-Subí `VERSION` **y** `package.json`→`version` juntos (semver), y repetí desde el
+Sube `VERSION` **y** `package.json`→`version` juntos (semver), y repite desde el
 paso 3. Regla: cambio de comportamiento del CLI o del protocolo → *minor*; fix →
 *patch*; ruptura del contrato (`ac_hash`, schema del `implements.yaml`) → *major*.
 

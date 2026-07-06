@@ -62,7 +62,7 @@ a qué linkear.
 
 El código declara `implements: <id>@<version>`. **Es el único link escrito a
 mano.** La dirección inversa (cobertura: "quién implementó este QUÉ") **siempre se
-genera**, nunca se escribe. Si se escribiera en los dos lados, driftean al primer
+genera**, nunca se escribe. Si se escribiera en los dos lados, se desincronizan al primer
 cambio.
 
 > **Regla de oro:** el link se escribe en un solo lado; la inversa se deriva. La
@@ -142,8 +142,8 @@ duele, no antes.**
 
 ### Regla de escala
 
-> Empezá con lo mínimo que funciona (**N1: OpenSpec solo**). Sumá ClickUp cuando el
-> equipo lo pida (**N2**). Pasá al modelo federado solo cuando la escala lo
+> Empieza con lo mínimo que funciona (**N1: OpenSpec solo**). Suma ClickUp cuando el
+> equipo lo pida (**N2**). Pasa al modelo federado solo cuando la escala lo
 > justifique (**N3**). No adelantes complejidad.
 
 El equipo chico vive en N1–N2 y quizás nunca necesite N3. La organización grande
@@ -235,7 +235,7 @@ skills del QUÉ (`formato-us.md`, `grill-intent`, `grill-user-story`).
 
 ---
 
-## 8. En criollo (para no técnicos)
+## 8. En resumen (para no técnicos)
 
 El **funcional** dice *qué* hay que hacer, en su herramienta de siempre (Jira),
 sin entrar nunca al editor de código. Una IA lo ayuda a que ese "qué" quede claro y
@@ -245,4 +245,4 @@ qué, contra qué versión, y quién quedó atrasado — sin que nadie lo manten
 Si el funcional cambia el "qué", el mapa marca solo a los que todavía no lo
 tomaron. En un equipo chico la misma persona hace las dos cosas y todo vive en una
 carpeta; en una organización grande hay equipos separados y el mapa lo publica el
-CI en el tracker. **Es el mismo método; cambia cuánta maquinaria le colgás.**
+CI en el tracker. **Es el mismo método; cambia cuánta maquinaria le cuelgas.**

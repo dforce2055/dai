@@ -7,9 +7,9 @@
 El CÓMO se construye con **test primero**, un comportamiento a la vez:
 
 ```
-RED   → escribís UN test que falla (un criterio de aceptación)
+RED   → escribes UN test que falla (un criterio de aceptación)
 GREEN → el código mínimo para que pase
-REFACTOR → limpiás, con los tests en verde
+REFACTOR → limpias, con los tests en verde
 ```
 
 *Vertical slices* (un test → una implementación → repetir), **no** horizontal
@@ -30,6 +30,6 @@ cada slice. La IA escribe el test como spec ejecutable, el dev valida.
 - **Horizontal slicing** (todos los tests juntos) → tests de la *forma imaginada*, no
   del comportamiento real.
 - **Testear lo interno** (mocks de colaboradores, métodos privados) → el test se rompe
-  al refactorizar aunque el comportamiento no cambió. Testeá por la **interfaz pública**.
+  al refactorizar aunque el comportamiento no cambió. Testea por la **interfaz pública**.
 - **Codear primero, testear "si queda tiempo"** → vibe coding (Art. 7).
-- **Refactorizar en rojo** → primero llegá a verde.
+- **Refactorizar en rojo** → primero llega a verde.

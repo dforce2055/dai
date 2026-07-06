@@ -11,8 +11,8 @@
 - **US:** `ABC-###` @ `vX`  ·  ac_hash: `<hash>`  ·  verificado con `dai check` ✅
 - **Link:** este PR está atado a la US vía `implements.yaml`.
 
-> Si este PR no implementa una US (chore/fix sin ticket), borrá esta sección y
-> aclará el motivo — no se le exige link.
+> Si este PR no implementa una US (chore/fix sin ticket), borra esta sección y
+> aclara el motivo — no se le exige link.
 
 ## Descripción
 

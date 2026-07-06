@@ -29,7 +29,7 @@ Lo que decidimos, en presente afirmativo: *"Usamos X."* Clara y sin ambigüedad.
 ## Consecuencias
 
 Qué se vuelve más fácil y qué más difícil por haber decidido esto. Lo bueno **y**
-lo que aceptamos pagar. Incluí las obligaciones nuevas (p. ej. "el CI ahora debe…").
+lo que aceptamos pagar. Incluye las obligaciones nuevas (p. ej. "el CI ahora debe…").
 
 ## Alternativas consideradas
 
@@ -38,6 +38,6 @@ lo que aceptamos pagar. Incluí las obligaciones nuevas (p. ej. "el CI ahora deb
 
 <!--
   Un buen ADR se lee en 2 minutos. Si necesita más, probablemente son varias
-  decisiones: partilo. La sección más valiosa es "Consecuencias" — es lo que el
+  decisiones: pártelo. La sección más valiosa es "Consecuencias" — es lo que el
   yo-del-futuro va a agradecer cuando se pregunte "¿por qué hicimos esto?".
 -->

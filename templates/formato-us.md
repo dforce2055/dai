@@ -85,7 +85,7 @@ Invariantes que aplican transversalmente a los criterios (no un flujo puntual).
 
 ## Fuera de scope
 
-Lo que esta historia explícitamente NO hace. Corta el scope creep río abajo.
+Lo que esta historia explícitamente NO hace. Corta el scope creep más adelante.
 
 - <...>
 

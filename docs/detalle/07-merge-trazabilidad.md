@@ -27,7 +27,7 @@ dai stamp   # escribe la cobertura en el tracker  (branch + commit)
 
 ## Antipatrones
 
-- **Actualizar el estado del ticket a mano** → drift garantizado.
-- **Escribir el link en los dos lados** → driftea al primer cambio (Art. 9).
+- **Actualizar el estado del ticket a mano** → desincronización garantizada.
+- **Escribir el link en los dos lados** → se desincroniza al primer cambio (Art. 9).
 - **Guardar solo la branch en el stamp** → 404 al borrarse; va con commit-ancla.
 - **Creer que hace falta "un CI en Jira"** → es un comando; el tracker no ejecuta nada.

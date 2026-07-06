@@ -34,7 +34,7 @@ se desincroniza. Del solo developer a un equipo entero de desarrollo — el mism
 
 ## Cómo funciona (3 ideas)
 
-- **Separá el QUÉ del CÓMO**, con dueños distintos, linkeados ida y vuelta.
+- **Separa el QUÉ del CÓMO**, con dueños distintos, linkeados ida y vuelta.
 - **El link se autora una sola vez** (en el código, `implements.yaml`); la cobertura inversa
   se **genera**, nunca se mantiene a mano.
 - **`@version` = número + hash de criterios**: cuando el QUÉ cambia, los CÓMO atrasados se
@@ -42,12 +42,12 @@ se desincroniza. Del solo developer a un equipo entero de desarrollo — el mism
 
 ## Quickstart
 
-Requiere **Node ≥ 18** (el CLI no tiene dependencias). Elegí tu rol:
+Requiere **Node ≥ 18** (el CLI no tiene dependencias). Elige tu rol:
 
 ### 🟡 Como analista funcional — quiero crear historias o épicas
 
-Trabajás en tu asistente (Claude Desktop / Copilot en el IDE), no en la terminal. Una vez,
-dejá las skills disponibles:
+Trabajas en tu asistente (Claude Desktop / Copilot en el IDE), no en la terminal. Una vez,
+deja las skills disponibles:
 
 ```bash
 npm i -g @dforce2055/dai        # el CLI
@@ -66,16 +66,16 @@ Y después, en el chat del asistente, según lo que tengas:
 > Las skills **te interrogan** hasta que la historia es testeable (nunca inventan
 > requerimientos: los sacan a preguntas), y la **publican en el tracker** que configuraste
 > (`DAI_PM` en el `.env`): por el **MCP** de Jira/ClickUp si está conectado, o con
-> **`dai publish <us.md>`** si no (crea el issue vía token). Vos respondés y decidís.
+> **`dai publish <us.md>`** si no (crea el issue vía token). Tú respondes y decides.
 
 ### 🔵 Como dev — tengo una US y voy a implementarla
 
-Una vez, preparás el repo:
+Una vez, preparas el repo:
 
 ```bash
 npm i -g @dforce2055/dai
 cd mi-repo && dai init          # bootstrap: skills + tracker + OpenSpec + PR template
-# completá el token del tracker en .env  (o DAI_PM=md para probar sin credenciales)
+# completa el token del tracker en .env  (o DAI_PM=md para probar sin credenciales)
 dai doctor                      # verifica que todo quedó en su lugar
 ```
 
@@ -85,12 +85,12 @@ Y por cada US, el ciclo completo:
 dai link-us <ID>                # trae la US del tracker → branch + implements.yaml
 ```
 ```text
-/opsx:explore  →  /opsx:propose # explorás la solución y armás el diseño + tareas
-/opsx:apply  ·  /tdd            # implementás con tests primero → genera los commits
+/opsx:explore  →  /opsx:propose # exploras la solución y armas el diseño + tareas
+/opsx:apply  ·  /tdd            # implementas con tests primero → genera los commits
 ```
 ```bash
 dai check                       # ¿tu código sigue al día con la US?  ✅ / ⚠️ atrasado
-# revisás tu propio código + smoke test local antes de la PR
+# revisas tu propio código + smoke test local antes de la PR
 dai pr --assignee <compañero>   # crea la PR precargada y se la asigna a un compañero
 ```
 ```text
@@ -116,8 +116,8 @@ Guía completa con salidas reales en [`docs/PROBAR.md`](docs/PROBAR.md); un caso
 | 6 | **Resincronizar** *(si el PO editó la US)* | `dai link-us <ID> --resync` | dev |
 | 7 | **Diseñar el CÓMO** | en el asistente: `/opsx:explore` → `/opsx:propose` → design + tasks | dev + IA |
 | 8 | **Implementar** | `/opsx:apply` → implementa la US con TDD y genera los commits | dev + IA |
-| 9 | **Code review propio** | revisás tu implementación (correctitud + calidad) antes de la PR | dev |
-| 10 | **Smoke test** | pedís al agente un smoke local del flujo | dev + IA |
+| 9 | **Code review propio** | revisas tu implementación (correctitud + calidad) antes de la PR | dev |
+| 10 | **Smoke test** | pides al agente un smoke local del flujo | dev + IA |
 | 11 | **Crear la PR** | `dai pr` → pregunta la branch base, arma el texto, lo muestra, confirma, pushea y crea la PR/MR | dev |
 | 12 | **Review de un partner** | skill `/dai-review <PR>` deja un comentario estándar; un humano aprueba | partner |
 | 13 | **Merge + estampar** | al mergear: `dai stamp` → cobertura inversa en el tracker | dev / CI |
@@ -127,7 +127,7 @@ Guía completa con salidas reales en [`docs/PROBAR.md`](docs/PROBAR.md); un caso
 > token del tracker en `.env` (Jira además `DAI_JIRA_PROJECT`, ClickUp `DAI_CLICKUP_LIST_ID`).
 >
 > **Paso 7 (OpenSpec):** `dai init` te ofrece instalarlo **e inicializarlo** solo. Si los
-> comandos `/opsx:*` no aparecen en el asistente, reiniciá el IDE (se cargan al arrancar).
+> comandos `/opsx:*` no aparecen en el asistente, reinicia el IDE (se cargan al arrancar).
 >
 > **Paso 11 (PR):** necesita un remoto git (`origin`) y `gh`/`glab` autenticado. Sin remoto,
 > dai no crea la PR (te deja el texto listo igual).
@@ -159,7 +159,7 @@ ver [`.env.example`](.env.example). Auth (SSH + tokens): [ADR-0007](docs/adr/000
 `dai init` genera los archivos que hacen que las skills de IA (`grill-user-story`,
 `link-us`, etc.) estén disponibles en tu asistente. `--for` elige **para cuál**:
 
-| Valor | Genera | Elegilo si… |
+| Valor | Genera | Elígelo si… |
 |---|---|---|
 | `--for claude` | `.claude/skills/` + `CLAUDE.md` | tu equipo usa **Claude** (Code / Desktop) |
 | `--for copilot` | `.github/prompts/*.prompt.md` + `.github/copilot-instructions.md` | tu equipo usa **GitHub Copilot** (en VS Code / JetBrains) |
@@ -167,19 +167,19 @@ ver [`.env.example`](.env.example). Auth (SSH + tokens): [ADR-0007](docs/adr/000
 
 - Es **aditivo, no destructivo**: los dos conjuntos conviven sin pisarse (viven en
   carpetas distintas). La **misma** skill se transforma al formato de cada asistente.
-- Si corrés `dai init` sin flag, te lo pregunta de forma interactiva.
+- Si ejecutas `dai init` sin flag, te lo pregunta de forma interactiva.
 - **No afecta el CLI:** `dai link-us` / `check` / `stamp` funcionan igual con cualquier
   `--for` (o ninguno) — el flag solo prepara la **invocación de skills** en el asistente.
 - Ante la duda, `--for both`: cubre a todo el equipo y no cuesta nada.
 
-## Lo que obtenés en tu repo
+## Lo que obtienes en tu repo
 
 Después de `dai init` (con `--for both`):
 
 ```
 mi-repo/
 ├── CLAUDE.md                       · Constitución del proyecto (auto-cargada por Claude)
-├── .env                            · configurado con tu tracker (gitignored, completá el token)
+├── .env                            · configurado con tu tracker (gitignored, completa el token)
 ├── .claude/skills/                 · Las skills, locales al repo (el equipo las hereda)
 │   └── doc-to-backlog · grill-intent · grill-epic · grill-user-story · link-us · tdd · dai-review
 ├── .github/
@@ -243,14 +243,14 @@ dai/
 
 ## Licencia
 
-**GPLv3** (`GPL-3.0-or-later`) — ver [`LICENSE`](LICENSE). Software libre: podés verlo,
-auditarlo, modificarlo y redistribuirlo; si distribuís una versión modificada, tiene que
+**GPLv3** (`GPL-3.0-or-later`) — ver [`LICENSE`](LICENSE). Software libre: puedes verlo,
+auditarlo, modificarlo y redistribuirlo; si distribuyes una versión modificada, tiene que
 quedar también libre. *Libre no es gratis*: se puede cobrar por uso, soporte o desarrollo.
 Detalle en [ADR-0006](docs/adr/0006-distribucion-y-licencia.md).
 
-> **Ayudanos a mejorar dai** 🌱 — es software libre y una **metodología viva**: se hace mejor
-> con la comunidad. Si te sirve, contá tu experiencia, reportá lo que falle y proponé mejoras.
-> Toda contribución al método o a la herramienta es bienvenida. Empezá por
+> **Ayúdanos a mejorar dai** 🌱 — es software libre y una **metodología viva**: se hace mejor
+> con la comunidad. Si te sirve, cuenta tu experiencia, reporta lo que falle y propón mejoras.
+> Toda contribución al método o a la herramienta es bienvenida. Empieza por
 > [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 Seguridad: [`SECURITY.md`](SECURITY.md) · Conducta: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)

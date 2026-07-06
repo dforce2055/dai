@@ -11,9 +11,9 @@ en **GitHub y GitLab**.
 
 ## Las dos caras (cómo postea el comentario)
 
-Mismo comentario estándar, dos formas de dejarlo (elegí la disponible, en este orden):
+Mismo comentario estándar, dos formas de dejarlo (elige la disponible, en este orden):
 
-1. **MCP del forge** — si hay un MCP de GitHub/GitLab conectado, posteá por ahí.
+1. **MCP del forge** — si hay un MCP de GitHub/GitLab conectado, postea por ahí.
 2. **CLI con token** — si no, `dai forge comment <ref> --body-file <archivo>`. Usa
    `GITHUB_TOKEN`/`GITLAB_TOKEN` del `.env` (token scopeado, **nunca** contraseña).
 
@@ -23,7 +23,7 @@ Mismo comentario estándar, dos formas de dejarlo (elegí la disponible, en este
 ## Input
 
 - **Ref de la PR/MR:** URL completa o solo el número (con el remoto git configurado).
-- Si no viene, intentá inferirla de la branch actual; si no, pedila.
+- Si no viene, intenta inferirla de la branch actual; si no, pedila.
 
 ## Proceso
 
@@ -33,17 +33,17 @@ Mismo comentario estándar, dos formas de dejarlo (elegí la disponible, en este
 3. **Chequeos de metodología (mecánicos, deterministas):**
    - `dai check` → ¿la US quedó **atrasada** (ac_hash) respecto de la viva?
    - ¿existe `implements.yaml`? (si es un PR de producto, es obligatorio)
-   - **Definition of Done** (`templates/definition-of-done.md`): contá cuántos ítems cumple.
-4. **Review de código (criterio, no mecánico):** buscá
+   - **Definition of Done** (`templates/definition-of-done.md`): cuenta cuántos ítems cumple.
+4. **Review de código (criterio, no mecánico):** busca
    - 🔴 **Errores** de correctitud (bugs, casos borde, seguridad).
    - 🟡 **Mejoras** de calidad (reuso, simplicidad, eficiencia).
-   - ✅ Lo que está **bien** (reforzá lo bueno).
+   - ✅ Lo que está **bien** (refuerza lo bueno).
 5. **Componer el comentario estándar** (ver formato abajo).
 6. **Postear** por MCP o `dai forge comment`. Confirmar el link al comentario.
 
 ## El comentario estándar
 
-Es el mismo que emite `renderReviewComment` del CLI — respetá esta forma:
+Es el mismo que emite `renderReviewComment` del CLI — respeta esta forma:
 
 ```markdown
 ## 🤖 dai-review

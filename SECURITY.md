@@ -2,7 +2,7 @@
 
 ## Reportar una vulnerabilidad
 
-Si encontrás un problema de seguridad, **no abras un issue público**. Escribí a
+Si encuentras un problema de seguridad, **no abras un issue público**. Escribe a
 **dperez2055@gmail.com** con:
 
 - Descripción del problema y su impacto.
@@ -26,12 +26,12 @@ haya un fix disponible.
 
 ## Buenas prácticas para quien usa dai
 
-- Usá **tokens de mínimo scope** (para comentar PRs alcanza con permiso de
+- Usa **tokens de mínimo scope** (para comentar PRs alcanza con permiso de
   pull-requests/notes; no un PAT de acceso total).
-- **Rotá** los tokens periódicamente y revocá los que no uses.
+- **Rota** los tokens periódicamente y revoca los que no uses.
 - Nunca pegues un token en el código, en un commit, ni en el `implements.yaml`.
-- Revisá qué se publica antes de un release: `npm pack --dry-run`.
+- Revisa qué se publica antes de un release: `npm pack --dry-run`.
 
 ## Versiones soportadas
 
-Se da soporte a la última versión publicada. Actualizá antes de reportar.
+Se da soporte a la última versión publicada. Actualiza antes de reportar.

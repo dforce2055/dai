@@ -5,7 +5,7 @@ No hace falta publicar en npm para probarlo. Se prueba local. Recomendado: hacer
 **Fase 1** (ClickUp real).
 
 > Esto es la guía para **usar** dai por primera vez. Para verlo funcionando sobre una
-> US real (narrado), mirá [`EJEMPLO-END-TO-END.md`](EJEMPLO-END-TO-END.md).
+> US real (narrado), mira [`EJEMPLO-END-TO-END.md`](EJEMPLO-END-TO-END.md).
 
 ## Instalar el CLI
 
@@ -22,13 +22,13 @@ dai --version
 Valida el loop completo `link-us → check → stamp` sin depender de red ni tokens.
 
 ```bash
-# 1. Repo de prueba + bootstrap (dai init deja el .env; elegí "md" cuando pregunte)
+# 1. Repo de prueba + bootstrap (dai init deja el .env; elige "md" cuando pregunte)
 mkdir /tmp/dai-test && cd /tmp/dai-test
 git init && git commit --allow-empty -m init
 git remote add origin git@github.com:TU-USUARIO/dai-test.git   # para los links de branch/commit
 dai init --for both --pm md
 
-# 2. Escribí una US (formato formato-us.md) y publicala con el CLI
+# 2. Escribe una US (formato formato-us.md) y publícala con el CLI
 cat > draft.md <<'EOF'
 # Finalizar la compra del carrito
 
@@ -43,12 +43,12 @@ dai link-us finalizar-la-compra-del-carrito   # branch + implements.yaml
 git add -A && git commit -m "feat: guard carrito vacío"
 dai check                        # ✅ al día
 
-# 4. La demo del ⚠️: editá el criterio en .dai/us/<slug>.md y volvé a chequear
+# 4. La demo del ⚠️: edita el criterio en .dai/us/<slug>.md y vuelve a chequear
 dai check                        # ⚠️ ATRASADO (exit 1)  → sugiere: dai link-us <id> --resync
 dai stamp                        # con md, deja .dai/us/<slug>.coverage.md
 ```
 
-Si esto anda, el flujo está bien. Pasá al tracker real.
+Si esto anda, el flujo está bien. Pasa al tracker real.
 
 ## Fase 1 — ClickUp real
 
@@ -73,7 +73,7 @@ dai link-us 86cxyz               # trae la US de ClickUp → branch + implements
 git add -A && git commit -m "feat: ..."
 dai check                        # ✅ al día
 
-# → editá un criterio de la tarea en ClickUp (en el navegador). Después:
+# → edita un criterio de la tarea en ClickUp (en el navegador). Después:
 dai check                        # ⚠️ ATRASADO (lo detectó solo)
 dai stamp                        # deja un COMENTARIO en la tarea con la cobertura
 ```

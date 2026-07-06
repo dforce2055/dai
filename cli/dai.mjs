@@ -104,7 +104,7 @@ async function cmdLinkUs(key, opts) {
     loadEnv();
     const adapter = getAdapter(process.env);
     const us = await adapter.fetchUS(key);
-    if (!us) fail(`no encontré la US ${key} en el backend ${adapter.kind}. Pasá --us <md> o revisá el .env.`, 2);
+    if (!us) fail(`no encontré la US ${key} en el backend ${adapter.kind}. Pasa --us <md> o revisa el .env.`, 2);
     hash = us.ac_hash;
     if (hash == null) fail(`la US ${key} no tiene 'Criterios de aceptación' → sin ac_hash.`, 2);
     title = opts.title || us.title;
@@ -123,11 +123,11 @@ async function cmdLinkUs(key, opts) {
     if (opts.dryRun) { process.stdout.write(`[dry-run] ${target.path}: ac_hash ${prev} → ${hash} (version ${version})\n`); return; }
     writeFileSync(target.path, txt);
     ok(`${key} resincronizado: ac_hash ${prev} → ${hash} (${version}) en ${target.path}`);
-    warn("revisá si tu implementación cubre el criterio nuevo, y corré tus tests.");
+    warn("revisa si tu implementación cubre el criterio nuevo, y ejecuta tus tests.");
     return;
   }
 
-  if (!title) fail("no pude extraer el título de la US; pasá --title.", 1);
+  if (!title) fail("no pude extraer el título de la US; pasa --title.", 1);
   const branch = branchName(key, title);
   const change = opts.change || slugify(title);
   const repo = opts.repo || gitRepoName() || basename(process.cwd());
@@ -186,7 +186,7 @@ async function cmdCheck() {
   if (atrasadas.length) {
     process.stdout.write("\n  El QUÉ cambió desde que lo implementaste. Para resincronizar:\n");
     for (const id of atrasadas) process.stdout.write(`    dai link-us ${id} --resync     # re-estampa el ac_hash contra la US viva\n`);
-    process.stdout.write("  Después, revisá si tu implementación cubre el criterio nuevo.\n");
+    process.stdout.write("  Después, revisa si tu implementación cubre el criterio nuevo.\n");
   }
   process.exit(worst);
 }
@@ -217,7 +217,7 @@ async function cmdStamp() {
 async function cmdForge(sub, ref, opts) {
   loadEnv();
   const pr = parsePrRef(ref, gitRemote());
-  if (!pr) fail("no pude resolver la PR/MR. Pasá la URL completa o el número (con remoto git).", 1);
+  if (!pr) fail("no pude resolver la PR/MR. Pasa la URL completa o el número (con remoto git).", 1);
   if (sub === "pr") {
     process.stdout.write(JSON.stringify(await getPR(pr, process.env), null, 2) + "\n");
   } else if (sub === "comment") {
@@ -253,12 +253,12 @@ function cmdDone(opts) {
 
   // Redes de seguridad: sin cambios sueltos, sin commits sin pushear.
   const dirty = (() => { try { return git(["status", "--porcelain"]).length > 0; } catch { return false; } })();
-  if (dirty) fail("tenés cambios sin commitear. Commiteá o stasheá antes de `dai done`.", 1);
+  if (dirty) fail("tienes cambios sin commitear. Haz commit o stashea antes de `dai done`.", 1);
   let remoteExists = false;
   try { git(["rev-parse", "--verify", `origin/${branch}`]); remoteExists = true; } catch { /* sin branch remota */ }
   if (remoteExists) {
     const ahead = Number(git(["rev-list", "--count", `origin/${branch}..${branch}`]) || "0");
-    if (ahead > 0) fail(`tenés ${ahead} commit(s) sin pushear en '${branch}'. Pusheá antes (o esperá el merge).`, 1);
+    if (ahead > 0) fail(`tienes ${ahead} commit(s) sin pushear en '${branch}'. Pushea antes (o espera el merge).`, 1);
   }
 
   // La US que se cierra (informativo) — leerla ANTES de cambiar de branch.
@@ -269,13 +269,13 @@ function cmdDone(opts) {
   info(`Cambiando a '${base}' y actualizando…`);
   try { git(["checkout", base]); } catch (e) { fail(`no pude cambiar a '${base}': ${String(e.message).split("\n")[0]}`, 1); }
   try { git(["fetch", "--prune"]); } catch { /* sin remoto */ }
-  try { git(["pull", "--ff-only"]); } catch { warn(`no pude hacer 'pull --ff-only' en '${base}' (¿divergió?). Revisá a mano.`); }
+  try { git(["pull", "--ff-only"]); } catch { warn(`no pude hacer 'pull --ff-only' en '${base}' (¿divergió?). Revisa a mano.`); }
 
   // Chequeo ESTRICTO de merge: la branch tiene que ser ancestro de la base actualizada.
   let merged = false;
   try { git(["merge-base", "--is-ancestor", branch, "HEAD"]); merged = true; } catch { merged = false; }
   if (!merged && !opts.force) {
-    warn(`'${branch}' NO está mergeada en '${base}'. No la borro — usá 'dai done --force' si estás seguro.`);
+    warn(`'${branch}' NO está mergeada en '${base}'. No la borro — usa 'dai done --force' si estás seguro.`);
     ok(`Quedaste en '${base}', actualizado. La branch '${branch}' se conserva.`);
     return;
   }
@@ -285,22 +285,22 @@ function cmdDone(opts) {
   } catch (e) { fail(`no pude borrar '${branch}': ${String(e.message).split("\n")[0]}`, 1); }
 
   ok(`Listo — en '${base}', actualizado${usIds.length ? `. US cerrada: ${usIds.join(", ")}` : ""}.`);
-  info("La branch remota (si existe) la maneja el forge (auto-delete on merge) o borrala vos.");
+  info("La branch remota (si existe) la maneja el forge (auto-delete on merge) o bórrala tú.");
 }
 
 // ── pr: crea TU PROPIA PR/MR precargada desde el template + el link ────────────
-// (Distinto de dai-review, que revisa la PR de OTRO. Tu PR la creás y revisás vos.)
+// (Distinto de dai-review, que revisa la PR de OTRO. Tu PR la creas y revisas tú.)
 async function cmdPr(opts) {
   loadEnv();
   const remote = gitRemote(), branch = gitBranch(), commit = gitCommit();
-  if (!remote) fail("no hay remoto git 'origin'. Configuralo para crear la PR.", 1);
+  if (!remote) fail("no hay remoto git 'origin'. Configúralo para crear la PR.", 1);
   if (!branch || branch === "HEAD") fail("no estás en una branch.", 1);
 
   // 0. Estado del repo: primero avisar cambios sueltos; después elegir la base.
   const dirty = (() => { try { return git(["status", "--porcelain"]).length > 0; } catch { return false; } })();
   if (dirty) {
-    warn("tenés cambios SIN commitear — NO van a entrar en la PR. Commiteá lo que falte antes de crearla.");
-    if (!opts.yes && !process.stdin.isTTY) fail("working tree sucio (usá --yes para ignorarlo, pero commiteá primero).", 1);
+    warn("tienes cambios SIN commitear — NO van a entrar en la PR. Haz commit lo que falte antes de crearla.");
+    if (!opts.yes && !process.stdin.isTTY) fail("working tree sucio (usa --yes para ignorarlo, pero haz commit primero).", 1);
   }
 
   // Un solo readline para todo el flujo interactivo (base + confirmación).
@@ -320,7 +320,7 @@ async function cmdPr(opts) {
   let ahead = null;
   try { ahead = Number(git(["rev-list", "--count", `${base}..HEAD`])); } catch { /* base no existe local */ }
   if (ahead === 0) {
-    fail(`no hay commits en '${branch}' por encima de '${base}'. Una PR necesita cambios: commiteá primero (git commit).`, 1);
+    fail(`no hay commits en '${branch}' por encima de '${base}'. Una PR necesita cambios: haz commit primero (git commit).`, 1);
   }
 
   // 1. Resolver el link (US) de la branch actual.
@@ -329,7 +329,7 @@ async function cmdPr(opts) {
   for (const f of found) for (const im of f.implements || []) {
     if (!isPlaceholderId(im.id)) { entry = { f, im }; break; }
   }
-  if (!entry) fail("no encontré un implements.yaml con una US real. Corré `dai link-us` primero.", 1);
+  if (!entry) fail("no encontré un implements.yaml con una US real. Ejecuta `dai link-us` primero.", 1);
   const { id, version, ac_hash } = entry.im;
 
   // 2. Estado de trazabilidad (dai check) contra la US viva.
@@ -338,7 +338,7 @@ async function cmdPr(opts) {
   const status = coverageStatus(ac_hash, live?.ac_hash);
   if (status === "atrasado") {
     warn(`la US ${id} está ATRASADA respecto de tu implementación (${ac_hash} ≠ ${live?.ac_hash}).`);
-    warn(`resincronizá antes de abrir la PR:  dai link-us ${id} --resync`);
+    warn(`resincroniza antes de abrir la PR:  dai link-us ${id} --resync`);
   }
 
   // 3. Componer el body desde el template.
@@ -366,12 +366,12 @@ async function cmdPr(opts) {
   // Archivo de paso para gh/glab: en el temp del sistema, NO en el repo (no lo ensucia).
   const bodyFile = join(mkdtempSync(join(tmpdir(), "dai-pr-")), "body.md");
   if (!opts.yes) {
-    if (!process.stdin.isTTY) { closeRl(); writeFileSync(bodyFile, body); info(`Body guardado en ${bodyFile}. Revisá y re-corré con --yes para crear.`); return; }
+    if (!process.stdin.isTTY) { closeRl(); writeFileSync(bodyFile, body); info(`Body guardado en ${bodyFile}. Revisa y re-ejecuta con --yes para crear.`); return; }
     const a = (await ask(`  ¿Publico la branch y creo el PR con ${tool}? (s/N) `) || "").toLowerCase();
     closeRl();
     if (!["s", "si", "sí", "y", "yes"].includes(a)) {
       writeFileSync(bodyFile, body);
-      warn(`cancelado. Guardé el body en ${bodyFile} por si querés editarlo o crearla a mano.`);
+      warn(`cancelado. Guardé el body en ${bodyFile} por si quieres editarlo o crearla a mano.`);
       return;
     }
   } else {
@@ -394,13 +394,13 @@ async function cmdPr(opts) {
     info(`Creando el PR/MR con ${tool}…`);
     const out = execFileSync(tool, cmd, { encoding: "utf8", cwd: process.cwd() });
     process.stdout.write(out);
-    ok("PR/MR creada. Revisala vos y asigná el reviewer si falta.");
+    ok("PR/MR creada. Revísala tú y asigna el reviewer si falta.");
     try { rmSync(bodyFile); } catch { /* noop */ }
   } catch (e) {
     const msg = String(e.stderr || e.message || "");
     if (/no history in common|no commits between|not found.*base|base.*not found/i.test(msg)) {
       warn(`la branch no comparte historia con '${base}' en el remoto (o '${base}' no existe allá).`);
-      process.stdout.write(`  Suele pasar cuando el repo local y el remoto son distintos. Empujá la base primero:\n    git push origin ${base}\n  y volvé a correr:  dai pr\n`);
+      process.stdout.write(`  Suele pasar cuando el repo local y el remoto son distintos. Empuja la base primero:\n    git push origin ${base}\n  y vuelve a correr:  dai pr\n`);
     } else {
       warn(`no pude crear la PR con ${tool} (¿instalado y autenticado?). El body quedó en ${bodyFile}.`);
       process.stdout.write(`  Comando listo para correr a mano:\n    ${tool} ${cmd.map((c) => /\s/.test(c) ? `'${c}'` : c).join(" ")}\n`);
@@ -431,7 +431,7 @@ async function cmdInstall(opts) {
     if (existsSync(target)) {
       if (dirsEqual(src, target)) { ok(`${name} — ya instalada e idéntica, salto`); continue; }
       if (!opts.force) {
-        if (!interactive) { warn(`${name} existe y difiere — salto (usá --force)`); continue; }
+        if (!interactive) { warn(`${name} existe y difiere — salto (usa --force)`); continue; }
         const a = (await rl.question(`   ${name} existe y DIFIERE. ¿[p]isar · [s]altar? (s) `)).trim().toLowerCase();
         if (a !== "p") { warn(`salto ${name}`); continue; }
       }
@@ -509,7 +509,7 @@ async function cmdInit(repo, opts) {
     process.stdout.write("\n  OpenSpec es el motor recomendado del CÓMO: convierte la US en design + tasks\n");
     process.stdout.write("  (comandos /opsx:*). No está en este repo — la trazabilidad de dai anda igual sin\n");
     process.stdout.write("  él, pero para el flujo completo conviene tenerlo.\n");
-    installOpenspec = await askYesNo(rl, "¿Instalar el CLI de OpenSpec ahora? (después corrés `openspec init` vos)", false);
+    installOpenspec = await askYesNo(rl, "¿Instalar el CLI de OpenSpec ahora? (después ejecutas `openspec init` tú)", false);
   }
 
   if (rl) rl.close();
@@ -530,7 +530,7 @@ async function cmdInit(repo, opts) {
   cpSync(join(ROOT, ".env.example"), join(repo, ".env.example"));
   const envPath = join(repo, ".env");
   if (existsSync(envPath)) warn(".env          ya existe — lo dejo como está");
-  else { writeFileSync(envPath, envFor(pm)); ok(`.env          listo, DAI_PM=${pm}${pm === "md" ? "" : " (completá el token)"}`); }
+  else { writeFileSync(envPath, envFor(pm)); ok(`.env          listo, DAI_PM=${pm}${pm === "md" ? "" : " (completa el token)"}`); }
   if (ensureGitignored(repo, [".env"])) ok(".gitignore    .env agregado (los tokens NO se commitean)");
 
   mkdirSync(join(repo, ".github"), { recursive: true });
@@ -566,7 +566,7 @@ async function cmdInit(repo, opts) {
   if (hasOpenspec) {
     ok("OpenSpec:     ya inicializado en el repo");
   } else if (openspecPartial) {
-    warn("OpenSpec:     hay una carpeta openspec/ a medias. Reinicializá: rm -rf openspec && openspec init --tools " + osTools + " --force");
+    warn("OpenSpec:     hay una carpeta openspec/ a medias. Reinicializa: rm -rf openspec && openspec init --tools " + osTools + " --force");
   } else if (installOpenspec) {
     let cliOk = openspecPresent();
     if (!cliOk) {
@@ -577,9 +577,9 @@ async function cmdInit(repo, opts) {
       try {
         info(`OpenSpec:     inicializando en el repo (--tools ${osTools})…`);
         execFileSync(npmBin("openspec"), ["init", "--tools", osTools, "--force"], { stdio: "inherit", cwd: repo === "." ? process.cwd() : repo });
-        ok("OpenSpec:     instalado e inicializado — generá design/tasks con /opsx:*");
+        ok("OpenSpec:     instalado e inicializado — genera design/tasks con /opsx:*");
       } catch {
-        warn("OpenSpec:     el CLI está pero falló `openspec init`. Corré a mano en el repo:");
+        warn("OpenSpec:     el CLI está pero falló `openspec init`. Ejecuta a mano en el repo:");
         process.stdout.write(`                  openspec init --tools ${osTools} --force\n`);
       }
     } else {
@@ -592,10 +592,10 @@ async function cmdInit(repo, opts) {
   // ── Próximos pasos ─────────────────────────────────────────────────────────
   process.stdout.write("\n  ✔ Repo configurado. Próximos pasos:\n");
   process.stdout.write(pm === "md"
-    ? "    1. Creá tu primera US en .dai/us/<ID>.md (criterios bajo '## Criterios de aceptación')\n"
-    : `    1. Completá el token de ${pm} en .env, y verificá con: dai doctor\n`);
+    ? "    1. Crea tu primera US en .dai/us/<ID>.md (criterios bajo '## Criterios de aceptación')\n"
+    : `    1. Completa el token de ${pm} en .env, y verifica con: dai doctor\n`);
   process.stdout.write("    2. dai link-us <ID>     → crea la branch + el link a la US\n");
-  process.stdout.write("    3. Implementá con test primero, después: dai check\n");
+  process.stdout.write("    3. Implementa con test primero, después: dai check\n");
   process.stdout.write("    Guía paso a paso: docs/PROBAR.md\n\n");
 }
 
@@ -683,7 +683,7 @@ switch (cmd) {
       "  install [--global | --local <repo>] [--force] [--dry-run]   skills → Claude\n" +
       "  init [<repo>]                scaffolder interactivo del repo (asistente, gestor, OpenSpec)\n" +
       "       --for claude|copilot|both   para qué asistente preparar el repo (default both; ante duda, both)\n" +
-      "       --pm md|jira|clickup · --openspec   (con flags salteás las preguntas)\n" +
+      "       --pm md|jira|clickup · --openspec   (con flags salteas las preguntas)\n" +
       "  docs <destino>               documentación conceptual → <destino>\n" +
       "  doctor                       diagnóstico del entorno\n\n" +
       "  (config: .env — ver .env.example)\n"

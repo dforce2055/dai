@@ -1,7 +1,7 @@
 # Contribuir a dai
 
 Gracias por querer mejorar `dai`. Es **software libre (GPLv3)** y la comunidad es
-bienvenida — al contribuir, aceptás que tu aporte se distribuya bajo la misma
+bienvenida — al contribuir, aceptas que tu aporte se distribuya bajo la misma
 licencia (ver [`LICENSE`](LICENSE)).
 
 `dai` **usa su propia metodología** (dogfooding). Contribuir es una buena forma de
@@ -20,7 +20,7 @@ npm test        # 48 tests, sin `npm install` (no hay deps)
 
 1. **Cero dependencias de runtime.** El CLI corre en redes cerradas sin `npm install`
    (ADR-0006). No agregues paquetes a `dependencies`. Si algo parece necesitar una
-   dep, abrí un issue a discutir antes.
+   dep, abre un issue a discutir antes.
 2. **Test primero (TDD).** Toda lógica nueva del CLI va con su test en `cli/test/`
    (`node --test`). La parte pura y determinista es la que se testea; la red (fetch)
    no se unit-testea, se aísla.
@@ -33,7 +33,7 @@ npm test        # 48 tests, sin `npm install` (no hay deps)
 ## Flujo (la propia metodología)
 
 1. **Rama** desde `main`: `feature/<slug>` o `fix/<slug>`.
-2. **Implementá con tests.** `npm test` en verde antes de abrir el PR.
+2. **Implementa con tests.** `npm test` en verde antes de abrir el PR.
 3. **PR** siguiendo [`templates/pull-request.md`](templates/pull-request.md):
    descripción, testing, y el checklist de Dev + Aprobador.
 4. Un **mantenedor revisa y firma** la aprobación (la IA puede dar el primer pase,
@@ -42,7 +42,7 @@ npm test        # 48 tests, sin `npm install` (no hay deps)
 ## Decisiones estructurales → ADR
 
 Si tu cambio toca una decisión de fondo (un contrato, un modelo, la distribución),
-escribí un **ADR** con [`templates/adr.md`](templates/adr.md), numerado, en
+escribe un **ADR** con [`templates/adr.md`](templates/adr.md), numerado, en
 [`docs/adr/`](docs/adr/). Los ADR son inmutables: si algo cambia, se escribe uno
 nuevo que supersede al viejo.
 

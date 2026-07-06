@@ -2,7 +2,7 @@
 
 > **Para qué sirve.** Es la pieza que la gente copia. Una User Story real viajando
 > de *idea vaga* a *desplegada*, mostrando **el artefacto concreto que produce cada
-> uno de los 10 pasos** de [`SCRUM-CON-IA.md`](SCRUM-CON-IA.md). Si tenés que
+> uno de los 10 pasos** de [`SCRUM-CON-IA.md`](SCRUM-CON-IA.md). Si tienes que
 > mostrar la metodología en una sola lectura, es esta.
 >
 > Dominio del ejemplo: **un carrito de compras** (checkout). Los nombres
@@ -82,7 +82,7 @@ construcción** ([`formato-us.md`](../templates/formato-us.md)) y la publica en 
 ## Historia
 Como **comprador**
 quiero **finalizar la compra de mi carrito**
-para **recibir los productos que elegí sin sorpresas**.
+para **recibir los productos que elijo sin sorpresas**.
 
 ## Casos de uso
 - **Happy path** — el comprador finaliza un carrito con productos con stock → se crea la orden.
@@ -110,7 +110,7 @@ para **recibir los productos que elegí sin sorpresas**.
 - Una orden creada descuenta el stock de cada producto.
 ```
 
-> Fijate que la US **no dice** tablas, endpoints ni framework — solo el QUÉ. Y cada
+> Nota que la US **no dice** tablas, endpoints ni framework — solo el QUÉ. Y cada
 > AC es un test en potencia (Art. 3 del manifiesto).
 
 ---

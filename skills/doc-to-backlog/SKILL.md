@@ -9,12 +9,12 @@ Convierte un **documento de análisis** en un **backlog candidato** (épicas + U
 arrancar el trabajo funcional cuando el input no es una idea suelta sino un PDF/Word con
 todo el proyecto adentro.
 
-Llená [templates/backlog-candidato.md](templates/backlog-candidato.md) — es la única
+Llena [templates/backlog-candidato.md](templates/backlog-candidato.md) — es la única
 fuente de verdad de la forma del mapa. Nunca lo reescribas inline.
 
 ## El principio que NO se negocia
 
-**El documento SIEMBRA el grilling, no lo reemplaza.** Un doc tienta a "generá 40 US de
+**El documento SIEMBRA el grilling, no lo reemplaza.** Un doc tienta a "genera 40 US de
 una" — eso es vibe coding de requerimientos: salen US que nadie validó, de features que
 quizás nadie necesita. Por eso esta skill **no publica nada final**: produce **candidatos**,
 el humano prioriza, y recién ahí cada ítem pasa por su grill (Art. 4 y Art. 5).
@@ -56,9 +56,9 @@ el humano prioriza, y recién ahí cada ítem pasa por su grill (Art. 4 y Art. 5
 ## Dos cortes duros
 
 1. **No emitir US/épicas finales desde el doc.** Solo candidatos. Lo final sale del grill,
-   con el humano respondiendo. Si te descubrís "completando" criterios que el doc no dice,
-   frená: eso lo define el funcional en el grill.
-2. **No ahogar.** Un doc de 60 páginas puede sugerir 50 ítems. Priorizá y entregá la
+   con el humano respondiendo. Si te descubres "completando" criterios que el doc no dice,
+   detente: eso lo define el funcional en el grill.
+2. **No ahogar.** Un doc de 60 páginas puede sugerir 50 ítems. Prioriza y entrega la
    rebanada de arriba; el resto queda en el mapa candidato, listo para más tarde.
 
 ## Relación con el modelo

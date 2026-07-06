@@ -9,7 +9,7 @@ Producir una **épica** por interrogación, no por generación. Una épica es un
 grande de valor de negocio** que se parte en varias User Stories. Es el nivel de
 arriba de la US: define el **alcance**, no el detalle.
 
-Llená [templates/epica.md](../../templates/epica.md) — es la única fuente de verdad de
+Llena [templates/epica.md](../../templates/epica.md) — es la única fuente de verdad de
 la forma. Nunca reescribas el formato inline.
 
 ## Qué es (y qué NO es) una épica
@@ -62,7 +62,7 @@ la forma. Nunca reescribas el formato inline.
    dependencias.
 2. **Publicar en el tracker** (según `DAI_PM` del `.env`: `jira` → MCP de Atlassian ·
    `clickup` → MCP de ClickUp · `md`/sin token → `.md` para pegar a mano). **No asumas
-   el tracker: leé `DAI_PM` primero.** Crear el ticket de épica; las US hijas se crean
+   el tracker: lee `DAI_PM` primero.** Crear el ticket de épica; las US hijas se crean
    como tickets vinculados (o quedan listadas para crearse).
 3. **Handoff.** Ofrecer pasar **cada US hija** por `/grill-user-story` para convertirla
    de "título en la lista" a US testeable con criterios. Ese es el paso que las hace

@@ -54,7 +54,7 @@ autor: D. Force (dev)            # quién implementa.
 
 ## Consecuencias
 
-- ✅ `link-us` tiene molde exacto para scaffoldear; `check`/`stamp` tienen contrato para
+- ✅ `link-us` tiene molde exacto para generar; `check`/`stamp` tienen contrato para
   parsear.
 - ✅ Registro auto-contenido → robusto al archivado y a mover carpetas.
 - ✅ Independiente de OpenSpec: la ubicación es convención, el descubrimiento es glob.
@@ -71,4 +71,4 @@ autor: D. Force (dev)            # quién implementa.
 - **Derivar la identidad del CÓMO del path de la carpeta** — descartado: se rompe al
   archivar/mover; mejor un campo `change` explícito.
 - **Registrar el mapping también a mano en Jira** — descartado: sería un tercer
-  registro que driftea; la inversa se deriva (Art. 10).
+  registro que se desincroniza; la inversa se deriva (Art. 10).

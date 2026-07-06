@@ -66,7 +66,7 @@ Pasar de distribuido a automático es mover la invocación, no reescribir nada.
 - **Exigir un CI corriendo en Jira/ClickUp** — descartado: barrera de entrada que
   contradice el Art. 14 y que además es un fantasma (el tracker no ejecuta nada).
 - **Estampar la cobertura a mano en el tracker** — descartado: viola el Art. 10 (el
-  contenido debe derivarse, no escribirse a mano) y driftea.
+  contenido debe derivarse, no escribirse a mano) y se desincroniza.
 - **Un solo comando que compare y escriba a la vez** — descartado: separar `check`
   (read-only, gate) de `stamp` (write) permite usar `check` como gate de PR sin
   permisos de escritura, y correr `stamp` solo cuando corresponde.

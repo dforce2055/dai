@@ -29,5 +29,5 @@ El PO **responde y decide**. La IA no inventa requerimientos: los saca a pregunt
 
 - **US vaga** ("como usuario quiero un botón") → no pasa el pulido.
 - **Criterio no testeable** ("buena experiencia") → se rechaza (Art. 3).
-- **Solución bakeada** en la US (endpoints, tablas) → eso es CÓMO, va después (Art. 1).
+- **Solución prefijada** en la US (endpoints, tablas) → eso es CÓMO, va después (Art. 1).
 - **Saltearse el Gate 0** → se construye lo que no había que construir.

@@ -3,15 +3,15 @@
 > **Para qué sirve este documento.** Es la pieza de *buy-in*: le muestra al equipo
 > que **no cambiamos su Scrum**. Los mismos pasos, los mismos roles, las mismas
 > ceremonias — solo que en cada paso donde hoy hay fricción o trabajo manual, hay
-> una skill de IA que lo hace por vos o te obliga a hacerlo bien.
+> una skill de IA que lo hace por ti o te obliga a hacerlo bien.
 >
 > El protocolo que hay debajo (identidad estable, link QUÉ↔CÓMO, `@version`) vive
 > en [`METODOLOGIA.md`](METODOLOGIA.md). Acá contamos **la ceremonia**, paso a paso.
 
 ## La frase para el equipo
 
-> **"Es tu mismo Scrum. Donde hoy hacés algo a mano y con fricción, ahora invocás
-> una skill. El esqueleto es el que ya conocés — la curva de aprendizaje es casi
+> **"Es tu mismo Scrum. Donde hoy haces algo a mano y con fricción, ahora invocas
+> una skill. El esqueleto es el que ya conoces — la curva de aprendizaje es casi
 > cero."**
 
 ## Cómo leer la tabla de cada paso
@@ -75,7 +75,7 @@
 |---|---|
 | **Clásico** | El dev crea una rama para trabajar la US. |
 | **Dolor** | Nombres inconsistentes, ramas que no se sabe a qué US pertenecen → trazabilidad rota desde el commit uno. |
-| **Con IA** | `link-us ABC-###` crea la rama **desde el ID de la US, sin tipearlo a mano**, y scaffoldea el `implements.yaml`. La rama *es* el link: correcto por construcción. |
+| **Con IA** | `link-us ABC-###` crea la rama **desde el ID de la US, sin tipearlo a mano**, y genera el `implements.yaml`. La rama *es* el link: correcto por construcción. |
 | **Humano (HITL)** | El dev elige qué US agarra. |
 | **Herramienta** | `link-us` |
 | **Detalle →** | [`detalle/03-ramas.md`](detalle/03-ramas.md) |
@@ -144,7 +144,7 @@
 | | |
 |---|---|
 | **Clásico** | Se muestra lo terminado al PO y stakeholders; se acepta o rechaza contra criterios. |
-| **Dolor** | "Esto no era lo que pedí". El QUÉ y el CÓMO drifteron sin que nadie lo notara. |
+| **Dolor** | "Esto no era lo que pedí". El QUÉ y el CÓMO se desincronizaron sin que nadie lo notara. |
 | **Con IA** | Se valida contra criterios de aceptación que **ya eran tests**. Si el QUÉ evolucionó, el `@version` lo gritó antes de la demo — no hay sorpresas. |
 | **Humano (HITL)** | El PO acepta o rechaza. La demo la corre una persona. |
 | **Herramienta** | criterios Gherkin de la US + `@version` |

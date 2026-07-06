@@ -1,6 +1,6 @@
 ---
 name: link-us
-description: Del lado del dev — crea la branch desde el link de la User Story en Jira SIN margen de error y scaffoldea el archivo implements.yaml con el link a la US (id + version + ac_hash). Es la que hace que el link QUÉ↔CÓMO sea correcto por construcción, sin que el dev tipee el key a mano. Invocar como /link-us ABC-### (o con la URL del ticket de Jira). Usar al arrancar la implementación de una US, antes o junto con opsx:explore / opsx:propose.
+description: Del lado del dev — crea la branch desde el link de la User Story en Jira SIN margen de error y genera el archivo implements.yaml con el link a la US (id + version + ac_hash). Es la que hace que el link QUÉ↔CÓMO sea correcto por construcción, sin que el dev tipee el key a mano. Invocar como /link-us ABC-### (o con la URL del ticket de Jira). Usar al arrancar la implementación de una US, antes o junto con opsx:explore / opsx:propose.
 ---
 
 # link-us
@@ -25,7 +25,7 @@ Es la contraparte técnica de `grill-user-story`: donde esa produce el QUÉ (en 
    - Nombre: `feature/ABC-###-<slug>` donde `<slug>` sale del título (minúsculas, sin acentos, `-` como separador).
    - Base según convención del repo (`main` o `develop`). Verificar que la branch no exista ya.
    - No permitir crear la branch si el key no fue validado en el paso 1.
-4. **Scaffoldear el link.** Crear `openspec/changes/<change-id>/implements.yaml` a partir de [templates/implements.yaml](templates/implements.yaml), completando `id`, `version`, `ac_hash`, `repo` y `autor`. Dejar `introduces` para que el dev liste las capacidades técnicas nuevas.
+4. **Generar el link.** Crear `openspec/changes/<change-id>/implements.yaml` a partir de [templates/implements.yaml](templates/implements.yaml), completando `id`, `version`, `ac_hash`, `repo` y `autor`. Dejar `introduces` para que el dev liste las capacidades técnicas nuevas.
 5. **Hand-off.** Ofrecer seguir con `opsx:explore` → `opsx:propose` para armar el change (proposal/design/tasks) sobre la branch ya creada y linkeada.
 
 ## Guardrails (por qué esta skill existe)

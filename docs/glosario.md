@@ -21,7 +21,7 @@
 |---|---|
 | **Link (QUÉ↔CÓMO)** | La relación entre un requerimiento y su implementación. |
 | **`implements`** | La declaración `implements: <id>@<version>` en el código. El **único** link autorado a mano. |
-| **`implements.yaml`** | El archivo, en el change del repo, que contiene ese link. Lo scaffoldea `link-us`. |
+| **`implements.yaml`** | El archivo, en el change del repo, que contiene ese link. Lo genera `link-us`. |
 | **Trazabilidad inversa / cobertura** | El mapa "quién implementó este QUÉ". **Se genera, nunca se escribe.** |
 | **Índice / router** | La tabla central que dice qué ID vive en qué repos. Es un router, **no un almacén**: no guarda el detalle. |
 | **Federación (dos niveles)** | Nivel 1 = índice central chico. Nivel 2 = detalle en cada repo, resuelto on-demand. |

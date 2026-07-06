@@ -29,7 +29,7 @@ Los mantenedores son responsables de aclarar los estándares y de tomar acciones
 correctivas justas ante comportamientos inaceptables, incluyendo editar o eliminar
 contribuciones, y banear temporal o permanentemente a quien los viole.
 
-Para reportar un problema de conducta, escribí a **dperez2055@gmail.com**. Todos los
+Para reportar un problema de conducta, escribe a **dperez2055@gmail.com**. Todos los
 reportes se revisan y se manejan con confidencialidad.
 
 ## Atribución

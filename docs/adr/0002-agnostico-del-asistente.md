@@ -21,7 +21,7 @@ Aplicamos el mismo principio al asistente. Una "skill" se separa en tres capas:
 1. **Contenido portable** — la lógica de interrogación, el formato, los cortes. Se
    escribe **una sola vez**, neutral al asistente. Es la fuente de verdad.
 2. **Acciones deterministas = CLI `dai`** — todo lo mecánico (crear rama,
-   scaffoldear `implements.yaml`, calcular `ac_hash`, indexar cobertura) vive en el
+   generar `implements.yaml`, calcular `ac_hash`, indexar cobertura) vive en el
    **CLI**, no en la inteligencia del asistente. `dai link-us ABC-###` anda igual
    con Claude, con Copilot, o sin ningún asistente. Es la forma más agnóstica de
    garantizar comportamiento determinista: el asistente solo lo **invoca**.
@@ -65,7 +65,7 @@ equipo esté mezclado.
   en **Claude Desktop**. Consecuencia: el analista funcional "sin IDE" cierra con Claude
   Desktop; con Copilot necesita VS Code o el Copilot CLI. Es un límite de Copilot, no de
   dai — el CLI `dai` corre igual en cualquier terminal.
-- ⚠️ Los wrappers se **generan**, no se mantienen a mano — si no, driftean (la misma
+- ⚠️ Los wrappers se **generan**, no se mantienen a mano — si no, se desincronizan (la misma
   regla de oro del link).
 
 **Estado de implementación:** `dai init` es un **scaffolder interactivo** (estilo
@@ -79,7 +79,7 @@ Con flags o sin TTY corre no-interactivo (defaults `both`/`md`, OpenSpec solo co
 
 ## Alternativas consideradas
 
-- **Mantener skills separadas por asistente a mano** — descartado: drift garantizado
+- **Mantener skills separadas por asistente a mano** — descartado: desincronización garantizada
   al primer cambio (viola Art. 9/Art. 10 aplicados al propio paquete).
 - **Atarse solo a Claude** — descartado: deja afuera a la organización que usa
   Copilot, que es justo uno de los dos casos que el método debe soportar.

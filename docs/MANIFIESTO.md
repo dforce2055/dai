@@ -2,7 +2,7 @@
 
 > **Qué es esto.** La *constitución* de la metodología: los principios inmutables
 > contra los que se mide toda decisión. Cuando `grill-intent` desafía un problema,
-> lo hace contra estos artículos. Cuando dudás si algo "va con el método", la
+> lo hace contra estos artículos. Cuando dudas si algo "va con el método", la
 > respuesta está acá. Es corto a propósito — un manifiesto que no se puede citar de
 > memoria no gobierna nada.
 >
@@ -70,14 +70,14 @@ el change en el nivel más chico).
 **Art. 9 — El link se autora una sola vez.**
 El CÓMO declara `implements: <id>@<version>`. Es el **único** link escrito a mano.
 La dirección inversa (quién implementó qué) **siempre se deriva, nunca se escribe**.
-Escribirlo en los dos lados es firmar el drift.
+Escribirlo en los dos lados es firmar la desincronización.
 
 **Art. 10 — El estado se deriva, no se reporta.**
 La matriz de trazabilidad —quién implementó qué, contra qué versión, quién quedó
 atrasado— no la mantiene ninguna persona. La calcula la máquina a partir de los
 links. Si alguien la actualiza a mano, algo está mal diseñado.
 
-**Art. 11 — El versionado grita solo.**
+**Art. 11 — El versionado avisa solo.**
 El `@version` (número legible + hash de criterios) hace que un cambio del QUÉ marque
 solo a los CÓMO atrasados. Nadie avisa a nadie: el link versionado lo grita. El
 número comunica; el hash detecta.

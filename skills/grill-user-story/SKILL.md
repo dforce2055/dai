@@ -1,13 +1,13 @@
 ---
 name: grill-user-story
-description: Interroga a un PO o analista funcional para producir una User Story funcional y testeable siguiendo el formato del modelo de trazabilidad — o pule una US vaga existente. Se queda a nivel funcional/usuario y se niega a derivar en diseño técnico o a emitir una US con criterios no testeables. Al terminar, PUBLICA la US en el tracker configurado del repo (Jira o ClickUp, según DAI_PM del .env) usando su MCP; si no hay MCP/token, deja un .md con el mismo formato para copiar y pegar. Invocar como /grill-user-story, opcionalmente con un título, un ID/URL del tracker, y/o una US rústica existente. Usar antes de opsx:propose, o cuando alguien dice "necesito una US", "convertí esto en una US como corresponde", o "esta historia está muy vaga".
+description: Interroga a un PO o analista funcional para producir una User Story funcional y testeable siguiendo el formato del modelo de trazabilidad — o pule una US vaga existente. Se queda a nivel funcional/usuario y se niega a derivar en diseño técnico o a emitir una US con criterios no testeables. Al terminar, PUBLICA la US en el tracker configurado del repo (Jira o ClickUp, según DAI_PM del .env) usando su MCP; si no hay MCP/token, deja un .md con el mismo formato para copiar y pegar. Invocar como /grill-user-story, opcionalmente con un título, un ID/URL del tracker, y/o una US rústica existente. Usar antes de opsx:propose, o cuando alguien dice "necesito una US", "convierte esto en una US como corresponde", o "esta historia está muy vaga".
 ---
 
 # grill-user-story
 
 Producir una buena User Story **por interrogación, no por generación**. Es la puerta de entrada funcional del pipeline de specs (el QUÉ): su salida alimenta `opsx:propose` del lado técnico. Trabaja **solo a nivel usuario/solución** — el grill técnico ocurre después, en el `design.md` del dev.
 
-Llená [templates/user-story.md](templates/user-story.md). El formato completo y su racional viven en [../../templates/formato-us.md](../../templates/formato-us.md) — es la única fuente de verdad de la forma. Nunca reescribas el formato inline.
+Llena [templates/user-story.md](templates/user-story.md). El formato completo y su racional viven en [../../templates/formato-us.md](../../templates/formato-us.md) — es la única fuente de verdad de la forma. Nunca reescribas el formato inline.
 
 ## Por qué el formato importa (modelo de trazabilidad)
 
@@ -31,23 +31,23 @@ Si no viene nada, pedir título y si hay un borrador existente.
 
 1. **Cortar en lo técnico.** Si la charla deriva a tablas, endpoints, migraciones o elección de framework, frenar: "eso es diseño, no ahora". La US nombra *qué necesita el usuario*, nunca *cómo se construye*.
 2. **Cortar en lo no testeable.** Nunca emitir un criterio que no pueda volverse un test. "El usuario tiene una buena experiencia" se rechaza. "Un carrito vacío no se puede finalizar" se acepta — funcional y verificable. Empujar cada AC hasta que sea observable.
-3. **Publicar, no pedir.** Si el tracker está configurado (`DAI_PM=jira|clickup` con token en `.env`), **CREÁ el ticket vos** (por MCP o con `dai publish`). **Nunca** cierres pidiéndole al usuario "pasame el ID/URL del ticket" como si ya existiera — el ticket lo creás vos en este paso. Solo pedís un ID existente si el usuario dijo explícitamente que está refinando una US ya creada.
+3. **Publicar, no pedir.** Si el tracker está configurado (`DAI_PM=jira|clickup` con token en `.env`), **CREA el ticket tú** (por MCP o con `dai publish`). **Nunca** cierres pidiéndole al usuario que te "pase el ID/URL del ticket" como si ya existiera — el ticket lo creas tú en este paso. Solo pides un ID existente si el usuario dijo explícitamente que está refinando una US ya creada.
 
 ## Proceso
 
-0. **Detectar el tracker (SIEMPRE, antes de nada).** Leé el archivo `.env` del repo y mirá `DAI_PM`:
-   - `DAI_PM=jira` → publicás en **Jira** (base: `DAI_JIRA_BASE_URL`), vía el MCP de Atlassian/Jira.
-   - `DAI_PM=clickup` → publicás en **ClickUp**, vía el MCP de ClickUp.
-   - `DAI_PM=md` (o sin `.env`) → no hay tracker: dejás la US como `.md`.
-   **No asumas el tracker** — depende del `.env`. Si no hay `.env`, preguntá cuál usa el equipo.
-1. **Resolver inputs.** Obtener título e ID del tracker (si existe). Si se refina, leer la US y anotar — para uno mismo — qué secciones del formato faltan o están flojas: rol genérico ("el usuario"), falta el "para", sin flujo de excepción, solución bakeada, ACs vagos.
+0. **Detectar el tracker (SIEMPRE, antes de nada).** Lee el archivo `.env` del repo y observa `DAI_PM`:
+   - `DAI_PM=jira` → publicas en **Jira** (base: `DAI_JIRA_BASE_URL`), vía el MCP de Atlassian/Jira.
+   - `DAI_PM=clickup` → publicas en **ClickUp**, vía el MCP de ClickUp.
+   - `DAI_PM=md` (o sin `.env`) → no hay tracker: dejas la US como `.md`.
+   **No asumas el tracker** — depende del `.env`. Si no hay `.env`, pregunta cuál usa el equipo.
+1. **Resolver inputs.** Obtener título e ID del tracker (si existe). Si se refina, leer la US y anotar — para uno mismo — qué secciones del formato faltan o están flojas: rol genérico ("el usuario"), falta el "para", sin flujo de excepción, solución prefijada, ACs vagos.
 2. **Grillar, un eje por vez.** No tirar un cuestionario — preguntar, escuchar, profundizar, y seguir. Cubrir en orden:
-   - **Título** — corto, **3 a 6 palabras**, nombra la capacidad (de ahí sale la branch). Si el título es una frase larga, acortalo: el detalle va en la descripción, no en el título. Ej: "Confirmar acciones con consecuencias", no "Confirmación deliberada antes de ejecutar acciones con consecuencias".
+   - **Título** — corto, **3 a 6 palabras**, nombra la capacidad (de ahí sale la branch). Si el título es una frase larga, acórtalo: el detalle va en la descripción, no en el título. Ej: "Confirmar acciones con consecuencias", no "Confirmación deliberada antes de ejecutar acciones con consecuencias".
    - **Quién** — el usuario/rol real. Rechazar "el usuario"; conseguir el actor concreto.
    - **Job-to-be-done** — qué intenta lograr de verdad, y el *por qué* (el "para").
    - **Flujos** — happy path primero, después alternativos, después excepciones: "¿qué pasa cuando no es válido / no está permitido / está vacío?"
    - **Criterios de aceptación** — convertir cada flujo en una condición funcional y testeable, en Gherkin. Aplicar el corte #2 acá, fuerte.
-   - **Fuera de scope** — qué NO hace esta historia (mata el scope creep río abajo).
+   - **Fuera de scope** — qué NO hace esta historia (mata el scope creep más adelante).
 3. **Chequeo de tamaño (INVEST).** Si los flujos y ACs desbordan y la historia se dispersa, es demasiado grande para una sola US. No seguir empujando: **promoverla a una épica** con `/grill-epic` (que la parte en varias US independientes) y después volver acá para grillar cada US hija. Una US que no entra en un sprint es la señal de que hay una épica adentro.
 4. **Publicar la US en el tracker (PASO OBLIGATORIO, ver abajo).** No termines con "¿la guardo y/o disparo el siguiente paso?": el trabajo de esta skill **incluye dejar la US publicada** en el tracker (con su key), no solo redactarla.
 
@@ -63,11 +63,11 @@ La US se produce UNA vez con el formato de `../../templates/formato-us.md`. Lo q
    - **Importante:** los criterios SIEMPRE van bajo `## Criterios de aceptación` en la descripción — así `dai link-us`/`check` los encuentran, sin importar el tracker.
 3. **Fallback SIN MCP → publicar con el CLI (`dai publish`):**
    - Si NO hay MCP del tracker conectado (pero sí `DAI_PM=jira|clickup` + token en `.env`):
-     escribí la US como `.md` (formato `formato-us.md`) y publicala con el comando:
+     escribe la US como `.md` (formato `formato-us.md`) y publícala con el comando:
      **`dai publish <ruta-del-md>`** → crea el issue/tarea vía REST y devuelve el key.
      (Jira necesita además `DAI_JIRA_PROJECT` en el `.env`.)
-   - Si tampoco hay token (o `DAI_PM=md`): dejá solo el `.md` para que la persona lo
-     pegue a mano en el tracker. Avisá el motivo.
+   - Si tampoco hay token (o `DAI_PM=md`): deja solo el `.md` para que la persona lo
+     pegue a mano en el tracker. Avisa el motivo.
    - El contenido es **idéntico** en los tres caminos (MCP / `dai publish` / manual).
 4. **Estado.** Dejar la US en `pulida`. Ofrecer que el dev siga con `dai link-us <ID>` → `opsx:propose` (lado técnico).
 
