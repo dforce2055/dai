@@ -103,7 +103,29 @@ dai stamp                       # al mergear: estampa la cobertura en el tracker
 ## Cómo usarlo — el flujo, paso a paso
 
 Guía completa con salidas reales en [`docs/PROBAR.md`](docs/PROBAR.md); un caso narrado en
-[`docs/EJEMPLO-END-TO-END.md`](docs/EJEMPLO-END-TO-END.md). Resumen:
+[`docs/EJEMPLO-END-TO-END.md`](docs/EJEMPLO-END-TO-END.md).
+
+```mermaid
+flowchart TD
+    subgraph QUE["🟡 EL QUÉ · funcional (PO / analista)"]
+        A["💡 Idea / problema"] -->|"/grill-user-story 🤖"| B["📋 US testeable"]
+        B -->|"dai publish ⚙️ · o MCP"| C[("🎯 US en el tracker (Jira / ClickUp)")]
+    end
+    subgraph COMO["🔵 EL CÓMO · técnico (dev)"]
+        C -->|"dai link-us ⚙️"| D["🌿 branch + implements.yaml"]
+        D -->|"/opsx:propose 🤖"| E["📐 design + tasks"]
+        E -->|"/tdd 🤖"| F["🧪 código + tests"]
+        F -->|"dai check ⚙️"| G{"¿al día?"}
+        G -->|"✅ sí"| H["🔀 dai pr ⚙️"]
+        H -->|"/dai-review 🤖 + 👤 firma"| I["✅ merge"]
+        I -->|"dai stamp ⚙️"| J[("🎯 cobertura estampada")]
+    end
+    G -.->|"⚠️ el QUÉ cambió (@version)"| C
+```
+
+> **Leyenda:** 🤖 skill de IA · ⚙️ comando `dai` · 👤 un humano firma · 🎯 el tracker.
+> La línea punteada es la **detección de drift**: si el PO edita la US, `dai check` lo marca
+> ⚠️ y volvés a sincronizar. *(El diagrama se renderiza en GitHub; el detalle, en la tabla.)*
 
 | # | Fase | Cómo | Quién |
 |---|---|---|---|
