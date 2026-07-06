@@ -17,7 +17,7 @@
 | 3 Rama | `link-us` | branch + `implements.yaml` |
 | 4 TDD | `tdd` | test (RED) → código (GREEN) |
 | 5 Smoke | skill de smoke | escenario end-to-end verde |
-| 6 Code review | `code-review` + partner | comentarios + aprobación |
+| 6 Code review | `dai-review` + partner | comentarios + aprobación |
 | 7 Merge | `dai stamp` | cobertura estampada en el tracker |
 | 8 Daily | — (humano) | sincronización verbal |
 | 9 Review/Demo | criterios Gherkin | US aceptada por el PO |
@@ -225,7 +225,7 @@ SMOKE OK (3/3)
 ## Paso 6 — Code review: IA primero, partner después
 
 ```
-🤖 code-review (primer pase)
+🤖 dai-review (primer pase)
   · AC-2 cubierto y verificado (no se crea orden con carrito vacío). ✓
   · Sugerencia: CarritoVacioError y SinStockError deberían extender un DomainError
     común, como el resto del módulo.

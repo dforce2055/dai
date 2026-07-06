@@ -25,25 +25,35 @@
 3. **Implementas con TDD** → `/tdd`. Un test a la vez, vertical slices: RED → GREEN
    → refactor. Verificas por la **interfaz pública**, no espías lo interno (Art. 7).
 4. **Smoke** → ejecutas el escenario end-to-end del flujo.
-5. **Review** → `/code-review` hace el primer pase; después un partner aprueba.
+5. **Review** → `/dai-review` hace el primer pase; después un partner aprueba.
 6. **Merge** → se estampa la cobertura en el gestor con `dai stamp` (lo ejecutas tú
    tras mergear, o el CI si la org lo tiene automatizado — mismo comando, ADR-0003).
    Antes, `dai check` te dice si estás atrasado respecto de la US. Tú nunca reportas
    estado **a mano**: lo deriva el comando.
 7. **Verificas el DoD** → [`definition-of-done.md`](../../templates/definition-of-done.md) antes de dar por terminado.
+8. **(Opcional) Limpias la rama** → `dai done` te devuelve a la base (default `main`, o
+   `--base develop`), hace `fetch --prune` + `pull` y borra la rama local **solo si está
+   mergeada**. Higiene del repo tras el merge, sin riesgo de perder trabajo sin integrar.
 
 ## La trampa a evitar
 
 **Vibe coding.** Nada de codear sobre una idea vaga o "improvisar y después vemos".
-Si no hay US con criterios testeables, no arranques: falta el DoR. La disciplina
+Si no hay US con criterios testeables, no arranques: falta el [DoR](../../templates/definition-of-ready.md). La disciplina
 —US clara → design → test → código— es lo que separa esto de pedirle cosas a un chat.
 
 ## Cuando el QUÉ cambia
 
 Si el PO sube la US a `v2`, tu `implements.yaml` (que apunta a `v1`) se marca
 **atrasado** solo. Abres una nueva iteración contra `v2` y vuelves al paso 3. Nadie
-te avisa: el link versionado lo hace (Art. 11).
+te avisa: el link versionado lo hace [Art. 11](../MANIFIESTO.md#art-11).
 
 ## Tus herramientas
 
-`/link-us` · `opsx:explore` · `opsx:propose` · `opsx:apply` · `/tdd` · `/code-review` · `definition-of-done.md`
+- `/link-us`
+- `/opsx:explore`
+- `/opsx:propose`
+- `/opsx:apply`
+- `/tdd`
+- `/dai-review`
+- `dai check` · `dai pr` · `dai stamp` · `dai done` (limpieza, opcional)
+- `definition-of-done.md`

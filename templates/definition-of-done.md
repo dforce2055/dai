@@ -26,7 +26,7 @@
 - [ ] La rama sigue la convención (`feature/ABC-###-<slug>`) → ver `governance/branch-naming.md`.
 
 ### Revisión
-- [ ] Pasó el **primer pase de IA** (`code-review`): sin problemas de correctitud.
+- [ ] Pasó el **primer pase de IA** (`dai-review`): sin problemas de correctitud.
 - [ ] Un **partner aprobó** el PR/MR (en N1, auto-review honesto). *(Art. 5, Art. 15)*
 - [ ] Cumple los estándares del repo (lint, tipos, convenciones).
 

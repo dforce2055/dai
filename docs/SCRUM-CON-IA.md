@@ -110,7 +110,7 @@
 | **Dolor** | Depende de que el partner tenga tiempo y ganas; reviews superficiales que dejan pasar lo importante. |
 | **Con IA** | La IA hace el **primer pase** (correctitud + estándares del repo) antes del humano. El partner revisa lo que importa, no el ruido. |
 | **Humano (HITL)** | El partner aprueba o rechaza. La IA sugiere; la persona decide y firma. |
-| **Herramienta** | `code-review`, `review-with-specs` |
+| **Herramienta** | `dai-review` |
 | **Detalle →** | [`detalle/06-code-review.md`](detalle/06-code-review.md) |
 
 #### 7. Merge + trazabilidad automática
