@@ -22,36 +22,30 @@ dai --version
 Valida el loop completo `link-us → check → stamp` sin depender de red ni tokens.
 
 ```bash
-# 1. Repo de prueba + bootstrap
+# 1. Repo de prueba + bootstrap (dai init deja el .env; elegí "md" cuando pregunte)
 mkdir /tmp/dai-test && cd /tmp/dai-test
 git init && git commit --allow-empty -m init
 git remote add origin git@github.com:TU-USUARIO/dai-test.git   # para los links de branch/commit
-dai init --for both
+dai init --for both --pm md
 
-# 2. Config para md
-printf 'DAI_PM=md\nDAI_MD_US_DIR=.dai/us\n' > .env
-
-# 3. La US como .md local (criterios bajo el heading exacto)
-mkdir -p .dai/us
-cat > .dai/us/US-1.md <<'EOF'
-spec_version v1
-
+# 2. Escribí una US (formato formato-us.md) y publicala con el CLI
+cat > draft.md <<'EOF'
 # Finalizar la compra del carrito
 
 ## Criterios de aceptación
-- Dado un carrito vacío
-- Cuando se finaliza
-- Entonces se rechaza
+- Dado un carrito vacío, cuando se finaliza, entonces se rechaza
 EOF
+dai publish draft.md             # crea la US → devuelve el key (con md, un slug)
+#   ej: "US publicada en md: finalizar-la-compra-del-carrito"
 
-# 4. El flujo
-dai link-us US-1                 # branch + implements.yaml (trae la US del backend)
+# 3. El flujo del dev
+dai link-us finalizar-la-compra-del-carrito   # branch + implements.yaml
 git add -A && git commit -m "feat: guard carrito vacío"
 dai check                        # ✅ al día
 
-# 5. La demo del ⚠️: editá un criterio en .dai/us/US-1.md y volvé a chequear
-dai check                        # ⚠️ ATRASADO (exit 1)
-dai stamp                        # con md, deja .dai/us/US-1.coverage.md
+# 4. La demo del ⚠️: editá el criterio en .dai/us/<slug>.md y volvé a chequear
+dai check                        # ⚠️ ATRASADO (exit 1)  → sugiere: dai link-us <id> --resync
+dai stamp                        # con md, deja .dai/us/<slug>.coverage.md
 ```
 
 Si esto anda, el flujo está bien. Pasá al tracker real.

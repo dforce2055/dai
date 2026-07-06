@@ -57,14 +57,16 @@ dai install                     # skills de IA → tu Claude (Desktop y Code)
 Y después, en el chat del asistente, según lo que tengas:
 
 ```text
-/grill-user-story               # una historia → te interroga y la publica en Jira/ClickUp
+/grill-user-story               # una historia → te interroga y la publica en el tracker
 /grill-epic                     # algo grande → una épica partida en varias US
 /doc-to-backlog <PDF/Word>      # un documento de análisis → backlog candidato de épicas + US
 /grill-intent                   # (opcional) Gate 0: ¿es el problema correcto, antes de escribir?
 ```
 
-> Las skills **te interrogan** hasta que la historia es testeable, y la dejan publicada en el
-> tracker. Nunca inventan requerimientos: los sacan a preguntas. Vos respondés y decidís.
+> Las skills **te interrogan** hasta que la historia es testeable (nunca inventan
+> requerimientos: los sacan a preguntas), y la **publican en el tracker** que configuraste
+> (`DAI_PM` en el `.env`): por el **MCP** de Jira/ClickUp si está conectado, o con
+> **`dai publish <us.md>`** si no (crea el issue vía token). Vos respondés y decidís.
 
 ### 🔵 Como dev — tengo una US y voy a implementarla
 
@@ -107,7 +109,8 @@ Guía completa con salidas reales en [`docs/PROBAR.md`](docs/PROBAR.md); un caso
 |---|---|---|---|
 | 1 | **Instalar el CLI** | `npm i -g @dforce2055/dai` (o `npm link` en dev) · `dai --version` | dev |
 | 2 | **Bootstrap del repo** | `dai init` → `.dai` + Claude/Copilot + config + PR template | dev/lead |
-| 3 | **Definir + publicar el QUÉ** | `/grill-user-story` (una US) · `/grill-epic` · `/doc-to-backlog`. La skill publica en el tracker vía MCP, o con **`dai publish <us.md>`** (fallback CLI, sin MCP) | PO / analista |
+| 3a | **Definir el QUÉ** | `/grill-user-story` (una US) · `/grill-epic` (algo grande) · `/doc-to-backlog` (un doc) — te interrogan hasta una US testeable | PO / analista |
+| 3b | **Publicar la US** | la skill la sube al tracker vía **MCP**, o con **`dai publish <us.md>`** (crea el issue vía token, sin MCP) → devuelve el key | PO / IA |
 | 4 | **Linkear la US** | `dai link-us <ID>` → branch + `openspec/changes/<id>/implements.yaml` | dev |
 | 5 | **Verificar / listar** | `dai check` (¿al día?) · `dai ls` (qué implementa el repo) | dev |
 | 6 | **Resincronizar** *(si el PO editó la US)* | `dai link-us <ID> --resync` | dev |
@@ -119,12 +122,14 @@ Guía completa con salidas reales en [`docs/PROBAR.md`](docs/PROBAR.md); un caso
 | 12 | **Review de un partner** | skill `/dai-review <PR>` deja un comentario estándar; un humano aprueba | partner |
 | 13 | **Merge + estampar** | al mergear: `dai stamp` → cobertura inversa en el tracker | dev / CI |
 
-> **Paso 7 necesita OpenSpec** instalado a nivel global (`npm i -g @fission-ai/openspec`) e
-> inicializado en el repo (`openspec init`). `dai init` te ofrece instalarlo. Si los comandos
-> `/opsx:*` no aparecen en el asistente, corré `openspec init` en el repo y reiniciá el IDE.
+> **Paso 3b (publicar):** el MCP crea el issue interactivamente; `dai publish` necesita el
+> token del tracker en `.env` (Jira además `DAI_JIRA_PROJECT`, ClickUp `DAI_CLICKUP_LIST_ID`).
 >
-> **Paso 11 necesita** un remoto git (`origin`) y `gh`/`glab` autenticado. Sin remoto, dai no
-> puede crear la PR (te deja el texto listo igual).
+> **Paso 7 (OpenSpec):** `dai init` te ofrece instalarlo **e inicializarlo** solo. Si los
+> comandos `/opsx:*` no aparecen en el asistente, reiniciá el IDE (se cargan al arrancar).
+>
+> **Paso 11 (PR):** necesita un remoto git (`origin`) y `gh`/`glab` autenticado. Sin remoto,
+> dai no crea la PR (te deja el texto listo igual).
 
 ## Comandos
 
