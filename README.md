@@ -194,6 +194,9 @@ Al trabajar se suma:
 └── openspec/changes/<id>/          · implements.yaml (el link) + proposal · design · tasks
 ```
 
+> **¿Cómo se ve un `implements.yaml`?** Ejemplo lleno + el árbol de dónde vive entre los
+> artefactos de OpenSpec, en [ADR-0004](docs/adr/0004-ubicacion-y-schema-implements.md).
+
 ### Dónde se invocan las skills (por asistente)
 
 Las skills se invocan en el asistente — **no en todas sus superficies** (límite del asistente, no de dai):
