@@ -52,7 +52,7 @@ commit es permanente. Guardar los dos evita que el router quede en 404.
 - ✅ `dai ls` es offline y read-only → sirve de base barata para todo lo demás.
 - ⚠️ Construir la URL web es forge-específico → lógica a testear (SSH/HTTPS, 3 forges).
 - ⚠️ `dai stamp` (write) y `dai check` (read US viva) dependen del **adaptador de PM**
-  (decisión abierta #3). Hasta que exista, `stamp --format md` emite el bloque para
+  (`getAdapter`, ya implementado). Para el backend `md`, `stamp --format md` emite el bloque para
   pegar a mano (mismo fallback que `grill-user-story`).
 
 ## Alternativas consideradas

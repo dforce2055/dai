@@ -215,26 +215,29 @@ distinto backend — no se bifurca por tamaño de equipo.
 
 ---
 
-## 7. Decisiones abiertas (bloquean la escala N3)
+## 7. Decisiones abiertas (plomería de N3)
 
-El modelo conceptual está listo para poner a prueba. Estas decisiones de
-implementación son las que faltan cerrar; **ninguna afecta el protocolo de la
-sección 2**, solo la plomería de N3.
+El protocolo (sección 2) está cerrado **e implementado** en el CLI `dai`. De la plomería
+de N3 queda **una** decisión sin resolver; el resto se cerró al construir la herramienta.
 
-1. **Convención de escritura multi-repo en Jira.** Cómo N repos escriben su estado
-   en el mismo ticket sin pisarse (custom field por repo / panel estructurado /
-   comentario keyed por repo). → *Decidir el mecanismo.*
-2. **Reporte de despliegue por ambiente.** El CD reporta a Jira (panel
-   Deployments) qué versión vive en cada ambiente, para la matriz repo×ambiente.
-3. **Adaptador de PM configurable.** Unificar el seam Jira/ClickUp/`.md` en una
-   pieza sola, conectada al MCP/token real.
-4. **Formato final de `implements.yaml`.** El de la US ya está en `formato-us.md`;
-   falta congelar el del link (campos, opcionales, validación en CI).
+1. **Reporte de despliegue por ambiente (CD).** Cómo el CD reporta a Jira qué versión vive
+   en cada ambiente (`dev`/`test`/`pre`/`prod`), para la matriz repo×ambiente. dai hoy
+   estampa **cobertura** (implementación), no **despliegue** — *implementación ≠ despliegue*
+   (§2.5). Sigue abierta porque depende del pipeline que cada organización ya tenga; no la
+   fuerza el método ([ADR-0003](adr/0003-deteccion-y-estampado-son-comandos.md)).
 
-**Ya resueltas:** `ac_hash` = algoritmo + tres momentos ([ADR-0001](adr/0001-contrato-ac-hash.md),
-implementado en `dai ac-hash`) · agnóstico del asistente ([ADR-0002](adr/0002-agnostico-del-asistente.md)) ·
-granularidad = capacidad entera (§2.6) · colapso de roles (§3) · formato de US +
-skills del QUÉ (`formato-us.md`, `grill-intent`, `grill-user-story`).
+**Ya resueltas** (al construir dai):
+- **Adaptador de PM configurable** → `getAdapter` (backends `md`/`jira`/`clickup`, token del
+  `.env`); modelo de auth en [ADR-0007](adr/0007-modelo-de-autenticacion.md).
+- **Formato de `implements.yaml`** → congelado en [ADR-0004](adr/0004-ubicacion-y-schema-implements.md)
+  (schema + ubicación + descubrimiento por glob).
+- **Escritura multi-repo en el tracker** → `dai stamp` deja un **comentario por repo** (no se
+  pisan); superficie de comandos en [ADR-0005](adr/0005-superficie-comandos-y-stamp.md). Una org
+  N3 grande podría preferir un panel/custom-field, pero el mecanismo por defecto está decidido.
+- **`ac_hash`** = algoritmo + tres momentos ([ADR-0001](adr/0001-contrato-ac-hash.md), en `dai ac-hash`) ·
+  **detección/estampado como comandos** ([ADR-0003](adr/0003-deteccion-y-estampado-son-comandos.md)) ·
+  **agnóstico del asistente** ([ADR-0002](adr/0002-agnostico-del-asistente.md)) · granularidad = capacidad
+  entera (§2.6) · colapso de roles (§3) · formato de US + skills del QUÉ.
 
 ---
 

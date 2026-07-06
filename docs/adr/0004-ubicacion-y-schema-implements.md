@@ -8,7 +8,7 @@
 
 El `implements.yaml` es el **único registro autorado** del link QUÉ↔CÓMO ([Art. 9](../MANIFIESTO.md#art-9)).
 Para que `link-us` lo scaffoldee y `dai check`/`stamp` lo parseen, hay que congelar
-**dónde vive** y **qué campos tiene**. Es la decisión abierta #4 de METODOLOGIA §7.
+**dónde vive** y **qué campos tiene**. Cierra la decisión abierta de METODOLOGIA §7 sobre el formato del link.
 
 Dos requisitos duros (Art. 9): vive **en el repo de código** y está **versionado por
 git** — así el `ac_hash` estampado viaja con el commit y el link es revisable en el PR.

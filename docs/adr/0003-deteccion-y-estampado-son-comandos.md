@@ -59,8 +59,8 @@ Pasar de distribuido a automático es mover la invocación, no reescribir nada.
 - ⚠️ En modo distribuido, `dai stamp` depende de que alguien lo corra. `dai check`
   como git-hook o gate de PR reduce el riesgo de olvido.
 - ⚠️ Ambos comandos necesitan **leer** la US viva (y `dai stamp`, escribir): eso es el
-  adaptador de PM (Jira/ClickUp/`.md`), que sigue siendo decisión abierta (§7). Pero
-  es un token + llamadas HTTP, **no** un CI.
+  adaptador de PM (Jira/ClickUp/`.md`), ya implementado en `getAdapter`. Es un token +
+  llamadas HTTP, **no** un CI.
 
 ## Alternativas consideradas
 
