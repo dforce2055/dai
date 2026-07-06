@@ -130,7 +130,7 @@ Guía completa con salidas reales en [`docs/PROBAR.md`](docs/PROBAR.md); un caso
 
 | Comando | Qué hace |
 |---|---|
-| `dai init [<repo>]` | scaffolder interactivo del repo (asistente, tracker, OpenSpec); flags: `--for` `--pm` `--openspec` |
+| `dai init [<repo>]` | scaffolder interactivo del repo. Flags: `--for claude\|copilot\|both` (asistente, ver arriba) · `--pm md\|jira\|clickup` (tracker) · `--openspec` |
 | `dai install [--global \| --local <repo>] [--dry-run]` | instala las skills de IA en Claude (global o en el repo) |
 | `dai link-us <ID> [--us <md>]` | crea branch + `implements.yaml`; sin `--us` trae la US del tracker |
 | `dai link-us <ID> --resync` | re-estampa el `ac_hash` contra la US viva (tras un ⚠️ de check) |
@@ -145,6 +145,24 @@ Guía completa con salidas reales en [`docs/PROBAR.md`](docs/PROBAR.md); un caso
 Skills (se invocan en el asistente): `/doc-to-backlog` · `/grill-intent` · `/grill-epic` · `/grill-user-story` · `/link-us` ·
 `/tdd` · `/dai-review`. Config del tracker (`md`\|`jira`\|`clickup`) y tokens: en `.env` —
 ver [`.env.example`](.env.example). Auth (SSH + tokens): [ADR-0007](docs/adr/0007-modelo-de-autenticacion.md).
+
+## El flag `--for` — ¿para qué asistente preparo el repo?
+
+`dai init` genera los archivos que hacen que las skills de IA (`grill-user-story`,
+`link-us`, etc.) estén disponibles en tu asistente. `--for` elige **para cuál**:
+
+| Valor | Genera | Elegilo si… |
+|---|---|---|
+| `--for claude` | `.claude/skills/` + `CLAUDE.md` | tu equipo usa **Claude** (Code / Desktop) |
+| `--for copilot` | `.github/prompts/*.prompt.md` + `.github/copilot-instructions.md` | tu equipo usa **GitHub Copilot** (en VS Code / JetBrains) |
+| `--for both` *(default)* | **ambos** | equipo **mixto** (unos con Claude, otros con Copilot) |
+
+- Es **aditivo, no destructivo**: los dos conjuntos conviven sin pisarse (viven en
+  carpetas distintas). La **misma** skill se transforma al formato de cada asistente.
+- Si corrés `dai init` sin flag, te lo pregunta de forma interactiva.
+- **No afecta el CLI:** `dai link-us` / `check` / `stamp` funcionan igual con cualquier
+  `--for` (o ninguno) — el flag solo prepara la **invocación de skills** en el asistente.
+- Ante la duda, `--for both`: cubre a todo el equipo y no cuesta nada.
 
 ## Lo que obtenés en tu repo
 

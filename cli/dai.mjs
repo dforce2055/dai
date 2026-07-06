@@ -418,8 +418,10 @@ async function cmdInit(repo, opts) {
 
   // Preguntas primero (después cerramos readline para liberar stdin a los instaladores).
   let forOpt = typeof opts.for === "string" ? opts.for.toLowerCase() : null;
-  if (!forOpt && rl) forOpt = await askMenu(rl, "¿Para qué asistente de IA lo preparo?", [
-    { value: "both", label: "Claude + Copilot" }, { value: "claude", label: "Solo Claude" }, { value: "copilot", label: "Solo Copilot" },
+  if (!forOpt && rl) forOpt = await askMenu(rl, "¿Para qué asistente de IA preparo el repo? (genera las skills en su formato)", [
+    { value: "both", label: "Claude + Copilot — equipo mixto (recomendado ante la duda)" },
+    { value: "claude", label: "Solo Claude (Code / Desktop)" },
+    { value: "copilot", label: "Solo Copilot (en VS Code / JetBrains)" },
   ], "both");
   forOpt = forOpt || "both";
   if (!["claude", "copilot", "both"].includes(forOpt)) fail(`--for inválido: '${forOpt}' (claude|copilot|both)`);
@@ -582,7 +584,8 @@ switch (cmd) {
       "Instalación:\n" +
       "  install [--global | --local <repo>] [--force] [--dry-run]   skills → Claude\n" +
       "  init [<repo>]                scaffolder interactivo del repo (asistente, gestor, OpenSpec)\n" +
-      "       [--for both] [--pm md] [--openspec]   (saltear las preguntas con flags)\n" +
+      "       --for claude|copilot|both   para qué asistente preparar el repo (default both; ante duda, both)\n" +
+      "       --pm md|jira|clickup · --openspec   (con flags salteás las preguntas)\n" +
       "  docs <destino>               documentación conceptual → <destino>\n" +
       "  doctor                       diagnóstico del entorno\n\n" +
       "  (config: .env — ver .env.example)\n"
