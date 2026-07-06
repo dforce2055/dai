@@ -492,26 +492,37 @@ async function cmdInit(repo, opts) {
   }
 
   // ── OpenSpec ───────────────────────────────────────────────────────────────
-  // Instalamos SOLO el binario global (no-interactivo). `openspec init` NO se corre
-  // anidado: es interactivo y anidarlo dentro de dai init lo deja a medias. Se lo
-  // dejamos al usuario para correr directo (más predecible).
+  // OpenSpec tiene modo NO-interactivo (`openspec init --tools <lista> --force`),
+  // así que sí lo inicializamos nosotros — mapeando --for a sus tools. (Antes se
+  // dejaba a medias porque se intentaba correr su modo interactivo anidado.)
   process.stdout.write("\n");
   const openspecPresent = () => { try { execFileSync(npmBin("openspec"), ["--version"], { stdio: "ignore" }); return true; } catch { return false; } };
+  const osTools = { claude: "claude", copilot: "github-copilot", both: "claude,github-copilot" }[forOpt] || "claude,github-copilot";
+  const osHint = "para sumarlo después:  npm i -g @fission-ai/openspec@latest  &&  openspec init --tools " + osTools;
   if (hasOpenspec) {
-    ok("OpenSpec:     inicializado en el repo");
+    ok("OpenSpec:     ya inicializado en el repo");
   } else if (openspecPartial) {
-    warn("OpenSpec:     hay una carpeta openspec/ pero SIN inicializar (init incompleta).");
-    process.stdout.write("                  limpiala y reinicializá:  rm -rf openspec && openspec init\n");
+    warn("OpenSpec:     hay una carpeta openspec/ a medias. Reinicializá: rm -rf openspec && openspec init --tools " + osTools + " --force");
   } else if (installOpenspec) {
-    if (!openspecPresent()) {
-      try { info("Instalando el CLI @fission-ai/openspec (global)…"); execFileSync(npmBin("npm"), ["install", "-g", "@fission-ai/openspec@latest"], { stdio: "inherit" }); }
-      catch { warn("No pude instalar el CLI. Corré a mano: npm i -g @fission-ai/openspec@latest"); }
+    let cliOk = openspecPresent();
+    if (!cliOk) {
+      try { info("OpenSpec:     instalando el CLI (npm i -g @fission-ai/openspec)…"); execFileSync(npmBin("npm"), ["install", "-g", "@fission-ai/openspec@latest"], { stdio: "inherit" }); cliOk = openspecPresent(); }
+      catch { cliOk = false; }
     }
-    ok(openspecPresent() ? "OpenSpec:     CLI global listo" : "OpenSpec:     instalá el CLI (npm i -g @fission-ai/openspec@latest)");
-    warn("OpenSpec:     falta inicializarlo — corré vos (es interactivo, no lo anido):");
-    process.stdout.write("                  openspec init      (elegí tu asistente cuando pregunte)\n");
+    if (cliOk) {
+      try {
+        info(`OpenSpec:     inicializando en el repo (--tools ${osTools})…`);
+        execFileSync(npmBin("openspec"), ["init", "--tools", osTools, "--force"], { stdio: "inherit", cwd: repo === "." ? process.cwd() : repo });
+        ok("OpenSpec:     instalado e inicializado — generá design/tasks con /opsx:*");
+      } catch {
+        warn("OpenSpec:     el CLI está pero falló `openspec init`. Corré a mano en el repo:");
+        process.stdout.write(`                  openspec init --tools ${osTools} --force\n`);
+      }
+    } else {
+      warn("OpenSpec:     no pude instalar el CLI. " + osHint);
+    }
   } else {
-    warn("OpenSpec:     omitido. Para sumarlo: npm i -g @fission-ai/openspec@latest && openspec init");
+    warn("OpenSpec:     omitido — " + osHint);
   }
 
   // ── Próximos pasos ─────────────────────────────────────────────────────────
