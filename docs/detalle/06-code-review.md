@@ -1,16 +1,18 @@
-# Paso 6 — Code review: IA primero, partner después
+# Paso 6 — Code review: el dev primero, después un partner
 
 ← vuelve a [`SCRUM-CON-IA.md`](../SCRUM-CON-IA.md)
 
 ## En qué consiste en detalle
 
-Dos pasadas:
+Dos revisiones distintas:
 
-1. **IA** (`dai-review`) — primer pase consciente de la metodología: corre
-   `dai check` (¿la US quedó atrasada?), valida el DoD, revisa el código
-   (🔴 errores / 🟡 mejoras / ✅ bien) y deja un **comentario estándar** en la PR/MR.
-2. **Partner humano** — revisa lo que importa (sin el ruido que ya barrió la IA) y
-   **firma** la aprobación.
+1. **El dev revisa su propia implementación** — la que produjo la IA, minucioso y con
+   criterio (correctitud, casos borde, seguridad, calidad). Es responsable del código, no
+   la IA (anti vibe-coding). Recién con eso en orden, y todo **commiteado**, crea la PR.
+2. **Un partner revisa la PR** y **firma** aprobación/rechazo. Se apoya en la skill
+   `dai-review` para un primer pase consciente de la metodología: corre `dai check` (¿la US
+   quedó atrasada?), valida el DoD, revisa el código (🔴 errores / 🟡 mejoras / ✅ bien) y
+   deja un **comentario estándar** en la PR/MR — le saca el ruido para que firme lo que importa.
 
 ## Herramientas
 

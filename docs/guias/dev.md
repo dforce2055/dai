@@ -25,16 +25,20 @@
 3. **Implementas con TDD** → `/tdd`. Un test a la vez, vertical slices: RED → GREEN
    → refactor. Verificas por la **interfaz pública**, no espías lo interno (Art. 7).
 4. **Smoke** → ejecutas el escenario end-to-end del flujo.
-5. **Verificas y creas la PR** → `dai check` te dice si tu código sigue al día con la US
-   (sirve de gate); en verde, `dai pr` arma la PR **precargada** con la US, el estado del
-   check y los links. La PR lleva **dos activos**: el código y el spec trazable
-   (`implements.yaml`). Tú nunca reportas estado **a mano**: lo deriva el comando.
-6. **Review** → `/dai-review` hace el primer pase **sobre la PR**; después un partner
-   **firma** la aprobación (Art. 5).
-7. **Verificas el DoD** → [`definition-of-done.md`](../../templates/definition-of-done.md) antes de mergear.
-8. **Merge → se estampa la cobertura** con `dai stamp` (lo corres tú tras mergear, o el CI
+5. **Revisas la implementación de la IA** (code review propio) → minucioso y con criterio:
+   correctitud, casos borde, seguridad, calidad. **Eres responsable del código, no la IA**
+   (anti vibe-coding). Ajustas y **commiteas** lo que haga falta.
+6. **Creas la PR** → con el smoke verde y **todo commiteado** (lo que quede sin commitear
+   **no entra** en la PR), corres `dai check` (gate: ¿al día con la US?) y en verde `dai pr`
+   arma la PR **precargada** (US + estado del check + links; los **dos activos**: código +
+   spec trazable) y la asignas a un partner.
+7. **Review de un partner** → un compañero revisa tu PR y **firma** aprobación/rechazo
+   (Art. 5). Se apoya en la skill `/dai-review` para un primer pase con comentario estándar.
+   *(Tu PR la revisas tú en el paso 5; la de un compañero, lo ayudas con la skill.)*
+8. **Verificas el DoD** → [`definition-of-done.md`](../../templates/definition-of-done.md) antes de mergear.
+9. **Merge → se estampa la cobertura** con `dai stamp` (lo corres tú tras mergear, o el CI
    si la org lo tiene automatizado — mismo comando, ADR-0003). El estado se **deriva** (Art. 10).
-9. **(Opcional) Limpias la rama** → `dai done` te devuelve a la base (default `main`, o
+10. **(Opcional) Limpias la rama** → `dai done` te devuelve a la base (default `main`, o
    `--base develop`), hace `fetch --prune` + `pull` y borra la rama local **solo si está
    mergeada**. Higiene del repo tras el merge, sin riesgo de perder trabajo sin integrar.
 

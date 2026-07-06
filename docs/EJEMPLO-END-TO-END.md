@@ -17,7 +17,7 @@
 | 3 Rama | `link-us` | branch + `implements.yaml` |
 | 4 TDD | `tdd` | test (RED) → código (GREEN) |
 | 5 Smoke | skill de smoke | escenario end-to-end verde |
-| 6 PR + code review | `dai pr` → `dai-review` + partner | PR (código + spec) + aprobación |
+| 6 Code review | review propio del dev → `dai pr` → partner (con `/dai-review`) | PR (código + spec) + aprobación |
 | 7 Merge | `dai stamp` | cobertura estampada en el tracker |
 | 8 Daily | — (humano) | sincronización verbal |
 | 9 Review/Demo | criterios Gherkin | US aceptada por el PO |
@@ -222,23 +222,28 @@ SMOKE OK (3/3)
 
 ---
 
-## Paso 6 — PR + code review: IA primero, partner después
+## Paso 6 — Code review: el dev primero, después un partner
 
-Con el smoke en verde y los cambios commiteados, el dev **crea la PR** con `dai pr` —
-precargada desde el template con la US, el estado del check y los links. La PR lleva los
-**dos activos**: el código y el spec trazable (`implements.yaml`):
+**Primero el dev revisa la implementación de la IA** — minucioso y con criterio
+(correctitud, casos borde, seguridad, calidad). El dev es responsable del código, no la IA
+(anti vibe-coding). Ajusta y **commitea** lo que haga falta.
+
+Con el smoke verde y **todo commiteado** (lo que quede suelto no entra en la PR), crea la
+PR con `dai pr` — precargada con la US, el estado del check y los links (los **dos activos**:
+código + spec trazable) — y la asigna a un partner:
 
 ```
 $ dai check
 ✅ ABC-482 al día (v1)
-$ dai pr
+$ dai pr --assignee mgomez
 ✓ PR #123 creada → …/pull/123   (base: main · US: ABC-482 @ v1 · dai check ✅)
 ```
 
-Sobre esa PR corre la review:
+El **partner** revisa la PR. Se apoya en la skill `/dai-review` para un primer pase con
+comentario estándar, y **firma** aprobación o rechazo:
 
 ```
-🤖 dai-review (primer pase)
+🤖 /dai-review (primer pase, ayuda al partner)
   · AC-2 cubierto y verificado (no se crea orden con carrito vacío). ✓
   · Sugerencia: CarritoVacioError y SinStockError deberían extender un DomainError
     común, como el resto del módulo.
@@ -247,7 +252,8 @@ Sobre esa PR corre la review:
 👤 M. Gómez (partner): de acuerdo con el DomainError. Aprobado tras el ajuste.
 ```
 
-> La IA barre el ruido; el humano **firma** la aprobación (Art. 5).
+> El dev revisa su propio código; un partner distinto revisa la PR y **firma** (Art. 5).
+> La skill `/dai-review` le saca el ruido al partner, pero la aprobación la firma la persona.
 
 ---
 
