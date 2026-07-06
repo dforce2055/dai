@@ -253,4 +253,11 @@ Detalle en [ADR-0006](docs/adr/0006-distribucion-y-licencia.md).
 > Toda contribución al método o a la herramienta es bienvenida. Empieza por
 > [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
+## Agradecimientos
+
+dai se apoya en ideas y aprendizajes de la comunidad. En particular, gracias a
+**[Matt Pocock](https://github.com/mattpocock)** por su aporte con las *skills* y por su
+[canal de YouTube](https://www.youtube.com/@mattpocockuk) explicándolas — su trabajo nos ayudó
+a construir esta herramienta.
+
 Seguridad: [`SECURITY.md`](SECURITY.md) · Conducta: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
