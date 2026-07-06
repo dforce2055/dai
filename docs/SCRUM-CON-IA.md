@@ -19,7 +19,7 @@
 - **Clásico** — qué se hace hoy en Scrum tradicional.
 - **Dolor** — qué duele hoy (incluso sin IA).
 - **Con IA** — el pequeño ajuste potenciado por IA. No reemplaza el paso: lo mejora.
-- **Humano (HITL)** — qué queda en manos de la persona, a propósito, para que el
+- **Humano ([`HITL`](glosario.md))** — qué queda en manos de la persona, a propósito, para que el
   equipo se adueñe del proceso y lo entienda.
 - **Herramienta** — la skill o pieza que lo habilita.
 - **Detalle →** — link al entregable ampliado (uno por paso, para no hacer esto extenso).

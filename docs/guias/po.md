@@ -22,10 +22,10 @@
 2. **Gate 0** → ejecutas `/grill-intent`. La IA te desafía el *problema*: ¿es el
    correcto? ¿quién lo sufre? ¿qué pasa si no lo hacemos? Un veredicto válido es
    *"no lo construyas"* — eso es el gate haciendo su trabajo (Art. 4).
-3. **Pules el QUÉ** → ejecutas `/grill-user-story`. La IA te **interroga** hasta que
+3. **Pulir el QUÉ** → ejecutas `/grill-user-story`. La IA te **interroga** hasta que
    la US es testeable (INVEST + Gherkin) y la publica en el gestor. La IA no
    inventa requerimientos: te los saca a preguntas. Tú respondes y decides.
-4. **Verificas el DoR** → antes de que entre al sprint, la US cumple el
+4. **Verificas el [DoR](../../templates/definition-of-ready.md)** → antes de que entre al sprint, la US cumple el
    [`definition-of-ready.md`](../../templates/definition-of-ready.md).
 5. **Demo** → aceptas o rechazas contra los mismos criterios que ya eran tests.
 
@@ -44,4 +44,7 @@ el CI (Art. 10).
 
 ## Tus herramientas
 
-`/grill-intent` · `/grill-user-story` · el gestor de proyectos · `definition-of-ready.md`
+- `/grill-intent`
+- `/grill-user-story`
+- el gestor de proyectos
+- [`definition-of-ready.md`](../../templates/definition-of-ready.md)
