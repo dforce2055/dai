@@ -26,7 +26,7 @@
    la US es testeable (INVEST + Gherkin) y la publica en el gestor. La IA no
    inventa requerimientos: te los saca a preguntas. Tú respondes y decides.
 4. **Verificas el DoR** → antes de que entre al sprint, la US cumple el
-   `definition-of-ready.md`.
+   [`definition-of-ready.md`](../../templates/definition-of-ready.md).
 5. **Demo** → aceptas o rechazas contra los mismos criterios que ya eran tests.
 
 ## La trampa a evitar
