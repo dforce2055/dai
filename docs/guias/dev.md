@@ -18,7 +18,7 @@
 
 ## Tu día a día
 
-1. **Agarras una US** que cumple el DoR → `/link-us ABC-###`. Crea la rama y el
+1. **Agarras una US** que cumple el [DoR](../../templates/definition-of-ready.md) → `/link-us ABC-###`. Crea la rama y el
    `implements.yaml` **desde el ID, sin que tipees el key a mano** (Art. 8, Art. 9).
 2. **Armas el CÓMO** → `opsx:explore` → `opsx:propose`. OpenSpec genera
    `design.md`/`tasks.md`; tú validas y ajustas. Las tareas nacen del cómo.
@@ -30,7 +30,7 @@
    tras mergear, o el CI si la org lo tiene automatizado — mismo comando, ADR-0003).
    Antes, `dai check` te dice si estás atrasado respecto de la US. Tú nunca reportas
    estado **a mano**: lo deriva el comando.
-7. **Verificas el DoD** → `definition-of-done.md` antes de dar por terminado.
+7. **Verificas el DoD** → [`definition-of-done.md`](../../templates/definition-of-done.md) antes de dar por terminado.
 
 ## La trampa a evitar
 
