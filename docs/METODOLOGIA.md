@@ -13,8 +13,11 @@ Una sola metodología para dos escalas opuestas:
   (definen el QUÉ y el CÓMO), tracker liviano o ninguno.
 
 No son dos metodologías. Es **un protocolo invariante** con **un dial de tres
-niveles de ceremonia**. El dev que aprende el nivel chico ya sabe la de la escala
-grande — solo le suben la plomería.
+niveles de ceremonia** — **N1** (un dev solo), **N2** (equipo compacto) y **N3**
+(organización grande, federada), que se detallan en la
+[§3](#3-el-dial-tres-niveles-de-ceremonia). El dev que aprende la ceremonia como sólo
+developer o en equipo chico ya tiene todas las herramientas de la escala grande — solo le
+suben la plomería.
 
 ---
 
