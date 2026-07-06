@@ -188,7 +188,7 @@ mi-repo/
 │   └── pull_request_template.md    · Molde de PR/MR atado al link
 └── .dai/
     ├── templates/                  · formato-us · epica · DoR · DoD · adr · pull-request
-    └── governance/                 · branch-naming · ci-rules
+    └── governance/                 · branch-naming · ci-rules · commit-convention
 
 Al trabajar se suma:
 └── openspec/changes/<id>/          · implements.yaml (el link) + proposal · design · tasks
@@ -236,7 +236,7 @@ dai/
 │                       glosario · guias/ · detalle/ (10 pasos) · adr/ (0001–0007)
 ├── templates/      🧩  los moldes (formato-us · epica · DoR · DoD · adr · pull-request)
 ├── skills/         🤖  doc-to-backlog · grill-intent · grill-epic · grill-user-story · link-us · tdd · dai-review
-├── governance/     🛡️  branch-naming · ci-rules
+├── governance/     🛡️  branch-naming · ci-rules · commit-convention
 ├── index.html      📊  landing autocontenido (la historia); publicable por GitHub Pages
 └── manifest.yaml · VERSION · install.sh (shim) · .env.example
 ```

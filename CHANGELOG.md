@@ -18,7 +18,7 @@ ClickUp y Jira Cloud.
 
 ### Templates y governance
 - `formato-us`, `epica`, `definition-of-ready`, `definition-of-done`, `adr`,
-  `pull-request`; `branch-naming`, `ci-rules`.
+  `pull-request`, hook `commit-msg`; `branch-naming`, `ci-rules`, `commit-convention`.
 
 ### Skills (para Claude y Copilot, generadas por `dai init`)
 - El QUÉ: `doc-to-backlog` (un doc → backlog candidato), `grill-intent` (Gate 0),

@@ -1,0 +1,48 @@
+#!/bin/sh
+# =============================================================================
+# commit-msg · dai · valida que el mensaje siga Conventional Commits
+# =============================================================================
+# Formato:  <tipo>(<scope>)!: <resumen>
+#   tipo    obligatorio · scope opcional · "!" opcional (breaking change)
+#   resumen en imperativo, minúscula, sin punto final, hasta 72 caracteres
+#
+# Cero dependencias: POSIX sh + grep. No necesita dai, node ni commitlint.
+# Instalación: ver governance/commit-convention.md (husky o git hook pelado).
+# =============================================================================
+
+msg_file="$1"
+# Primera línea que no sea comentario (git antepone líneas '#').
+subject=$(grep -vE '^\s*#' "$msg_file" | sed '/./,$!d' | head -1)
+
+# Dejar pasar merges, reverts, fixup/squash y commits de bots (🤖).
+case "$subject" in
+  "Merge "*|"Revert "*|"fixup! "*|"squash! "*|"🤖"*) exit 0 ;;
+esac
+
+pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._/-]+\))?!?: .{1,72}$'
+
+if printf '%s' "$subject" | grep -qE "$pattern"; then
+  exit 0
+fi
+
+echo ""
+echo "  ✗  Mensaje de commit inválido"
+echo "  ───────────────────────────────────────────────"
+echo "     tu mensaje:  $subject"
+echo ""
+echo "     formato:     <tipo>(<scope>): <resumen>"
+echo "     tipos:       feat · fix · docs · style · refactor · perf"
+echo "                  test · build · ci · chore · revert"
+echo "     reglas:      resumen en imperativo, minúscula, sin punto final, ≤72"
+echo "                  '!' tras el scope marca un breaking change"
+echo ""
+echo "     ejemplos:    feat(cart): rechaza finalizar un carrito vacío"
+echo "                  fix(auth): corrige el refresh del token"
+echo "                  docs: aclara los niveles N1/N2/N3"
+echo "                  refactor(api)!: unifica el contrato de /orders"
+echo ""
+echo "     traza:       si el commit implementa una US, referénciala en el"
+echo "                  cuerpo (p. ej. \"US: ABC-482\") — el link vive en el"
+echo "                  implements.yaml, pero mencionarlo ayuda a leer el historial."
+echo ""
+exit 1

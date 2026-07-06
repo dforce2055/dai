@@ -49,7 +49,9 @@ nuevo que supersede al viejo.
 ## Convención de commits
 
 `tipo(scope): resumen` — `feat` · `fix` · `docs` · `chore` · `refactor` · `test`.
-Ejemplo: `feat(cli): dai stamp reporta el ambiente`.
+Ejemplo: `feat(cli): dai stamp reporta el ambiente`. La convención completa (tipos,
+reglas, breaking changes) y un hook `commit-msg` que la valida están en
+[`governance/commit-convention.md`](governance/commit-convention.md).
 
 ## Reportar / proponer
 
