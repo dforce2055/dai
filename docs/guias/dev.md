@@ -25,13 +25,16 @@
 3. **Implementas con TDD** → `/tdd`. Un test a la vez, vertical slices: RED → GREEN
    → refactor. Verificas por la **interfaz pública**, no espías lo interno (Art. 7).
 4. **Smoke** → ejecutas el escenario end-to-end del flujo.
-5. **Review** → `/dai-review` hace el primer pase; después un partner aprueba.
-6. **Merge** → se estampa la cobertura en el gestor con `dai stamp` (lo ejecutas tú
-   tras mergear, o el CI si la org lo tiene automatizado — mismo comando, ADR-0003).
-   Antes, `dai check` te dice si estás atrasado respecto de la US. Tú nunca reportas
-   estado **a mano**: lo deriva el comando.
-7. **Verificas el DoD** → [`definition-of-done.md`](../../templates/definition-of-done.md) antes de dar por terminado.
-8. **(Opcional) Limpias la rama** → `dai done` te devuelve a la base (default `main`, o
+5. **Verificas y creas la PR** → `dai check` te dice si tu código sigue al día con la US
+   (sirve de gate); en verde, `dai pr` arma la PR **precargada** con la US, el estado del
+   check y los links. La PR lleva **dos activos**: el código y el spec trazable
+   (`implements.yaml`). Tú nunca reportas estado **a mano**: lo deriva el comando.
+6. **Review** → `/dai-review` hace el primer pase **sobre la PR**; después un partner
+   **firma** la aprobación (Art. 5).
+7. **Verificas el DoD** → [`definition-of-done.md`](../../templates/definition-of-done.md) antes de mergear.
+8. **Merge → se estampa la cobertura** con `dai stamp` (lo corres tú tras mergear, o el CI
+   si la org lo tiene automatizado — mismo comando, ADR-0003). El estado se **deriva** (Art. 10).
+9. **(Opcional) Limpias la rama** → `dai done` te devuelve a la base (default `main`, o
    `--base develop`), hace `fetch --prune` + `pull` y borra la rama local **solo si está
    mergeada**. Higiene del repo tras el merge, sin riesgo de perder trabajo sin integrar.
 

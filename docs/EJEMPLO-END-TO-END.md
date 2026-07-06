@@ -13,11 +13,11 @@
 | Paso | Skill / evento | Artefacto que produce |
 |---|---|---|
 | 1 Refinamiento | `grill-intent` → `grill-user-story` | `intent.md` + la **US** (`ABC-482`) |
-| 2 Planning | `opsx:propose` | `design.md` + `tasks.md` |
+| 2 Planning | `opsx:propose` | `proposal.md` + `design.md` + `tasks.md` + `specs/` |
 | 3 Rama | `link-us` | branch + `implements.yaml` |
 | 4 TDD | `tdd` | test (RED) → código (GREEN) |
 | 5 Smoke | skill de smoke | escenario end-to-end verde |
-| 6 Code review | `dai-review` + partner | comentarios + aprobación |
+| 6 PR + code review | `dai pr` → `dai-review` + partner | PR (código + spec) + aprobación |
 | 7 Merge | `dai stamp` | cobertura estampada en el tracker |
 | 8 Daily | — (humano) | sincronización verbal |
 | 9 Review/Demo | criterios Gherkin | US aceptada por el PO |
@@ -222,7 +222,20 @@ SMOKE OK (3/3)
 
 ---
 
-## Paso 6 — Code review: IA primero, partner después
+## Paso 6 — PR + code review: IA primero, partner después
+
+Con el smoke en verde y los cambios commiteados, el dev **crea la PR** con `dai pr` —
+precargada desde el template con la US, el estado del check y los links. La PR lleva los
+**dos activos**: el código y el spec trazable (`implements.yaml`):
+
+```
+$ dai check
+✅ ABC-482 al día (v1)
+$ dai pr
+✓ PR #123 creada → …/pull/123   (base: main · US: ABC-482 @ v1 · dai check ✅)
+```
+
+Sobre esa PR corre la review:
 
 ```
 🤖 dai-review (primer pase)
