@@ -19,6 +19,26 @@ git** — así el `ac_hash` estampado viaja con el commit y el link es revisable
 
 - **Co-localizado con la unidad de trabajo** (una US = una capacidad entera = un
   `implements.yaml`). Default usando OpenSpec: `openspec/changes/<change-id>/implements.yaml`.
+
+El `implements.yaml` vive **junto a los artefactos de OpenSpec** del change, no aparte:
+
+```
+openspec/
+└── changes/
+    └── finalizar-compra/          # el change = el CÓMO (una US = una capacidad entera)
+        ├── proposal.md            # opsx:propose · qué se propone y por qué
+        ├── design.md              # opsx:propose · el diseño técnico
+        ├── tasks.md               # opsx:propose · las tareas (se implementan con TDD)
+        ├── specs/                 # opsx:propose · las deltas de spec
+        │   └── carrito/
+        │       └── spec.md
+        └── implements.yaml        # ★ dai link-us · el link QUÉ↔CÓMO (id + @version + ac_hash)
+```
+
+Los tres primeros los genera **OpenSpec** (`opsx:propose`); el `implements.yaml` lo agrega
+**dai** (`link-us`) en la misma carpeta. Al archivar, el change entero (incluido el
+`implements.yaml`) se mueve a `openspec/changes/archive/` y **sigue contando** para la cobertura.
+
 - **Tool-agnóstico por descubrimiento (Art. 2):** `dai` **no** hardcodea la ruta de
   OpenSpec. Hace un glob de `**/implements.yaml` (excluyendo `node_modules`, `dist`,
   etc.). Un equipo con Swagger u otra herramienta lo pone donde quiera y `dai` lo
