@@ -131,7 +131,7 @@ Guía completa con salidas reales en [`docs/PROBAR.md`](docs/PROBAR.md); un caso
 | Comando | Qué hace |
 |---|---|
 | `dai init [<repo>]` | scaffolder interactivo del repo. Flags: `--for claude\|copilot\|both` (asistente, ver arriba) · `--pm md\|jira\|clickup` (tracker) · `--openspec` |
-| `dai install [--global \| --local <repo>] [--dry-run]` | instala las skills de IA en Claude (global o en el repo) |
+| `dai install [--global \| --local <repo>] [--force] [--dry-run]` | instala/actualiza las skills de IA en Claude. `--force` re-copia aunque ya existan (para **actualizar** tras una nueva versión). Ej: `dai install --local . --force` (este repo) · `dai install --global --force` (tu Claude) |
 | `dai link-us <ID> [--us <md>]` | crea branch + `implements.yaml`; sin `--us` trae la US del tracker |
 | `dai link-us <ID> --resync` | re-estampa el `ac_hash` contra la US viva (tras un ⚠️ de check) |
 | `dai check` | compara tu código vs la US viva → ✅ al día / ⚠️ atrasado (exit code = gate de PR) |
