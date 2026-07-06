@@ -353,8 +353,14 @@ async function cmdPr(opts) {
     ok("PR/MR creada. Revisala vos y asigná el reviewer si falta.");
     try { rmSync(bodyFile); } catch { /* noop */ }
   } catch (e) {
-    warn(`no pude crear la PR con ${tool} (¿instalado y autenticado?). El body quedó en ${bodyFile}.`);
-    process.stdout.write(`  Comando listo para correr a mano:\n    ${tool} ${cmd.map((c) => /\s/.test(c) ? `'${c}'` : c).join(" ")}\n`);
+    const msg = String(e.stderr || e.message || "");
+    if (/no history in common|no commits between|not found.*base|base.*not found/i.test(msg)) {
+      warn(`la branch no comparte historia con '${base}' en el remoto (o '${base}' no existe allá).`);
+      process.stdout.write(`  Suele pasar cuando el repo local y el remoto son distintos. Empujá la base primero:\n    git push origin ${base}\n  y volvé a correr:  dai pr\n`);
+    } else {
+      warn(`no pude crear la PR con ${tool} (¿instalado y autenticado?). El body quedó en ${bodyFile}.`);
+      process.stdout.write(`  Comando listo para correr a mano:\n    ${tool} ${cmd.map((c) => /\s/.test(c) ? `'${c}'` : c).join(" ")}\n`);
+    }
   }
 }
 
