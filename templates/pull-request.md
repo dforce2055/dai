@@ -1,10 +1,15 @@
 <!--
   TEMPLATE DE PULL / MERGE REQUEST · dai
   ─────────────────────────────────────────────────────────────────
-  El PR es donde el CÓMO se hace revisable y donde se valida el link.
   Copiar como .github/pull_request_template.md (o el equivalente del repo).
   Lo puede pre-llenar `dai`/una skill a partir del implements.yaml y el diff.
 -->
+
+> **Un PR en dai entrega dos activos, y el review cubre los dos:**
+> 1. **La implementación** — el código que resuelve la US.
+> 2. **El spec trazable** — el `implements.yaml` con el link a la US y el `@version`
+>    (`ac_hash`) verificado con `dai check` ✅. Sin esto, el código no sabe *a qué QUÉ*
+>    responde, y el CI bloquea el PR (ver `governance/ci-rules.md`).
 
 ## 🔗 Implementa
 

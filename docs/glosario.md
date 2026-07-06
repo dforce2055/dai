@@ -43,6 +43,7 @@
 | **Gate 0** | El desafío al *problema* antes de escribir spec (`grill-intent`). Puede terminar en "no lo construyas". |
 | **DoR (Definition of Ready)** | El contrato de cuándo una US puede entrar a implementarse. |
 | **DoD (Definition of Done)** | El contrato de cuándo el CÓMO está terminado. |
+| **PR / MR (Pull / Merge Request)** | La unidad revisable del CÓMO. En dai lleva **dos activos**, y el review cubre ambos: (1) la **implementación** (el código) y (2) el **spec trazable** (el `implements.yaml` con el link a la US y el `@version` verificado). Sin el segundo, el CI bloquea el PR. Template en `../templates/pull-request.md`. |
 | **Change** | La unidad de trabajo de OpenSpec (proposal + design + tasks + specs). |
 | **ADR (Architecture Decision Record)** | El registro de una decisión estructural: contexto, decisión, consecuencias. Chico e **inmutable** — si algo cambia, se escribe uno nuevo que supersede al viejo. Template en `../templates/adr.md`; los de dai, en [`adr/`](adr/). |
 | **TDD (Test-Driven Development)** | Escribir el test **antes** que el código: RED (test que falla) → GREEN (código mínimo) → REFACTOR. En dai cada AC se vuelve un test (skill `tdd`); es el antídoto del vibe coding. |
