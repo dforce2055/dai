@@ -50,9 +50,9 @@ Pasar de distribuido a automático es mover la invocación, no reescribir nada.
 ## Consecuencias
 
 - ✅ **No hace falta ningún CI para empezar.** La metodología arranca con un dev
-  tipeando `dai check` / `dai stamp`. El Art. 14 queda respetado.
+  tipeando `dai check` / `dai stamp`. El [Art. 14](../MANIFIESTO.md#art-14) queda respetado.
 - ✅ **Rampa de adopción continua:** manual → git-hook → CI, siempre el mismo comando.
-- ✅ **Honra el Art. 10:** el humano *dispara* la derivación; no *escribe a mano* el
+- ✅ **Honra el [Art. 10](../MANIFIESTO.md#art-10):** el humano *dispara* la derivación; no *escribe a mano* el
   contenido (eso sigue prohibido). Un `dai stamp` corrido por una persona escribe lo
   mismo que uno corrido por el CI.
 - ✅ Un equipo N3 sin pipeline tiene trazabilidad federada **distribuida** ya mismo.
@@ -65,8 +65,8 @@ Pasar de distribuido a automático es mover la invocación, no reescribir nada.
 ## Alternativas consideradas
 
 - **Exigir un CI corriendo en Jira/ClickUp** — descartado: barrera de entrada que
-  contradice el Art. 14 y que además es un fantasma (el tracker no ejecuta nada).
-- **Estampar la cobertura a mano en el tracker** — descartado: viola el Art. 10 (el
+  contradice el [Art. 14](../MANIFIESTO.md#art-14) y que además es un fantasma (el tracker no ejecuta nada).
+- **Estampar la cobertura a mano en el tracker** — descartado: viola el [Art. 10](../MANIFIESTO.md#art-10) (el
   contenido debe derivarse, no escribirse a mano) y se desincroniza.
 - **Un solo comando que compare y escriba a la vez** — descartado: separar `check`
   (read-only, gate) de `stamp` (write) permite usar `check` como gate de PR sin

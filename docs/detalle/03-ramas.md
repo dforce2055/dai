@@ -2,7 +2,7 @@
 
 ← vuelve a [`SCRUM-CON-IA.md`](../SCRUM-CON-IA.md)
 
-## El paso al 100%
+## En qué consiste en detalle
 
 El dev arranca la implementación **atándola al QUÉ**: la branch y el `implements.yaml`
 salen del mismo ID del tracker, así el link no puede quedar mal tipeado.

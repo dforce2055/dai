@@ -185,6 +185,6 @@
 ## El detalle de cada paso
 
 Cada paso `1–10` está ampliado en su propio doc bajo [`detalle/`](detalle/) — para
-que este maestro quede corto y repartible. Cada uno incluye: el paso al 100%, la
+que este maestro quede corto y repartible. Cada uno incluye: en qué consiste en detalle, la
 herramienta con ejemplos, qué firma la persona (HITL) y los antipatrones a evitar.
 Ver el índice en [`detalle/README.md`](detalle/README.md).

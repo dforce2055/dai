@@ -2,7 +2,7 @@
 
 ← vuelve a [`SCRUM-CON-IA.md`](../SCRUM-CON-IA.md)
 
-## El paso al 100%
+## En qué consiste en detalle
 
 El PO llega con una idea (a veces un ticket de una línea). Antes de escribir specs,
 la IA hace dos cosas, en orden:

@@ -2,7 +2,7 @@
 
 ← vuelve a [`SCRUM-CON-IA.md`](../SCRUM-CON-IA.md)
 
-## El paso al 100%
+## En qué consiste en detalle
 
 El equipo mira **cómo trabajó** (no el producto) y elige **1–2 mejoras** para el
 próximo sprint. Es un ritual **humano**. Lo que aporta la máquina son **datos**, no

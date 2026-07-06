@@ -2,7 +2,7 @@
 
 ← vuelve a [`SCRUM-CON-IA.md`](../SCRUM-CON-IA.md)
 
-## El paso al 100%
+## En qué consiste en detalle
 
 El equipo elige qué US entran al sprint (prioridad + capacidad). Para cada una, el
 dev corre OpenSpec sobre la US: `opsx:explore` (entiende specs + código) y luego

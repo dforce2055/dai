@@ -2,7 +2,7 @@
 
 ← vuelve a [`SCRUM-CON-IA.md`](../SCRUM-CON-IA.md)
 
-## El paso al 100%
+## En qué consiste en detalle
 
 15 minutos: qué hice, qué voy a hacer, qué me traba. Es **sincronización**, no
 reporte de estado. Se hace **a mano, sin IA, a propósito**.

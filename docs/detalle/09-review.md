@@ -2,7 +2,7 @@
 
 ← vuelve a [`SCRUM-CON-IA.md`](../SCRUM-CON-IA.md)
 
-## El paso al 100%
+## En qué consiste en detalle
 
 Se muestra lo terminado al PO y stakeholders. La aceptación es **contra los criterios
 de aceptación de la US** — que ya eran tests (paso 4). Si el QUÉ evolucionó mientras

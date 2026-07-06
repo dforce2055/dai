@@ -2,7 +2,7 @@
 
 ← vuelve a [`SCRUM-CON-IA.md`](../SCRUM-CON-IA.md)
 
-## El paso al 100%
+## En qué consiste en detalle
 
 Al mergear se corre `dai stamp` (el dev en modo distribuido, o el CI si está
 automatizado — [ADR-0003](../adr/0003-deteccion-y-estampado-son-comandos.md)). Lee el

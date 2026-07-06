@@ -1,7 +1,7 @@
 # Detalle por paso — la ceremonia con IA, ampliada
 
 El zoom de cada uno de los 10 pasos de [`SCRUM-CON-IA.md`](../SCRUM-CON-IA.md). Cada
-archivo: el paso al 100%, la herramienta con ejemplos, qué firma la persona (HITL) y
+archivo: en qué consiste en detalle, la herramienta con ejemplos, qué firma la persona (HITL) y
 los antipatrones a evitar.
 
 | # | Paso | IA |

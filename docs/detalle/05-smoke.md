@@ -2,7 +2,7 @@
 
 ← vuelve a [`SCRUM-CON-IA.md`](../SCRUM-CON-IA.md)
 
-## El paso al 100%
+## En qué consiste en detalle
 
 Antes de cerrar la US, se corre un **smoke end-to-end**: ejercita el flujo completo
 —happy path + los guards principales— para confirmar que no se rompió nada grueso.
