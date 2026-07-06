@@ -3,6 +3,15 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
+## [0.1.1] — 2026-07-06
+
+Solo documentación y metadata — **el CLI no cambia** (mismo `ac_hash`, mismo protocolo).
+
+### Cambiado
+- `homepage` del paquete → el sitio de GitHub Pages (`dforce2055.github.io/dai`).
+- Badge de npm activado en el README (tras el primer publish).
+- Conteo de tests corregido en `RELEASING.md` (48 → 87).
+
 ## [0.1.0] — 2026-07-06
 
 Primera versión: metodología completa + CLI de trazabilidad, probado end-to-end contra
@@ -43,4 +52,5 @@ ClickUp y Jira Cloud.
 - Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
   `files` de npm sin tests ni secretos.
 
+[0.1.1]: https://github.com/dforce2055/dai/releases/tag/v0.1.1
 [0.1.0]: https://github.com/dforce2055/dai/releases/tag/v0.1.0
