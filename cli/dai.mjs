@@ -581,9 +581,13 @@ function cmdDoctor() {
     if (!process.env.DAI_JIRA_BASE_URL) warn("falta DAI_JIRA_BASE_URL en el .env");
     if (!process.env.DAI_JIRA_EMAIL) warn("falta DAI_JIRA_EMAIL en el .env");
     if (!process.env.DAI_JIRA_TOKEN) warn("falta DAI_JIRA_TOKEN en el .env"); else ok("token de Jira presente");
+    process.env.DAI_JIRA_PROJECT ? ok(`proyecto=${process.env.DAI_JIRA_PROJECT} (para dai publish)`)
+      : warn("DAI_JIRA_PROJECT vacío — solo hace falta para `dai publish` (crear issues)");
   }
   if (pm === "clickup") {
     if (!process.env.DAI_CLICKUP_TOKEN) warn("falta DAI_CLICKUP_TOKEN en el .env"); else ok("token de ClickUp presente");
+    process.env.DAI_CLICKUP_LIST_ID ? ok(`lista=${process.env.DAI_CLICKUP_LIST_ID} (para dai publish)`)
+      : warn("DAI_CLICKUP_LIST_ID vacío — solo hace falta para `dai publish` (crear tareas)");
   }
 }
 
