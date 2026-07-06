@@ -23,7 +23,7 @@ la IA hace dos cosas, en orden:
 ## Qué firma el humano
 
 El PO **responde y decide**. La IA no inventa requerimientos: los saca a preguntas
-(Art. 4). El PO es dueño del contenido funcional.
+([Art. 4](../MANIFIESTO.md#art-4)). El PO es dueño del contenido funcional.
 
 ## Antipatrones
 

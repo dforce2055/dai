@@ -31,5 +31,5 @@ cada slice. La IA escribe el test como spec ejecutable, el dev valida.
   del comportamiento real.
 - **Testear lo interno** (mocks de colaboradores, métodos privados) → el test se rompe
   al refactorizar aunque el comportamiento no cambió. Testea por la **interfaz pública**.
-- **Codear primero, testear "si queda tiempo"** → vibe coding (Art. 7).
+- **Codear primero, testear "si queda tiempo"** → vibe coding ([Art. 7](../MANIFIESTO.md#art-7)).
 - **Refactorizar en rojo** → primero llega a verde.

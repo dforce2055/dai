@@ -12,7 +12,7 @@
 # Definition of Ready — ¿la US está lista para implementarse?
 
 > Una US que no cumple esto no se planifica. No es burocracia: es lo que evita
-> arrancar a codear sobre un QUÉ vago (Art. 7 — no vibe coding).
+> arrancar a codear sobre un QUÉ vago ([Art. 7](../docs/MANIFIESTO.md#art-7) — no vibe coding).
 
 ## Checklist
 

@@ -22,7 +22,7 @@ dai link-us ABC-482 --us us.md
 ## Qué firma el humano
 
 El dev **elige qué US agarra**. El resto es mecánico y determinista (el CLI), no
-criterio humano — por eso el key **no se tipea a mano** (Art. 8, Art. 9).
+criterio humano — por eso el key **no se tipea a mano** ([Art. 8](../MANIFIESTO.md#art-8), Art. 9).
 
 ## Antipatrones
 

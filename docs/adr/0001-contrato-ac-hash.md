@@ -6,7 +6,7 @@
 
 ## Contexto
 
-El `@version` del link (Art. 11 del manifiesto) es lo que hace que un cambio del QUÉ
+El `@version` del link ([Art. 11](../MANIFIESTO.md#art-11) del manifiesto) es lo que hace que un cambio del QUÉ
 marque solo a los CÓMO atrasados. Ese mecanismo depende del `ac_hash`: un hash de
 los criterios de aceptación. Hasta ahora el `ac_hash` figuraba como "autogenerado"
 pero ninguna skill ni CI lo calculaba de verdad — con lo cual el versionado era

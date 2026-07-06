@@ -69,7 +69,7 @@ mkdir -p .githooks && cp templates/commit-msg .githooks/ && chmod +x .githooks/c
 git config core.hooksPath .githooks
 ```
 
-## Opt-in (Art. 14 — no adelantar complejidad)
+## Opt-in ([Art. 14](../docs/MANIFIESTO.md#art-14) — no adelantar complejidad)
 
 El hook es **opcional**. Un equipo chico puede seguir la convención a mano; uno grande la
 blinda con el hook y/o el CI. La convención es la misma en cualquier nivel de ceremonia

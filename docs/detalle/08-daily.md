@@ -11,7 +11,7 @@ reporte de estado. Se hace **a mano, sin IA, a propósito**.
 
 La IA *podría* auto-generar el "qué se hizo" desde git + el tracker. **No lo hacemos**:
 el daily es donde el equipo se **apropia** del proceso, lo entiende y se coordina de
-verdad. Automatizarlo le sacaría al equipo la propiedad del ritual (Art. 6).
+verdad. Automatizarlo le sacaría al equipo la propiedad del ritual ([Art. 6](../MANIFIESTO.md#art-6)).
 
 ## Qué firma el humano
 

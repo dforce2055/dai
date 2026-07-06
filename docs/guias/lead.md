@@ -11,7 +11,7 @@
 - **Los ADRs**: registras cada decisión de fondo (las decisiones abiertas de la
   metodología, la calibración de DoR/DoD, la convención de escritura en el gestor).
 - **La calibración del nivel** (N1 / N2 / N3): eliges cuánta plomería corre el
-  equipo, y la subes **solo cuando duele**, no por las dudas (Art. 14).
+  equipo, y la subes **solo cuando duele**, no por las dudas ([Art. 14](../MANIFIESTO.md#art-14)).
 - **El governance**: naming de ramas, reglas de CI (`governance/`).
 - **La facilitación** del daily y la retro — que son **humanos a propósito** (Art. 6).
 

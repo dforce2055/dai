@@ -20,7 +20,7 @@ y **qué estampa** exactamente `dai stamp` en el tracker (que es el router de Ni
 | `dai ac-hash <us>` | local | calcula el hash de criterios (ADR-0001). |
 | `dai ls [--json]` | **local, offline** | escanea `**/implements.yaml`, lista las US que implementa el repo + su link al tracker. Base de los otros dos. |
 | `dai check` | lee la US viva | `ls` + trae la US + compara hashes → al día / ⚠️ atrasado. Exit ≠ 0 si atraso (gate de PR). |
-| `dai stamp` | escribe al tracker | `ls` + trae la US + **escribe la cobertura** (inversa, Art. 10). |
+| `dai stamp` | escribe al tracker | `ls` + trae la US + **escribe la cobertura** (inversa, [Art. 10](../MANIFIESTO.md#art-10)). |
 
 `check` y `stamp` se construyen sobre `ls` (un solo lugar descubre y parsea).
 

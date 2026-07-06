@@ -14,7 +14,7 @@
 
 - Tablas, endpoints, framework, arquitectura → eso es el CÓMO, del dev.
 - El código, las ramas, el `implements.yaml`.
-- El "cómo se construye". Si te metes ahí, detente: no es tu terreno (Art. 1).
+- El "cómo se construye". Si te metes ahí, detente: no es tu terreno ([Art. 1](../MANIFIESTO.md#art-1)).
 
 ## Tu día a día
 

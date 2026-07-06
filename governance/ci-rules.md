@@ -27,7 +27,7 @@
 1. **Lee** el `implements.yaml` de la rama.
 2. **Estampa la cobertura inversa** en el gestor: en el ticket `ABC-###`, deja
    "implementado por `<repo>` @ `<version>` (`ac_hash`) ✅". **Nadie lo escribe a
-   mano** (Art. 10).
+   mano** ([Art. 10](../docs/MANIFIESTO.md#art-10)).
 3. **Actualiza el índice/router central** de la federación: la fila `ABC-### → { repos }`.
 
 ## Qué hace el CD al desplegar (solo N3 · organización grande)

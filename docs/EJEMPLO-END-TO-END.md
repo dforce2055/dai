@@ -111,7 +111,7 @@ para **recibir los productos que elijo sin sorpresas**.
 ```
 
 > Nota que la US **no dice** tablas, endpoints ni framework — solo el QUÉ. Y cada
-> AC es un test en potencia (Art. 3 del manifiesto).
+> AC es un test en potencia ([Art. 3](./MANIFIESTO.md#art-3) del manifiesto).
 
 ---
 

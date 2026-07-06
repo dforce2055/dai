@@ -21,7 +21,7 @@ Dos pasadas:
 
 ## Qué firma el humano
 
-El **partner aprueba o rechaza** (Art. 5). La IA comenta y sugiere; **nunca** firma
+El **partner aprueba o rechaza** ([Art. 5](../MANIFIESTO.md#art-5)). La IA comenta y sugiere; **nunca** firma
 la aprobación.
 
 ## Antipatrones

@@ -16,7 +16,7 @@
 ## Checklist
 
 ### Tests (TDD)
-- [ ] Cada criterio de aceptación tiene su **test** y está **verde**. *(Art. 3)*
+- [ ] Cada criterio de aceptación tiene su **test** y está **verde**. *([Art. 3](../docs/MANIFIESTO.md#art-3))*
 - [ ] Los tests verifican por la **interfaz pública**, no espían lo interno.
 - [ ] El **smoke** end-to-end del flujo pasa.
 

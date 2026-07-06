@@ -10,7 +10,7 @@ Las skills están hoy empaquetadas como **skills de Claude Code** (`SKILL.md` en
 `.claude/skills/`). Pero los equipos usan asistentes distintos: una organización usa
 **GitHub Copilot** (nadie usa Claude), otra usa **Claude Code**. Si atamos la
 metodología a un asistente, dejamos afuera a media empresa — y contradecimos el
-principio rector "sin importar la herramienta de abajo" (Art. 2), que ya aplicamos a
+principio rector "sin importar la herramienta de abajo" ([Art. 2](../MANIFIESTO.md#art-2)), que ya aplicamos a
 las herramientas de spec (OpenSpec/Swagger/yml). Falta aplicarlo **una capa más
 arriba**: el asistente de IA.
 

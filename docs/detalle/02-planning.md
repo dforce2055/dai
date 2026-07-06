@@ -17,7 +17,7 @@ dev corre OpenSpec sobre la US: `opsx:explore` (entiende specs + código) y lueg
 ## Qué firma el humano
 
 El **equipo** decide capacidad y prioridad. El **dev** valida el design y las tareas
-propuestas — son suyas, nacen del CÓMO (Art. 1), no bajadas desde arriba.
+propuestas — son suyas, nacen del CÓMO ([Art. 1](../MANIFIESTO.md#art-1)), no bajadas desde arriba.
 
 ## Antipatrones
 

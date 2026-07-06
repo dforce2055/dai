@@ -6,7 +6,7 @@ description: Revisa una Pull/Merge Request de un repo remoto (GitHub o GitLab) d
 # dai-review — review de PR consciente de la metodología
 
 Es el **primer pase** del paso 6 (code review). No reemplaza al partner humano: le
-saca el ruido para que firme lo que importa (Art. 5 del manifiesto). Funciona igual
+saca el ruido para que firme lo que importa ([Art. 5](../../docs/MANIFIESTO.md#art-5) del manifiesto). Funciona igual
 en **GitHub y GitLab**.
 
 ## Las dos caras (cómo postea el comentario)

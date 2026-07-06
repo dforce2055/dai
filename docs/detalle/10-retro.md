@@ -17,7 +17,7 @@ smokes que faltan. `dai ls` / `dai check` sobre los repos son un buen insumo.
 ## Qué firma el humano
 
 Todo el análisis y las decisiones de mejora. La IA no propone la mejora; el equipo la
-decide con los datos a la vista (Art. 6).
+decide con los datos a la vista ([Art. 6](../MANIFIESTO.md#art-6)).
 
 ## Antipatrones
 

@@ -16,7 +16,7 @@ del tipo "esto no era lo que pide".
 
 ## Qué firma el humano
 
-El **PO acepta o rechaza** (Art. 5). La demo la corre una persona.
+El **PO acepta o rechaza** ([Art. 5](../MANIFIESTO.md#art-5)). La demo la corre una persona.
 
 ## Antipatrones
 

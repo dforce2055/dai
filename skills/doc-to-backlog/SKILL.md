@@ -17,7 +17,7 @@ fuente de verdad de la forma del mapa. Nunca lo reescribas inline.
 **El documento SIEMBRA el grilling, no lo reemplaza.** Un doc tienta a "genera 40 US de
 una" — eso es vibe coding de requerimientos: salen US que nadie validó, de features que
 quizás nadie necesita. Por eso esta skill **no publica nada final**: produce **candidatos**,
-el humano prioriza, y recién ahí cada ítem pasa por su grill (Art. 4 y Art. 5).
+el humano prioriza, y recién ahí cada ítem pasa por su grill ([Art. 4](../../docs/MANIFIESTO.md#art-4) y Art. 5).
 
 ## Input
 

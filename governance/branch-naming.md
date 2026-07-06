@@ -18,7 +18,7 @@ Ejemplo: `feature/ABC-482-finalizar-compra-sin-duplicado`
 ## Reglas
 
 - El **ID nunca se tipea a mano**: sale del argumento de `/link-us ABC-###`. Elimina
-  el error de tipeo que rompe el link (Art. 8, Art. 9).
+  el error de tipeo que rompe el link ([Art. 8](../docs/MANIFIESTO.md#art-8), Art. 9).
 - El **slug** deriva del título de la US: minúsculas, sin acentos ni ñ, espacios → `-`.
 - La **base** de la rama sigue la convención del repo (`main` o `develop`).
 - Una rama, una US. Si una US toca varios repos, es una rama por repo, **todas con el

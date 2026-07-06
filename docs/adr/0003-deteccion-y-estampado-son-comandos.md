@@ -10,7 +10,7 @@ El ADR-0001 dice que la **autoridad** de la detección de atrasos es "el CI, que
 re-deriva el `ac_hash` de la US viva y compara". Leído literal, suena a que hace
 falta **montar un CI que corra del lado de Jira/ClickUp** antes de poder usar la
 metodología — infraestructura pesada, y una barrera de entrada que contradice el
-Art. 14 (*no adelantar complejidad*).
+[Art. 14](../MANIFIESTO.md#art-14) (*no adelantar complejidad*).
 
 Además, un equipo que ya está en escala N3 (organización grande federada; los niveles
 N1/N2/N3 están en el [glosario](../glosario.md)) puede **no tener** todavía esa

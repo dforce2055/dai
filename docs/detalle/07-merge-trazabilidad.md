@@ -22,7 +22,7 @@ dai stamp   # escribe la cobertura en el tracker  (branch + commit)
 
 ## Qué firma el humano
 
-**Nadie mantiene la matriz a mano** — ese es el punto (Art. 10). El humano a lo sumo
+**Nadie mantiene la matriz a mano** — ese es el punto ([Art. 10](../MANIFIESTO.md#art-10)). El humano a lo sumo
 *dispara* `dai stamp`; el contenido lo deriva la máquina.
 
 ## Antipatrones

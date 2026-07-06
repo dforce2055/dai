@@ -7,7 +7,7 @@
 
 - El **CÓMO**: diseño técnico, modelo de datos, arquitectura de la solución.
 - Las **tareas técnicas** (las derivas tú, desde la US, con OpenSpec).
-- El **link** (`implements.yaml`): es el **único** que se autora a mano (Art. 9).
+- El **link** (`implements.yaml`): es el **único** que se autora a mano ([Art. 9](../MANIFIESTO.md#art-9)).
 - El **código** y su **spec técnica**.
 
 ## Lo que NO tocas
