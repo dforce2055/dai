@@ -44,6 +44,8 @@
 | **DoR (Definition of Ready)** | El contrato de cuándo una US puede entrar a implementarse. |
 | **DoD (Definition of Done)** | El contrato de cuándo el CÓMO está terminado. |
 | **Change** | La unidad de trabajo de OpenSpec (proposal + design + tasks + specs). |
+| **ADR (Architecture Decision Record)** | El registro de una decisión estructural: contexto, decisión, consecuencias. Chico e **inmutable** — si algo cambia, se escribe uno nuevo que supersede al viejo. Template en `../templates/adr.md`; los de dai, en [`adr/`](adr/). |
+| **TDD (Test-Driven Development)** | Escribir el test **antes** que el código: RED (test que falla) → GREEN (código mínimo) → REFACTOR. En dai cada AC se vuelve un test (skill `tdd`); es el antídoto del vibe coding. |
 | **Vertical slice** | Un test → una implementación → repetir. Lo opuesto a "todos los tests, después todo el código". |
 | **Smoke** | Escenario end-to-end que verifica que el flujo grueso no se rompió. |
 
@@ -59,6 +61,8 @@
 
 | Término | Qué es |
 |---|---|
+| **SDD (Spec-Driven Development)** | El paradigma donde la **especificación maneja el código**, no al revés: primero el QUÉ (US) y el diseño, después la implementación. dai —con OpenSpec— es SDD; lo opuesto al *code-first* y al vibe coding. |
+| **PRD / SRS** | El documento monolítico de requisitos (*Product Requirements Document* / *Software Requirements Specification*). **dai no usa uno**: descompone el QUÉ en épica + US testeables (unidades linkeables y hasheables). Si ya tienes un PRD, `doc-to-backlog` lo **ingiere** y lo vuelve backlog — dai consume el documento, no te obliga a mantenerlo. |
 | **HITL (Human-in-the-loop)** | La IA asiste; la persona decide y firma. Los rituales de coordinación son humanos. |
 | **Vibe coding** | Improvisar código sobre una idea vaga. Lo que el método prohíbe (Art. 7). |
 | **Colapso de roles** | Cuando una persona es PO y dev: los gates se aligeran, el link no desaparece. |
