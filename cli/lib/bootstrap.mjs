@@ -31,10 +31,10 @@ export function skillToPrompt(md) {
 export function envFor(pm) {
   const head = "# Config de dai — completá lo que falte. NUNCA commitees tokens (.env está gitignored).\n";
   if (pm === "clickup") {
-    return head + "DAI_PM=clickup\nDAI_CLICKUP_TOKEN=\nDAI_TRACKER_URL_TEMPLATE=https://app.clickup.com/t/{id}\n";
+    return head + "DAI_PM=clickup\nDAI_CLICKUP_TOKEN=\nDAI_CLICKUP_LIST_ID=\nDAI_TRACKER_URL_TEMPLATE=https://app.clickup.com/t/{id}\n";
   }
   if (pm === "jira") {
-    return head + "DAI_PM=jira\nDAI_JIRA_BASE_URL=\nDAI_JIRA_EMAIL=\nDAI_JIRA_TOKEN=\nDAI_TRACKER_URL_TEMPLATE=\n";
+    return head + "DAI_PM=jira\nDAI_JIRA_BASE_URL=\nDAI_JIRA_EMAIL=\nDAI_JIRA_TOKEN=\nDAI_JIRA_PROJECT=\nDAI_JIRA_ISSUETYPE=Story\nDAI_TRACKER_URL_TEMPLATE=\n";
   }
   return head + "DAI_PM=md\nDAI_MD_US_DIR=.dai/us\n";
 }

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { jiraIssueUrl, jiraCommentUrl, jiraAuthHeaders, jiraIssueToText, jiraAdapter, adfToMarkdown } from "../lib/pm-jira.mjs";
+import { jiraIssueUrl, jiraCommentUrl, jiraAuthHeaders, jiraIssueToText, jiraAdapter, adfToMarkdown, markdownToAdf } from "../lib/pm-jira.mjs";
 import { parseUS } from "../lib/us.mjs";
 import { acHash } from "../lib/ac-hash.mjs";
 import { withMockFetch, mockResponse } from "./helpers.mjs";
@@ -93,4 +93,33 @@ test("jiraIssueToText soporta también descripción string (Server/DC)", () => {
   const us = parseUS(jiraIssueToText(json));
   assert.equal(us.title, "Finalizar la compra del carrito");
   assert.match(us.ac_hash, /^[0-9a-f]{8}$/);
+});
+
+test("markdownToAdf convierte headings, párrafos y bullets a ADF válido", () => {
+  const adf = markdownToAdf("# T\n\nUn párrafo.\n\n## Criterios de aceptación\n- Dado x\n- Cuando y");
+  assert.equal(adf.type, "doc");
+  const types = adf.content.map((n) => n.type);
+  assert.ok(types.includes("heading"));
+  assert.ok(types.includes("bulletList"));
+  const h2 = adf.content.find((n) => n.type === "heading" && n.attrs.level === 2);
+  assert.equal(h2.content[0].text, "Criterios de aceptación");
+});
+
+test("[red] jira createUS postea a /issue con project+issuetype y devuelve el key", async () => {
+  await withMockFetch(() => mockResponse(201, { key: "PROJ-124" }), async (calls) => {
+    const env2 = { ...ENV, DAI_JIRA_PROJECT: "PROJ", DAI_JIRA_ISSUETYPE: "Story" };
+    const r = await jiraAdapter(env2).createUS({ title: "Modal de confirmación", descriptionMarkdown: "# Modal\n\n## Criterios de aceptación\n- Dado x" });
+    assert.equal(calls[0].opts.method, "POST");
+    assert.match(calls[0].url, /\/rest\/api\/3\/issue$/);
+    const body = JSON.parse(calls[0].opts.body);
+    assert.equal(body.fields.project.key, "PROJ");
+    assert.equal(body.fields.summary, "Modal de confirmación");
+    assert.equal(body.fields.description.type, "doc");   // ADF
+    assert.equal(r.id, "PROJ-124");
+    assert.match(r.url, /\/browse\/PROJ-124/);
+  });
+});
+
+test("[red] jira createUS sin DAI_JIRA_PROJECT → error claro", async () => {
+  await assert.rejects(jiraAdapter(ENV).createUS({ title: "X", descriptionMarkdown: "y" }), /DAI_JIRA_PROJECT/);
 });

@@ -14,6 +14,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { parseUS, renderCoverage } from "./us.mjs";
+import { slugify } from "./link-us.mjs";
 import { jiraAdapter } from "./pm-jira.mjs";
 import { clickupAdapter } from "./pm-clickup.mjs";
 
@@ -35,6 +36,13 @@ function mdAdapter(env) {
       mkdirSync(dirname(p), { recursive: true });
       writeFileSync(p, renderCoverage(id, record));
       return p;
+    },
+    createUS({ title, descriptionMarkdown }) {
+      const id = slugify(title);            // sin tracker, el "key" es el slug del título
+      const p = join(dir, `${id}.md`);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(p, descriptionMarkdown.startsWith("# ") ? descriptionMarkdown : `# ${title}\n\n${descriptionMarkdown}`);
+      return { id, url: p };
     },
   };
 }

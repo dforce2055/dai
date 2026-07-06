@@ -230,6 +230,20 @@ async function cmdForge(sub, ref, opts) {
   }
 }
 
+// ── publish: crea la US en el tracker desde un .md (fallback del MCP) ──────────
+async function cmdPublish(file) {
+  if (!file) fail("uso: dai publish <archivo-us.md>", 1);
+  loadEnv();
+  const md = readFileSync(file, "utf8");
+  const title = extractTitle(md);
+  if (!title) fail("no pude extraer el título de la US (falta un '# Título').", 1);
+  const adapter = getAdapter(process.env);
+  if (typeof adapter.createUS !== "function") fail(`el backend '${adapter.kind}' no soporta crear US.`, 1);
+  const r = await adapter.createUS({ title, descriptionMarkdown: md });
+  ok(`US publicada en ${adapter.kind}: ${r.id}${r.url ? `  →  ${r.url}` : ""}`);
+  info(`Próximo paso (el dev abre el CÓMO):  dai link-us ${r.id}`);
+}
+
 // ── pr: crea TU PROPIA PR/MR precargada desde el template + el link ────────────
 // (Distinto de dai-review, que revisa la PR de OTRO. Tu PR la creás y revisás vos.)
 async function cmdPr(opts) {
@@ -589,6 +603,7 @@ switch (cmd) {
   case "check":   cmdCheck().catch((e) => fail(String(e.message))); break;
   case "stamp":   cmdStamp().catch((e) => fail(String(e.message))); break;
   case "forge":   cmdForge(pos[0], pos[1], opts).catch((e) => fail(String(e.message))); break;
+  case "publish": cmdPublish(pos[0]).catch((e) => fail(String(e.message))); break;
   case "pr":      cmdPr(opts).catch((e) => fail(String(e.message))); break;
   case "install": cmdInstall(opts).catch((e) => fail(String(e.message))); break;
   case "init":    cmdInit(pos[0], opts).catch((e) => fail(String(e.message))); break;
@@ -601,6 +616,7 @@ switch (cmd) {
       "Trazabilidad:\n" +
       "  ac-hash <us.md>              calcula el ac_hash (ADR-0001)\n" +
       "  ls [--json]                  lista lo que implementa el repo (ADR-0005)\n" +
+      "  publish <us.md>              crea la US en el tracker (Jira/ClickUp/md) y devuelve el key\n" +
       "  link-us <KEY> [--us <md>]    crea branch + implements.yaml; sin --us trae la US del tracker (ADR-0004)\n" +
       "  link-us <KEY> --resync       re-estampa el ac_hash contra la US viva (tras un ⚠️ de check)\n" +
       "  check                        compara vs la US viva → atrasado (ADR-0003)\n" +

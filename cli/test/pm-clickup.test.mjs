@@ -56,3 +56,18 @@ test("clickupTaskToText + parseUS extraen la US", () => {
   assert.equal(us.spec_version, "v2");
   assert.match(us.ac_hash, /^[0-9a-f]{8}$/);
 });
+
+test("[red] clickup createUS postea a /list/{id}/task y devuelve el id", async () => {
+  await withMockFetch(() => mockResponse(200, { id: "86new", url: "https://ck/t/86new" }), async (calls) => {
+    const r = await clickupAdapter({ DAI_CLICKUP_TOKEN: "pk", DAI_CLICKUP_LIST_ID: "L1" })
+      .createUS({ title: "Modal", descriptionMarkdown: "## Criterios de aceptación\n- Dado x" });
+    assert.equal(calls[0].opts.method, "POST");
+    assert.match(calls[0].url, /\/list\/L1\/task$/);
+    assert.equal(JSON.parse(calls[0].opts.body).name, "Modal");
+    assert.equal(r.id, "86new");
+  });
+});
+
+test("[red] clickup createUS sin DAI_CLICKUP_LIST_ID → error", async () => {
+  await assert.rejects(clickupAdapter({ DAI_CLICKUP_TOKEN: "pk" }).createUS({ title: "X", descriptionMarkdown: "y" }), /DAI_CLICKUP_LIST_ID/);
+});

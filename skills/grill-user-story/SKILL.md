@@ -59,10 +59,14 @@ La US se produce UNA vez con el formato de `../../templates/formato-us.md`. Lo q
    - **ClickUp** (`DAI_PM=clickup`): vía el MCP de ClickUp, crear/actualizar la tarea con los criterios en la descripción, bajo el mismo heading. Devuelve el task ID.
    - Confirmar al usuario con el link al ticket publicado.
    - **Importante:** los criterios SIEMPRE van bajo `## Criterios de aceptación` en la descripción — así `dai link-us`/`check` los encuentran, sin importar el tracker.
-3. **Fallback (si no hay MCP/token, `DAI_PM=md`, o la publicación falla):**
-   - Escribir un `.md` con **exactamente el mismo formato** (el de `formato-us.md`), listo para copiar y pegar en el tracker a mano.
-   - Avisar claramente el motivo (*sin MCP / sin token / DAI_PM=md / error X*).
-   - El contenido de los dos caminos es **idéntico** — solo cambia si lo sube la skill o lo pega una persona.
+3. **Fallback SIN MCP → publicar con el CLI (`dai publish`):**
+   - Si NO hay MCP del tracker conectado (pero sí `DAI_PM=jira|clickup` + token en `.env`):
+     escribí la US como `.md` (formato `formato-us.md`) y publicala con el comando:
+     **`dai publish <ruta-del-md>`** → crea el issue/tarea vía REST y devuelve el key.
+     (Jira necesita además `DAI_JIRA_PROJECT` en el `.env`.)
+   - Si tampoco hay token (o `DAI_PM=md`): dejá solo el `.md` para que la persona lo
+     pegue a mano en el tracker. Avisá el motivo.
+   - El contenido es **idéntico** en los tres caminos (MCP / `dai publish` / manual).
 4. **Estado.** Dejar la US en `pulida`. Ofrecer que el dev siga con `dai link-us <ID>` → `opsx:propose` (lado técnico).
 
 ## Hand-off

@@ -39,5 +39,16 @@ export function clickupAdapter(env) {
       if (!res.ok) throw new Error(`clickup ${res.status}: ${await res.text()}`);
       return `task ${id} (comentario)`;
     },
+    async createUS({ title, descriptionMarkdown }) {
+      const list = env.DAI_CLICKUP_LIST_ID;
+      if (!list) throw new Error("falta DAI_CLICKUP_LIST_ID en el .env (la lista donde crear la tarea).");
+      const res = await fetch(`${API}/list/${encodeURIComponent(list)}/task`, {
+        method: "POST", headers: clickupAuthHeaders(env),
+        body: JSON.stringify({ name: title, markdown_content: descriptionMarkdown }),
+      });
+      if (!res.ok) throw new Error(`clickup ${res.status}: ${await res.text()}`);
+      const j = await res.json();
+      return { id: j.id, url: j.url || null };
+    },
   };
 }

@@ -38,6 +38,28 @@ export function adfToMarkdown(node) {
   }
 }
 
+// ── markdown → ADF (para CREAR el issue: la descripción va en ADF) ────────────
+// Parser de bloques: headings, párrafos y bullets. Suficiente para el formato de US.
+export function markdownToAdf(md) {
+  const clean = (s) => s.replace(/[*_`]+/g, "").trim();
+  const content = [];
+  let para = [], bullets = null;
+  const flushPara = () => { if (para.length) { const t = clean(para.join(" ")); if (t) content.push({ type: "paragraph", content: [{ type: "text", text: t }] }); para = []; } };
+  const flushBullets = () => { if (bullets) { if (bullets.length) content.push({ type: "bulletList", content: bullets }); bullets = null; } };
+  for (const raw of String(md || "").split(/\r?\n/)) {
+    const line = raw.replace(/\s+$/, "");
+    const h = line.match(/^(#{1,6})\s+(.*)$/);
+    const b = line.match(/^\s*[-*+]\s+(?:\[[ xX]\]\s+)?(.*)$/);
+    if (h) { flushPara(); flushBullets(); const t = clean(h[2]); if (t) content.push({ type: "heading", attrs: { level: h[1].length }, content: [{ type: "text", text: t }] }); }
+    else if (b) { flushPara(); if (!bullets) bullets = []; const t = clean(b[1]); if (t) bullets.push({ type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: t }] }] }); }
+    else if (line.trim() === "") { flushPara(); flushBullets(); }
+    else { flushBullets(); para.push(line.trim()); }
+  }
+  flushPara(); flushBullets();
+  if (content.length === 0) content.push({ type: "paragraph", content: [{ type: "text", text: " " }] });
+  return { type: "doc", version: 1, content };
+}
+
 // Arma el texto de la US: summary (campo) + descripción (ADF→md o string).
 export function jiraIssueToText(json) {
   const f = json.fields || {};
@@ -81,6 +103,21 @@ export function jiraAdapter(env) {
       });
       if (!res.ok) throw new Error(`jira ${res.status}: ${await res.text()}`);
       return `${trim(base)}/browse/${id}`;
+    },
+    async createUS({ title, descriptionMarkdown }) {
+      const project = env.DAI_JIRA_PROJECT;
+      const issuetype = env.DAI_JIRA_ISSUETYPE || "Story";
+      if (!project) throw new Error("falta DAI_JIRA_PROJECT en el .env (la clave del proyecto donde crear el issue).");
+      const res = await fetch(`${trim(base)}/rest/api/3/issue`, {
+        method: "POST", headers: jiraAuthHeaders(env),
+        body: JSON.stringify({ fields: {
+          project: { key: project }, issuetype: { name: issuetype },
+          summary: title, description: markdownToAdf(descriptionMarkdown),
+        } }),
+      });
+      if (!res.ok) throw new Error(`jira ${res.status}: ${await res.text()}`);
+      const j = await res.json();
+      return { id: j.key, url: `${trim(base)}/browse/${j.key}` };
     },
   };
 }

@@ -107,7 +107,7 @@ Guía completa con salidas reales en [`docs/PROBAR.md`](docs/PROBAR.md); un caso
 |---|---|---|---|
 | 1 | **Instalar el CLI** | `npm i -g @dforce2055/dai` (o `npm link` en dev) · `dai --version` | dev |
 | 2 | **Bootstrap del repo** | `dai init` → `.dai` + Claude/Copilot + config + PR template | dev/lead |
-| 3 | **Definir el QUÉ** | `/grill-user-story` (una US) · `/grill-epic` (algo grande → varias US) · `/doc-to-backlog` (un PDF/Word → backlog de épicas+US) | PO / analista |
+| 3 | **Definir + publicar el QUÉ** | `/grill-user-story` (una US) · `/grill-epic` · `/doc-to-backlog`. La skill publica en el tracker vía MCP, o con **`dai publish <us.md>`** (fallback CLI, sin MCP) | PO / analista |
 | 4 | **Linkear la US** | `dai link-us <ID>` → branch + `openspec/changes/<id>/implements.yaml` | dev |
 | 5 | **Verificar / listar** | `dai check` (¿al día?) · `dai ls` (qué implementa el repo) | dev |
 | 6 | **Resincronizar** *(si el PO editó la US)* | `dai link-us <ID> --resync` | dev |
@@ -132,6 +132,7 @@ Guía completa con salidas reales en [`docs/PROBAR.md`](docs/PROBAR.md); un caso
 |---|---|
 | `dai init [<repo>]` | scaffolder interactivo del repo. Flags: `--for claude\|copilot\|both` (asistente, ver arriba) · `--pm md\|jira\|clickup` (tracker) · `--openspec` |
 | `dai install [--global \| --local <repo>] [--force] [--dry-run]` | instala/actualiza las skills de IA en Claude. `--force` re-copia aunque ya existan (para **actualizar** tras una nueva versión). Ej: `dai install --local . --force` (este repo) · `dai install --global --force` (tu Claude) |
+| `dai publish <us.md>` | crea la US en el tracker (Jira/ClickUp/md) desde un `.md` y devuelve el key. Es el fallback del MCP para publicar sin el asistente |
 | `dai link-us <ID> [--us <md>]` | crea branch + `implements.yaml`; sin `--us` trae la US del tracker |
 | `dai link-us <ID> --resync` | re-estampa el `ac_hash` contra la US viva (tras un ⚠️ de check) |
 | `dai check` | compara tu código vs la US viva → ✅ al día / ⚠️ atrasado (exit code = gate de PR) |
