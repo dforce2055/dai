@@ -25,7 +25,7 @@ npm whoami         # confirma que estás logueado
 ## 3. Chequeos previos
 
 ```bash
-npm test                   # 48 tests (también corre solo en prepublishOnly)
+npm test                   # 87 tests (también corre solo en prepublishOnly)
 npm pack --dry-run         # revisa QUÉ se publica (sin tests, sin .env)
 node cli/dai.mjs --version # dai v0.1.0
 ```

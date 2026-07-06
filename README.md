@@ -1,13 +1,11 @@
 # dai — Desarrollo Asistido por IA
 
+[![npm](https://img.shields.io/npm/v/@dforce2055/dai.svg)](https://www.npmjs.com/package/@dforce2055/dai)
 [![CI](https://github.com/dforce2055/dai/actions/workflows/ci.yml/badge.svg)](https://github.com/dforce2055/dai/actions/workflows/ci.yml)
 [![license: GPL-3.0](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](package.json)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![sitio](https://img.shields.io/badge/sitio-dforce2055.github.io%2Fdai-6366f1.svg)](https://dforce2055.github.io/dai/)
-<!-- El badge de npm se agrega tras `npm publish` (snippet en RELEASING.md):
-[![npm](https://img.shields.io/npm/v/@dforce2055/dai.svg)](https://www.npmjs.com/package/@dforce2055/dai)
--->
 
 
 > **dai ayuda a los equipos a desarrollar software en menos tiempo y con más calidad** —
