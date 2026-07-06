@@ -60,9 +60,10 @@ la forma. Nunca reescribas el formato inline.
 1. **Armar la épica** con el formato de `templates/epica.md`: metadata (`ID`, autor,
    estado, US que la componen) + objetivo + alcance (in/out) + lista de US + métricas +
    dependencias.
-2. **Publicar en el tracker:** si hay MCP de Jira/ClickUp o token, crear el ticket de
-   épica. Las US hijas se crean como tickets vinculados (o quedan listadas para crearse).
-   Fallback: dejar un `.md` con el mismo formato para pegar a mano.
+2. **Publicar en el tracker** (según `DAI_PM` del `.env`: `jira` → MCP de Atlassian ·
+   `clickup` → MCP de ClickUp · `md`/sin token → `.md` para pegar a mano). **No asumas
+   el tracker: leé `DAI_PM` primero.** Crear el ticket de épica; las US hijas se crean
+   como tickets vinculados (o quedan listadas para crearse).
 3. **Handoff.** Ofrecer pasar **cada US hija** por `/grill-user-story` para convertirla
    de "título en la lista" a US testeable con criterios. Ese es el paso que las hace
    linkeables (`dai link-us`).

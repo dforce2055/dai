@@ -1,6 +1,6 @@
 ---
 name: grill-user-story
-description: Interroga a un PO o analista funcional para producir una User Story funcional y testeable siguiendo el formato del modelo de trazabilidad — o pule una US vaga existente. Se queda a nivel funcional/usuario y se niega a derivar en diseño técnico o a emitir una US con criterios no testeables. Al terminar, PUBLICA la US en Jira si hay MCP/token; si falla, deja un .md con el mismo formato para copiar y pegar. Invocar como /grill-user-story, opcionalmente con un título, un ID/URL de Jira, y/o una US rústica existente. Usar antes de opsx:propose, o cuando alguien dice "necesito una US", "convertí esto en una US como corresponde", o "esta historia está muy vaga".
+description: Interroga a un PO o analista funcional para producir una User Story funcional y testeable siguiendo el formato del modelo de trazabilidad — o pule una US vaga existente. Se queda a nivel funcional/usuario y se niega a derivar en diseño técnico o a emitir una US con criterios no testeables. Al terminar, PUBLICA la US en el tracker configurado del repo (Jira o ClickUp, según DAI_PM del .env) usando su MCP; si no hay MCP/token, deja un .md con el mismo formato para copiar y pegar. Invocar como /grill-user-story, opcionalmente con un título, un ID/URL del tracker, y/o una US rústica existente. Usar antes de opsx:propose, o cuando alguien dice "necesito una US", "convertí esto en una US como corresponde", o "esta historia está muy vaga".
 ---
 
 # grill-user-story
@@ -11,8 +11,8 @@ Llená [templates/user-story.md](templates/user-story.md). El formato completo y
 
 ## Por qué el formato importa (modelo de trazabilidad)
 
-Esta US es el **QUÉ linkeable**. El `implements.yaml` del repo la va a referenciar por su **ID de Jira**, y el CI la usa para estampar cobertura. Por eso la salida DEBE tener:
-- **ID** = el ticket de Jira (`ABC-###`) — identidad estable.
+Esta US es el **QUÉ linkeable**. El `implements.yaml` del repo la va a referenciar por su **ID del tracker**, y `dai stamp` la usa para estampar cobertura. Por eso la salida DEBE tener:
+- **ID** = el ticket del tracker (`ABC-###` en Jira, `86xxxx` en ClickUp) — identidad estable.
 - **spec_version** = `v1` al nacer.
 - **Criterios de aceptación en Gherkin** — es el bloque que se hashea (`ac_hash`); tienen que ser estables y testeables.
 - **Autor** = quién la definió.
@@ -34,7 +34,12 @@ Si no viene nada, pedir título y si hay un borrador existente.
 
 ## Proceso
 
-1. **Resolver inputs.** Obtener título e ID de Jira (si existe). Si se refina, leer la US y anotar — para uno mismo — qué secciones del formato faltan o están flojas: rol genérico ("el usuario"), falta el "para", sin flujo de excepción, solución bakeada, ACs vagos.
+0. **Detectar el tracker (SIEMPRE, antes de nada).** Leé el archivo `.env` del repo y mirá `DAI_PM`:
+   - `DAI_PM=jira` → publicás en **Jira** (base: `DAI_JIRA_BASE_URL`), vía el MCP de Atlassian/Jira.
+   - `DAI_PM=clickup` → publicás en **ClickUp**, vía el MCP de ClickUp.
+   - `DAI_PM=md` (o sin `.env`) → no hay tracker: dejás la US como `.md`.
+   **No asumas el tracker** — depende del `.env`. Si no hay `.env`, preguntá cuál usa el equipo.
+1. **Resolver inputs.** Obtener título e ID del tracker (si existe). Si se refina, leer la US y anotar — para uno mismo — qué secciones del formato faltan o están flojas: rol genérico ("el usuario"), falta el "para", sin flujo de excepción, solución bakeada, ACs vagos.
 2. **Grillar, un eje por vez.** No tirar un cuestionario — preguntar, escuchar, profundizar, y seguir. Cubrir en orden:
    - **Quién** — el usuario/rol real. Rechazar "el usuario"; conseguir el actor concreto.
    - **Job-to-be-done** — qué intenta lograr de verdad, y el *por qué* (el "para").
@@ -44,19 +49,21 @@ Si no viene nada, pedir título y si hay un borrador existente.
 3. **Chequeo de tamaño (INVEST).** Si los flujos y ACs desbordan y la historia se dispersa, es demasiado grande para una sola US. No seguir empujando: **promoverla a una épica** con `/grill-epic` (que la parte en varias US independientes) y después volver acá para grillar cada US hija. Una US que no entra en un sprint es la señal de que hay una épica adentro.
 4. **Emitir + publicar** (ver abajo).
 
-## Salida — publicar en Jira, con fallback a .md
+## Salida — publicar en el tracker (según `DAI_PM`), con fallback a .md
 
-La US se produce UNA vez con el formato de `../../formato-us.md`. Lo que cambia es **cómo se entrega**:
+La US se produce UNA vez con el formato de `../../templates/formato-us.md`. Lo que cambia es **dónde se publica** — lo definió el paso 0:
 
 1. **Armar la US** completa: metadata de trazabilidad (`ID`, `spec_version: v1`, autor, repos esperados) + historia + contexto + casos de uso + criterios Gherkin + fuera de scope + reglas + dependencias + métricas.
-2. **Intentar publicar en Jira:**
-   - Si hay un **MCP de Jira/Atlassian** conectado, o un **token de acceso** disponible (p. ej. `JIRA_BASE_URL` + `JIRA_TOKEN`), crear o actualizar el ticket: título, descripción, y los **criterios de aceptación** en su campo. Guardar `spec_version` (custom field o etiqueta) y el autor. El ticket devuelve/usa el key `ABC-###` como identidad del QUÉ.
+2. **Publicar en el tracker que dice `DAI_PM`:**
+   - **Jira** (`DAI_PM=jira`): vía el MCP de Atlassian, crear/actualizar el issue en `DAI_JIRA_BASE_URL` — título (summary), descripción, y los **criterios bajo un heading `## Criterios de aceptación`** (es lo que `dai` hashea). El issue devuelve el key (`ABC-###`).
+   - **ClickUp** (`DAI_PM=clickup`): vía el MCP de ClickUp, crear/actualizar la tarea con los criterios en la descripción, bajo el mismo heading. Devuelve el task ID.
    - Confirmar al usuario con el link al ticket publicado.
-3. **Fallback (si no hay MCP/token o la publicación falla):**
-   - Escribir un archivo `.md` con **exactamente el mismo formato** (el de `formato-us.md`), listo para que el analista **copie y pegue en Jira a mano**.
-   - Avisar claramente: *"No pude publicar en Jira (motivo: sin token / sin MCP / error X). Acá está el `.md` con el formato idéntico para copiar y pegar."*
-   - El contenido de los dos caminos es **idéntico** — la única diferencia es que uno lo sube solo y el otro lo pega una persona.
-4. **Estado.** Dejar la US en `pulida`. Ofrecer pasarla a `opsx:propose` (lado técnico) como próximo paso.
+   - **Importante:** los criterios SIEMPRE van bajo `## Criterios de aceptación` en la descripción — así `dai link-us`/`check` los encuentran, sin importar el tracker.
+3. **Fallback (si no hay MCP/token, `DAI_PM=md`, o la publicación falla):**
+   - Escribir un `.md` con **exactamente el mismo formato** (el de `formato-us.md`), listo para copiar y pegar en el tracker a mano.
+   - Avisar claramente el motivo (*sin MCP / sin token / DAI_PM=md / error X*).
+   - El contenido de los dos caminos es **idéntico** — solo cambia si lo sube la skill o lo pega una persona.
+4. **Estado.** Dejar la US en `pulida`. Ofrecer que el dev siga con `dai link-us <ID>` → `opsx:propose` (lado técnico).
 
 ## Hand-off
 
