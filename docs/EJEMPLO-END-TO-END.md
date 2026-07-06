@@ -149,7 +149,7 @@ de crear la orden: no vacío, y todos sus productos con stock.
 ## Paso 3 — Rama: `link-us` ata el código al QUÉ
 
 ```bash
-$ dai link-us ABC-482 --us us.md
+$ dai link-us ABC-482 --us us.md --change finalizar-compra
 ✓ branch:  feature/ABC-482-finalizar-la-compra-del-carrito
 ✓ archivo: openspec/changes/finalizar-compra/implements.yaml  (ac_hash 7f3a9c2e)
 ```
