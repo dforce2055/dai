@@ -547,15 +547,30 @@ function cmdDocs(dest) {
 function cmdDoctor() {
   loadEnv();
   info(`dai doctor — versión v${readFileSync(join(ROOT, "VERSION"), "utf8").trim()}`);
-  info(`skills en ${SKILLS_DIR}:`);
+
+  // Una skill sirve si está en el repo actual (.claude/skills, la puso `dai init`)
+  // O global (~/.claude/skills, la puso `dai install`). Reportamos dónde.
+  const localDir = join(process.cwd(), ".claude", "skills");
+  info("skills (repo local / global ~/.claude/skills):");
   for (const name of readdirSync(join(ROOT, "skills"))) {
-    existsSync(join(SKILLS_DIR, name)) ? ok(name) : warn(`${name} — no instalada (dai install)`);
+    const local = existsSync(join(localDir, name)), global = existsSync(join(SKILLS_DIR, name));
+    if (local && global) ok(`${name}  (local + global)`);
+    else if (local) ok(`${name}  (local, este repo)`);
+    else if (global) ok(`${name}  (global)`);
+    else warn(`${name} — no instalada (dai init en el repo, o dai install global)`);
   }
+
   info("adaptador de PM:");
   const pm = process.env.DAI_PM || "md";
   ok(`DAI_PM=${pm}`);
-  if (pm === "jira" && !process.env.DAI_JIRA_BASE_URL) warn("falta DAI_JIRA_BASE_URL");
-  if (pm === "clickup" && !process.env.DAI_CLICKUP_TOKEN) warn("falta DAI_CLICKUP_TOKEN");
+  if (pm === "jira") {
+    if (!process.env.DAI_JIRA_BASE_URL) warn("falta DAI_JIRA_BASE_URL en el .env");
+    if (!process.env.DAI_JIRA_EMAIL) warn("falta DAI_JIRA_EMAIL en el .env");
+    if (!process.env.DAI_JIRA_TOKEN) warn("falta DAI_JIRA_TOKEN en el .env"); else ok("token de Jira presente");
+  }
+  if (pm === "clickup") {
+    if (!process.env.DAI_CLICKUP_TOKEN) warn("falta DAI_CLICKUP_TOKEN en el .env"); else ok("token de ClickUp presente");
+  }
 }
 
 // ── version ───────────────────────────────────────────────────────────────────
