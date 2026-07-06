@@ -3,7 +3,7 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
-## [0.1.0] — no publicado
+## [0.1.0] — 2026-07-06
 
 Primera versión: metodología completa + CLI de trazabilidad, probado end-to-end contra
 ClickUp y Jira Cloud.
