@@ -30,7 +30,7 @@
 
 Empieza en el más chico que funcione. Sube de nivel cuando el dolor lo justifique.
 
-### 2. ¿Cómo calibras DoR y DoD?
+### 2. ¿Cómo calibras [DoR](../../templates/definition-of-ready.md) y [DoD](../../templates/definition-of-done.md)?
 Ajustas los checklists (`templates/definition-of-*.md`) a tu realidad, **sin tocar
 las invariantes**: criterios testeables (Art. 3), el link autorado una vez (Art. 9)
 y la trazabilidad derivada (Art. 10) no se aflojan en ningún nivel.
@@ -46,4 +46,8 @@ tan dañino como no tener método: agrega fricción sin resolver un dolor real (
 
 ## Tus herramientas
 
-`MANIFIESTO.md` · `METODOLOGIA.md` (el dial de niveles) · `governance/` · los ADRs · la retro
+- `MANIFIESTO.md`
+- [`METODOLOGIA.md`](../METODOLOGIA.md) (el dial de niveles)
+- `governance/`
+- los ADRs
+- la retro
