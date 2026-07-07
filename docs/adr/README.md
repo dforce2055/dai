@@ -13,6 +13,7 @@ decisión cambia, se escribe un ADR nuevo que supersede al viejo. Molde en
 | [0005](0005-superficie-comandos-y-stamp.md) | Superficie de comandos (`ls`/`check`/`stamp`) y contenido del stamp (branch + commit-ancla) | aceptado |
 | [0006](0006-distribucion-y-licencia.md) | Distribución (npm + fallback) y licencia (GPLv3) | aceptado |
 | [0007](0007-modelo-de-autenticacion.md) | Modelo de auth: SSH para git, tokens scopeados para forge/tracker, sin contraseñas | aceptado |
+| [0008](0008-estrategia-de-i18n.md) | Estrategia de i18n: fuente única (español) + traducciones derivadas, `DAI_LANG` en el CLI, por fases | propuesto |
 
 > Estas son las decisiones que cierran las "Decisiones abiertas" de
 > [`METODOLOGIA.md §7`](../METODOLOGIA.md) y las enmiendas al
