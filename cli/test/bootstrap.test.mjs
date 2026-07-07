@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseFrontmatter, skillToPrompt, constitution, envFor } from "../lib/bootstrap.mjs";
+import { parseFrontmatter, skillToPrompt, skillToCursor, constitution, constitutionCursorRule, envFor } from "../lib/bootstrap.mjs";
 
 test("envFor genera el .env por backend", () => {
   assert.match(envFor("md"), /DAI_PM=md/);
@@ -42,12 +42,30 @@ test("skillToPrompt cambia el frontmatter a formato Copilot y conserva el cuerpo
   assert.doesNotMatch(out, /^name:/m); // el frontmatter de dai no viaja
 });
 
+test("skillToCursor conserva name/body y serializa description", () => {
+  const out = skillToCursor(SKILL);
+  assert.match(out, /^---\nname: grill-user-story\n/);
+  assert.match(out, /description: "Interroga a un PO/);
+  assert.match(out, /El cuerpo con la lógica de la skill\./);
+  assert.doesNotMatch(out, /^mode: agent$/m);
+  assert.doesNotMatch(out, /^disable-model-invocation:/m);
+});
+
 test("constitution difiere el encabezado por asistente pero comparte el núcleo", () => {
-  const c = constitution("claude"), p = constitution("copilot");
+  const c = constitution("claude"), p = constitution("copilot"), r = constitution("cursor");
   assert.match(c, /Constitución del proyecto/);
   assert.match(p, /Instrucciones de Copilot/);
+  assert.match(r, /\.cursor\/skills\//);
   for (const core of [/No vibe coding/, /TDD/, /link se autora una vez/, /SSH/]) {
     assert.match(c, core);
     assert.match(p, core);
+    assert.match(r, core);
   }
+});
+
+test("constitutionCursorRule genera rule de Cursor alwaysApply", () => {
+  const out = constitutionCursorRule();
+  assert.match(out, /^---\ndescription: /);
+  assert.match(out, /\nalwaysApply: true\n/);
+  assert.match(out, /las skills de dai \(`\.cursor\/skills\/`\)/);
 });

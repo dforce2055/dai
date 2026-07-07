@@ -28,7 +28,7 @@ import { parsePrRef, getPR, postComment } from "./lib/forge-api.mjs";
 import { composePrBody, prTitle, forgeTool } from "./lib/pr.mjs";
 import { dirsEqual } from "./lib/fsutil.mjs";
 import { parseFlags } from "./lib/args.mjs";
-import { skillToPrompt, constitution, envFor } from "./lib/bootstrap.mjs";
+import { skillToPrompt, skillToCursor, constitution, constitutionCursorRule, envFor } from "./lib/bootstrap.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -40,7 +40,9 @@ const ok = (m) => process.stdout.write(`✓ ${m}\n`);
 const info = (m) => process.stdout.write(`› ${m}\n`);
 const warn = (m) => process.stdout.write(`⚠ ${m}\n`);
 const ROOT = join(HERE, "..");            // raíz del paquete dai (cli/ está adentro)
-const SKILLS_DIR = process.env.CLAUDE_SKILLS_DIR || join(homedir(), ".claude", "skills");
+const CLAUDE_SKILLS_DIR = process.env.CLAUDE_SKILLS_DIR || join(homedir(), ".claude", "skills");
+const CURSOR_SKILLS_DIR = process.env.CURSOR_SKILLS_DIR || join(homedir(), ".cursor", "skills");
+const VALID_FOR = ["claude", "copilot", "both", "cursor", "all"];
 function git(args, opts = {}) {
   // stderr en 'pipe' (no 'inherit') para no filtrar errores de git a la salida;
   // quedan en e.stderr para quien quiera inspeccionarlos.
@@ -412,6 +414,12 @@ async function cmdPr(opts) {
 async function cmdInstall(opts) {
   const skillsSrc = join(ROOT, "skills");
   const skills = readdirSync(skillsSrc).filter((n) => statSync(join(skillsSrc, n)).isDirectory());
+  const installFor = typeof opts.for === "string" ? opts.for.toLowerCase() : "all";
+  if (!["claude", "cursor", "all"].includes(installFor)) {
+    fail(`--for inválido: '${installFor}' (claude|cursor|all)`);
+  }
+  const wantClaude = installFor === "claude" || installFor === "all";
+  const wantCursor = installFor === "cursor" || installFor === "all";
   const interactive = process.stdin.isTTY && !opts.global && opts.local === undefined;
   const rl = interactive ? createInterface({ input: process.stdin, output: process.stdout }) : null;
 
@@ -422,25 +430,54 @@ async function cmdInstall(opts) {
     return a === "l" ? { scope: "local", repo: process.cwd() } : a === "s" ? { scope: "skip" } : { scope: "global" };
   };
 
-  info(`Instalando skills de dai`);
-  for (const name of skills) {
-    const { scope, repo } = await scopeFor(name);
-    if (scope === "skip") { warn(`salto ${name}`); continue; }
-    const targetDir = scope === "local" ? join(repo, ".claude", "skills") : SKILLS_DIR;
-    const src = join(skillsSrc, name), target = join(targetDir, name);
+  const installOne = async ({ name, scope, repo, kind }) => {
+    const src = join(skillsSrc, name);
+    const targetDir = scope === "local"
+      ? join(repo, kind === "cursor" ? ".cursor" : ".claude", "skills")
+      : kind === "cursor" ? CURSOR_SKILLS_DIR : CLAUDE_SKILLS_DIR;
+    const target = join(targetDir, name);
+    const label = kind === "cursor" ? `${name} (cursor)` : `${name} (claude)`;
+
+    let sameAsSource = false;
     if (existsSync(target)) {
-      if (dirsEqual(src, target)) { ok(`${name} — ya instalada e idéntica, salto`); continue; }
+      if (kind === "claude") {
+        sameAsSource = dirsEqual(src, target);
+      } else {
+        const tempRoot = mkdtempSync(join(tmpdir(), "dai-cursor-skill-"));
+        const tempTarget = join(tempRoot, name);
+        mkdirSync(tempRoot, { recursive: true });
+        cpSync(src, tempTarget, { recursive: true });
+        const srcMd = readFileSync(join(src, "SKILL.md"), "utf8");
+        writeFileSync(join(tempTarget, "SKILL.md"), skillToCursor(srcMd));
+        sameAsSource = dirsEqual(tempTarget, target);
+        rmSync(tempRoot, { recursive: true, force: true });
+      }
+
+      if (sameAsSource) { ok(`${label} — ya instalada e idéntica, salto`); return; }
       if (!opts.force) {
-        if (!interactive) { warn(`${name} existe y difiere — salto (usa --force)`); continue; }
-        const a = (await rl.question(`   ${name} existe y DIFIERE. ¿[p]isar · [s]altar? (s) `)).trim().toLowerCase();
-        if (a !== "p") { warn(`salto ${name}`); continue; }
+        if (!interactive) { warn(`${label} existe y difiere — salto (usa --force)`); return; }
+        const a = (await rl.question(`   ${label} existe y DIFIERE. ¿[p]isar · [s]altar? (s) `)).trim().toLowerCase();
+        if (a !== "p") { warn(`salto ${label}`); return; }
       }
     }
-    if (opts.dryRun) { info(`[dry-run] ${name} → ${targetDir}`); continue; }
+
+    if (opts.dryRun) { info(`[dry-run] ${label} → ${targetDir}`); return; }
     rmSync(target, { recursive: true, force: true });
     mkdirSync(targetDir, { recursive: true });
     cpSync(src, target, { recursive: true });
-    ok(`${name} → ${targetDir}`);
+    if (kind === "cursor") {
+      const srcMd = readFileSync(join(src, "SKILL.md"), "utf8");
+      writeFileSync(join(target, "SKILL.md"), skillToCursor(srcMd));
+    }
+    ok(`${label} → ${targetDir}`);
+  };
+
+  info(`Instalando skills de dai (${installFor})`);
+  for (const name of skills) {
+    const { scope, repo } = await scopeFor(name);
+    if (scope === "skip") { warn(`salto ${name}`); continue; }
+    if (wantClaude) await installOne({ name, scope, repo, kind: "claude" });
+    if (wantCursor) await installOne({ name, scope, repo, kind: "cursor" });
   }
   if (rl) rl.close();
 }
@@ -483,12 +520,14 @@ async function cmdInit(repo, opts) {
   // Preguntas primero (después cerramos readline para liberar stdin a los instaladores).
   let forOpt = typeof opts.for === "string" ? opts.for.toLowerCase() : null;
   if (!forOpt && rl) forOpt = await askMenu(rl, "¿Para qué asistente de IA preparo el repo? (genera las skills en su formato)", [
-    { value: "both", label: "Claude + Copilot — equipo mixto (recomendado ante la duda)" },
+    { value: "all", label: "Todos (Claude + Copilot + Cursor) — por defecto" },
+    { value: "both", label: "Claude + Copilot — equipo mixto (sin Cursor)" },
     { value: "claude", label: "Solo Claude (Code / Desktop)" },
     { value: "copilot", label: "Solo Copilot (en VS Code / JetBrains)" },
-  ], "both");
-  forOpt = forOpt || "both";
-  if (!["claude", "copilot", "both"].includes(forOpt)) fail(`--for inválido: '${forOpt}' (claude|copilot|both)`);
+    { value: "cursor", label: "Solo Cursor (Agent)" },
+  ], "all");
+  forOpt = forOpt || "all";
+  if (!VALID_FOR.includes(forOpt)) fail(`--for inválido: '${forOpt}' (${VALID_FOR.join("|")})`);
 
   let pm = typeof opts.pm === "string" ? opts.pm.toLowerCase() : null;
   if (!pm && rl) pm = await askMenu(rl, "¿Dónde van a vivir las User Stories?", [
@@ -515,8 +554,9 @@ async function cmdInit(repo, opts) {
   if (rl) rl.close();
 
   // ── Generación ───────────────────────────────────────────────────────────────
-  const wantClaude = forOpt !== "copilot";
-  const wantCopilot = forOpt !== "claude";
+  const wantClaude = forOpt === "claude" || forOpt === "both" || forOpt === "all";
+  const wantCopilot = forOpt === "copilot" || forOpt === "both" || forOpt === "all";
+  const wantCursor = forOpt === "cursor" || forOpt === "all";
   process.stdout.write("\n  Configurando…\n\n");
 
   const dai = join(repo, ".dai");
@@ -554,6 +594,20 @@ async function cmdInit(repo, opts) {
     writeFileSync(join(repo, ".github", "copilot-instructions.md"), constitution("copilot"));
     ok(`Copilot:      .github/prompts/ (${skills.length}) + copilot-instructions.md`);
   }
+  if (wantCursor) {
+    const dir = join(repo, ".cursor", "skills");
+    mkdirSync(dir, { recursive: true });
+    for (const name of skills) {
+      const src = join(skillsSrc, name);
+      const target = join(dir, name);
+      cpSync(src, target, { recursive: true });
+      const srcMd = readFileSync(join(src, "SKILL.md"), "utf8");
+      writeFileSync(join(target, "SKILL.md"), skillToCursor(srcMd));
+    }
+    mkdirSync(join(repo, ".cursor", "rules"), { recursive: true });
+    writeFileSync(join(repo, ".cursor", "rules", "dai-constitution.mdc"), constitutionCursorRule());
+    ok(`Cursor:       .cursor/skills/ (${skills.length}) + .cursor/rules/dai-constitution.mdc`);
+  }
 
   // ── OpenSpec ───────────────────────────────────────────────────────────────
   // OpenSpec tiene modo NO-interactivo (`openspec init --tools <lista> --force`),
@@ -561,7 +615,13 @@ async function cmdInit(repo, opts) {
   // dejaba a medias porque se intentaba correr su modo interactivo anidado.)
   process.stdout.write("\n");
   const openspecPresent = () => { try { execFileSync(npmBin("openspec"), ["--version"], { stdio: "ignore" }); return true; } catch { return false; } };
-  const osTools = { claude: "claude", copilot: "github-copilot", both: "claude,github-copilot" }[forOpt] || "claude,github-copilot";
+  const osTools = {
+    claude: "claude",
+    copilot: "github-copilot",
+    cursor: "cursor",
+    both: "claude,github-copilot",
+    all: "claude,github-copilot,cursor",
+  }[forOpt] || "claude,github-copilot,cursor";
   const osHint = "para sumarlo después:  npm i -g @fission-ai/openspec@latest  &&  openspec init --tools " + osTools;
   if (hasOpenspec) {
     ok("OpenSpec:     ya inicializado en el repo");
@@ -617,12 +677,28 @@ function cmdDoctor() {
   const localDir = join(process.cwd(), ".claude", "skills");
   info("skills (repo local / global ~/.claude/skills):");
   for (const name of readdirSync(join(ROOT, "skills"))) {
-    const local = existsSync(join(localDir, name)), global = existsSync(join(SKILLS_DIR, name));
+    const local = existsSync(join(localDir, name)), global = existsSync(join(CLAUDE_SKILLS_DIR, name));
     if (local && global) ok(`${name}  (local + global)`);
     else if (local) ok(`${name}  (local, este repo)`);
     else if (global) ok(`${name}  (global)`);
     else warn(`${name} — no instalada (dai init en el repo, o dai install global)`);
   }
+
+  const cursorLocalDir = join(process.cwd(), ".cursor", "skills");
+  info("skills Cursor (repo local / global ~/.cursor/skills):");
+  for (const name of readdirSync(join(ROOT, "skills"))) {
+    const local = existsSync(join(cursorLocalDir, name)), global = existsSync(join(CURSOR_SKILLS_DIR, name));
+    if (local && global) ok(`${name}  (local + global)`);
+    else if (local) ok(`${name}  (local, este repo)`);
+    else if (global) ok(`${name}  (global)`);
+    else warn(`${name} — no instalada en Cursor (dai init --for cursor|all, o dai install --for cursor|all)`);
+  }
+  const localRule = join(process.cwd(), ".cursor", "rules", "dai-constitution.mdc");
+  const globalRule = join(homedir(), ".cursor", "rules", "dai-constitution.mdc");
+  if (existsSync(localRule) && existsSync(globalRule)) ok("constitución Cursor (local + global)");
+  else if (existsSync(localRule)) ok("constitución Cursor (local)");
+  else if (existsSync(globalRule)) ok("constitución Cursor (global)");
+  else warn("falta constitución Cursor (dai-constitution.mdc)");
 
   info("adaptador de PM:");
   const pm = process.env.DAI_PM || "md";
@@ -680,9 +756,9 @@ switch (cmd) {
       "  pr [--assignee u] [--base b] [--draft] [--yes]   crea TU PR/MR precargada (muestra + confirma)\n" +
       "  forge comment <ref> --body-file <f> · forge pr <ref>   comentar/leer una PR ajena (github/gitlab)\n\n" +
       "Instalación:\n" +
-      "  install [--global | --local <repo>] [--force] [--dry-run]   skills → Claude\n" +
+      "  install [--global | --local <repo>] [--force] [--dry-run] [--for claude|cursor|all]   skills → Claude/Cursor\n" +
       "  init [<repo>]                scaffolder interactivo del repo (asistente, gestor, OpenSpec)\n" +
-      "       --for claude|copilot|both   para qué asistente preparar el repo (default both; ante duda, both)\n" +
+      "       --for claude|copilot|both|cursor|all   para qué asistente preparar el repo (default all)\n" +
       "       --pm md|jira|clickup · --openspec   (con flags salteas las preguntas)\n" +
       "  docs <destino>               documentación conceptual → <destino>\n" +
       "  doctor                       diagnóstico del entorno\n\n" +

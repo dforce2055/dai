@@ -28,7 +28,7 @@ escribió, aparece el **vibe coding**, y el *qué* (negocio) se mezcla con el *c
 
 Juntas hacen que la IA potencie tu desarrollo **sin perder el control**: todo lo que se
 construye queda linkeado a por qué se construyó, y **la máquina te avisa sola** cuando algo
-se desincroniza. Del solo developer a un equipo entero de desarrollo — el mismo método, con Claude o Copilot.
+se desincroniza. Del solo developer a un equipo entero de desarrollo — el mismo método, con Claude, Copilot o Cursor.
 
 ## Cómo funciona (3 ideas)
 
@@ -49,7 +49,7 @@ deja las skills disponibles:
 
 ```bash
 npm i -g @dforce2055/dai        # el CLI
-dai install                     # skills de IA → tu Claude (Desktop y Code)
+dai install                     # skills de IA → Claude y Cursor (global por defecto)
 ```
 
 Y después, en el chat del asistente, según lo que tengas:
@@ -128,7 +128,7 @@ flowchart TD
 | # | Fase | Cómo | Quién |
 |---|---|---|---|
 | 1 | **Instalar el CLI** | `npm i -g @dforce2055/dai` (o `npm link` en dev) · `dai --version` | dev |
-| 2 | **Bootstrap del repo** | `dai init` → `.dai` + Claude/Copilot + config + PR template | dev/lead |
+| 2 | **Bootstrap del repo** | `dai init` → `.dai` + Claude/Copilot/Cursor + config + PR template | dev/lead |
 | 3a | **Definir el QUÉ** | `/grill-user-story` (una US) · `/grill-epic` (algo grande) · `/doc-to-backlog` (un doc) — te interrogan hasta una US testeable | PO / analista |
 | 3b | **Publicar la US** | la skill la sube al tracker vía **MCP**, o con **`dai publish <us.md>`** (crea el issue vía token, sin MCP) → devuelve el key | PO / IA |
 | 4 | **Linkear la US** | `dai link-us <ID>` → branch + `openspec/changes/<id>/implements.yaml` | dev |
@@ -156,8 +156,8 @@ flowchart TD
 
 | Comando | Qué hace |
 |---|---|
-| `dai init [<repo>]` | scaffolder interactivo del repo. Flags: `--for claude\|copilot\|both` (asistente, ver arriba) · `--pm md\|jira\|clickup` (tracker) · `--openspec` |
-| `dai install [--global \| --local <repo>] [--force] [--dry-run]` | instala/actualiza las skills de IA en Claude. `--force` re-copia aunque ya existan (para **actualizar** tras una nueva versión). Ej: `dai install --local . --force` (este repo) · `dai install --global --force` (tu Claude) |
+| `dai init [<repo>]` | scaffolder interactivo del repo. Flags: `--for claude\|copilot\|both\|cursor\|all` (asistente, default `all`) · `--pm md\|jira\|clickup` (tracker) · `--openspec` |
+| `dai install [--global \| --local <repo>] [--force] [--dry-run] [--for claude\|cursor\|all]` | instala/actualiza skills de IA en Claude y/o Cursor (`--for all` por defecto). `--force` re-copia aunque ya existan. Ej: `dai install --local . --for cursor --force` · `dai install --global --for all --force` |
 | `dai publish <us.md>` | crea la US en el tracker (Jira/ClickUp/md) desde un `.md` y devuelve el key. Es el fallback del MCP para publicar sin el asistente |
 | `dai link-us <ID> [--us <md>]` | crea branch + `implements.yaml`; sin `--us` trae la US del tracker |
 | `dai link-us <ID> --resync` | re-estampa el `ac_hash` contra la US viva (tras un ⚠️ de check) |
@@ -183,18 +183,20 @@ ver [`.env.example`](.env.example). Auth (SSH + tokens): [ADR-0007](docs/adr/000
 |---|---|---|
 | `--for claude` | `.claude/skills/` + `CLAUDE.md` | tu equipo usa **Claude** (Code / Desktop) |
 | `--for copilot` | `.github/prompts/*.prompt.md` + `.github/copilot-instructions.md` | tu equipo usa **GitHub Copilot** (en VS Code / JetBrains) |
-| `--for both` *(default)* | **ambos** | equipo **mixto** (unos con Claude, otros con Copilot) |
+| `--for cursor` | `.cursor/skills/` + `.cursor/rules/dai-constitution.mdc` | tu equipo usa **Cursor Agent** |
+| `--for both` | Claude + Copilot | equipo mixto sin Cursor |
+| `--for all` *(default)* | Claude + Copilot + Cursor | quieres dejar el repo listo para cualquier asistente |
 
-- Es **aditivo, no destructivo**: los dos conjuntos conviven sin pisarse (viven en
+- Es **aditivo, no destructivo**: los conjuntos conviven sin pisarse (viven en
   carpetas distintas). La **misma** skill se transforma al formato de cada asistente.
 - Si ejecutas `dai init` sin flag, te lo pregunta de forma interactiva.
 - **No afecta el CLI:** `dai link-us` / `check` / `stamp` funcionan igual con cualquier
   `--for` (o ninguno) — el flag solo prepara la **invocación de skills** en el asistente.
-- Ante la duda, `--for both`: cubre a todo el equipo y no cuesta nada.
+- Ante la duda, `--for all`: cubre a todo el equipo y no cuesta nada.
 
 ## Lo que obtienes en tu repo
 
-Después de `dai init` (con `--for both`):
+Después de `dai init` (con `--for all`):
 
 ```
 mi-repo/
@@ -206,6 +208,9 @@ mi-repo/
 │   ├── copilot-instructions.md     · La constitución, auto-inyectada en cada chat de Copilot
 │   ├── prompts/*.prompt.md         · Las mismas skills, generadas en formato Copilot
 │   └── pull_request_template.md    · Molde de PR/MR atado al link
+├── .cursor/
+│   ├── skills/                     · Las mismas skills, en formato Cursor
+│   └── rules/dai-constitution.mdc  · Constitución always-on de Cursor
 └── .dai/
     ├── templates/                  · formato-us · epica · DoR · DoD · adr · pull-request
     └── governance/                 · branch-naming · ci-rules · commit-convention
@@ -225,6 +230,7 @@ Las skills se invocan en el asistente — **no en todas sus superficies** (lími
 |---|---|---|
 | **Claude Desktop** | ✅ | `~/.claude/skills/` (global) — sin IDE ni consola |
 | **Claude Code** | ✅ | `~/.claude/skills/` + `.claude/skills/` del repo |
+| **Cursor Agent (IDE)** | ✅ | `.cursor/skills/*/SKILL.md` + `.cursor/rules/*.mdc` |
 | **Copilot en VS Code / JetBrains** | ✅ | los `.github/prompts/*.prompt.md` |
 | **Copilot CLI** | ✅ | custom agents |
 | **Copilot app standalone / github.com chat** | ❌ | los prompt files son solo-IDE |
@@ -256,7 +262,7 @@ Además: [`docs/glosario.md`](docs/glosario.md) · guías por rol ([`po`](docs/g
 dai/
 ├── cli/            🖥️  el binario `dai` (Node, cero dependencias) + su suite de tests
 ├── docs/           📖  la metodología: MANIFIESTO · METODOLOGIA · SCRUM-CON-IA · EJEMPLO ·
-│                       glosario · guias/ · detalle/ (10 pasos) · adr/ (0001–0007)
+│                       glosario · guias/ · detalle/ (10 pasos) · adr/ (0001–0009)
 ├── templates/      🧩  los moldes (formato-us · epica · DoR · DoD · adr · pull-request)
 ├── skills/         🤖  doc-to-backlog · grill-intent · grill-epic · grill-user-story · link-us · tdd · dai-review
 ├── governance/     🛡️  branch-naming · ci-rules · commit-convention
