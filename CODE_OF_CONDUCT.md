@@ -11,7 +11,7 @@ apariencia, religión u orientación.
 
 Comportamientos que esperamos:
 
-- Lenguaje acogedor e inclusivo.
+- Lenguaje respetuoso y considerado.
 - Respeto por puntos de vista y experiencias distintas.
 - Aceptar la crítica constructiva con gracia.
 - Enfocarse en lo mejor para la comunidad.
