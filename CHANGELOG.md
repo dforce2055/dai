@@ -3,6 +3,33 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
+## [0.3.0] — 2026-07-08
+
+`dai init` ahora es **aditivo**: no pisa la configuración de un repo funcional. Más
+robustez en el parser de `.env` y en `doctor`, y nuevas buenas prácticas agnósticas en
+la constitución.
+
+### Cambiado
+- **`dai init` es aditivo y no destructivo** sobre un repo con config existente:
+  - `.env` / `.env.example`: mergea solo las claves de dai que faltan (no reescribe lo del proyecto).
+  - `CLAUDE.md` / `copilot-instructions.md`: inserta la constitución como bloque delimitado
+    (`<!-- dai:start/end -->`), idempotente — conserva la constitución previa del proyecto.
+  - `.gitignore`: reconcilia para versionar skills y comandos (`.claude/skills/`, `.claude/commands/`),
+    dejando fuera solo lo personal (`settings.local.json`); quita ignores "broad" (`.claude/`, `CLAUDE.md`)
+    que los escondían.
+- **Constitución**: nuevas reglas agnósticas (verificar el comportamiento ≠ que compile, la IA confirma
+  antes de construir, docs vivas) + sección "Buenas prácticas (agnósticas)". Tono "tú" neutro.
+
+### Corregido
+- **Parser de `.env`** (`env.mjs`): recorta el comentario inline en valores sin comillas — un token con
+  `# ...` al lado ya no rompe el header `Authorization` (error de ByteString).
+- **`dai doctor`**: enumera solo directorios; ya no lista `.DS_Store` como skill.
+
+### Interno
+- **104 tests** (+11 desde 0.2.0: `mergeEnv`, `upsertBlock`, `reconcileGitignore`, parser de `env.mjs`).
+- El sitio (`index.html`, `onboarding.html`) sale del paquete npm (`files[]`) — es capa visual del repo/web.
+- Nueva página de onboarding del dev (`onboarding.html`) en el sitio de GitHub Pages.
+
 ## [0.2.0] — 2026-07-08
 
 Soporte para **Cursor** como asistente y un `--for` combinable. Incluye la **primera
@@ -75,6 +102,7 @@ ClickUp y Jira Cloud.
 - Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
   `files` de npm sin tests ni secretos.
 
+[0.3.0]: https://github.com/dforce2055/dai/releases/tag/v0.3.0
 [0.2.0]: https://github.com/dforce2055/dai/releases/tag/v0.2.0
 [0.1.1]: https://github.com/dforce2055/dai/releases/tag/v0.1.1
 [0.1.0]: https://github.com/dforce2055/dai/releases/tag/v0.1.0
