@@ -652,7 +652,7 @@ async function cmdInit(repo, opts) {
     : `    1. Completa el token de ${pm} en .env, y verifica con: dai doctor\n`);
   process.stdout.write("    2. dai link-us <ID>     → crea la branch + el link a la US\n");
   process.stdout.write("    3. Implementa con test primero, después: dai check\n");
-  process.stdout.write("    Guía paso a paso: docs/PROBAR.md\n\n");
+  process.stdout.write("    Guía paso a paso: https://github.com/dforce2055/dai/blob/main/docs/PROBAR.md\n\n");
 }
 
 // ── docs: documentación conceptual → <destino> ────────────────────────────────
