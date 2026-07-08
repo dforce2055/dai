@@ -187,6 +187,9 @@ ver [`.env.example`](.env.example). Auth (SSH + tokens): [ADR-0007](docs/adr/000
 | `--for both` | Claude + Copilot | equipo mixto sin Cursor |
 | `--for all` *(default)* | Claude + Copilot + Cursor | quieres dejar el repo listo para cualquier asistente |
 
+- **Combinables:** pasá un subconjunto separado por coma — `--for claude,cursor` o
+  `--for copilot`. `all` = los tres · `both` = Claude+Copilot. (Igual en `dai install`,
+  aunque ahí Copilot no aplica: no tiene skills instalables.)
 - Es **aditivo, no destructivo**: los conjuntos conviven sin pisarse (viven en
   carpetas distintas). La **misma** skill se transforma al formato de cada asistente.
 - Si ejecutas `dai init` sin flag, te lo pregunta de forma interactiva.

@@ -5,6 +5,23 @@
 
 export const camel = (s) => s.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 
+// Parsea el valor de `--for` como una LISTA COMBINABLE de asistentes.
+// Acepta "claude", "copilot", "cursor" (combinables con coma o espacio),
+// "both" (= claude+copilot) y "all" (= los tres). Lanza si hay un token inválido.
+// Ej.: "claude,cursor" → { claude:true, copilot:false, cursor:true }.
+export function parseAssistants(str) {
+  const want = { claude: false, copilot: false, cursor: false };
+  const toks = String(str ?? "all").toLowerCase().split(/[,\s]+/).filter(Boolean);
+  if (toks.length === 0) { want.claude = want.copilot = want.cursor = true; return want; }
+  for (const t of toks) {
+    if (t === "all") { want.claude = want.copilot = want.cursor = true; }
+    else if (t === "both") { want.claude = want.copilot = true; }
+    else if (t in want) { want[t] = true; }
+    else throw new Error(`asistente inválido: '${t}' (claude|copilot|cursor, combinables con coma; o both|all)`);
+  }
+  return want;
+}
+
 export function parseFlags(argv) {
   const opts = {};
   const pos = [];

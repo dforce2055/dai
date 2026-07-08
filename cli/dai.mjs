@@ -27,7 +27,7 @@ import { branchUrl, commitUrl, parseRemote, detectForge } from "./lib/forge-url.
 import { parsePrRef, getPR, postComment } from "./lib/forge-api.mjs";
 import { composePrBody, prTitle, forgeTool } from "./lib/pr.mjs";
 import { dirsEqual } from "./lib/fsutil.mjs";
-import { parseFlags } from "./lib/args.mjs";
+import { parseFlags, parseAssistants } from "./lib/args.mjs";
 import { skillToPrompt, skillToCursor, constitution, constitutionCursorRule, envFor } from "./lib/bootstrap.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -42,7 +42,6 @@ const warn = (m) => process.stdout.write(`⚠ ${m}\n`);
 const ROOT = join(HERE, "..");            // raíz del paquete dai (cli/ está adentro)
 const CLAUDE_SKILLS_DIR = process.env.CLAUDE_SKILLS_DIR || join(homedir(), ".claude", "skills");
 const CURSOR_SKILLS_DIR = process.env.CURSOR_SKILLS_DIR || join(homedir(), ".cursor", "skills");
-const VALID_FOR = ["claude", "copilot", "both", "cursor", "all"];
 function git(args, opts = {}) {
   // stderr en 'pipe' (no 'inherit') para no filtrar errores de git a la salida;
   // quedan en e.stderr para quien quiera inspeccionarlos.
@@ -414,12 +413,15 @@ async function cmdPr(opts) {
 async function cmdInstall(opts) {
   const skillsSrc = join(ROOT, "skills");
   const skills = readdirSync(skillsSrc).filter((n) => statSync(join(skillsSrc, n)).isDirectory());
-  const installFor = typeof opts.for === "string" ? opts.for.toLowerCase() : "all";
-  if (!["claude", "cursor", "all"].includes(installFor)) {
-    fail(`--for inválido: '${installFor}' (claude|cursor|all)`);
-  }
-  const wantClaude = installFor === "claude" || installFor === "all";
-  const wantCursor = installFor === "cursor" || installFor === "all";
+  let want;
+  try { want = parseAssistants(typeof opts.for === "string" ? opts.for : "all"); }
+  catch (e) { fail(`--for ${e.message}`); }
+  // Copilot no tiene skills instalables (no hay dir global ni local de skills de Copilot):
+  // sus prompts los genera `dai init` en el repo. Se ignora en `install`.
+  if (want.copilot) warn("Copilot no tiene skills instalables — se generan con `dai init` en el repo. Ignoro 'copilot'.");
+  const wantClaude = want.claude, wantCursor = want.cursor;
+  if (!wantClaude && !wantCursor) fail("nada para instalar: pasá --for claude|cursor|all.");
+  const installFor = [wantClaude && "claude", wantCursor && "cursor"].filter(Boolean).join("+");
   const interactive = process.stdin.isTTY && !opts.global && opts.local === undefined;
   const rl = interactive ? createInterface({ input: process.stdin, output: process.stdout }) : null;
 
@@ -527,7 +529,8 @@ async function cmdInit(repo, opts) {
     { value: "cursor", label: "Solo Cursor (Agent)" },
   ], "all");
   forOpt = forOpt || "all";
-  if (!VALID_FOR.includes(forOpt)) fail(`--for inválido: '${forOpt}' (${VALID_FOR.join("|")})`);
+  let want;
+  try { want = parseAssistants(forOpt); } catch (e) { fail(`--for ${e.message}`); }
 
   let pm = typeof opts.pm === "string" ? opts.pm.toLowerCase() : null;
   if (!pm && rl) pm = await askMenu(rl, "¿Dónde van a vivir las User Stories?", [
@@ -554,9 +557,7 @@ async function cmdInit(repo, opts) {
   if (rl) rl.close();
 
   // ── Generación ───────────────────────────────────────────────────────────────
-  const wantClaude = forOpt === "claude" || forOpt === "both" || forOpt === "all";
-  const wantCopilot = forOpt === "copilot" || forOpt === "both" || forOpt === "all";
-  const wantCursor = forOpt === "cursor" || forOpt === "all";
+  const wantClaude = want.claude, wantCopilot = want.copilot, wantCursor = want.cursor;
   process.stdout.write("\n  Configurando…\n\n");
 
   const dai = join(repo, ".dai");
@@ -615,13 +616,8 @@ async function cmdInit(repo, opts) {
   // dejaba a medias porque se intentaba correr su modo interactivo anidado.)
   process.stdout.write("\n");
   const openspecPresent = () => { try { execFileSync(npmBin("openspec"), ["--version"], { stdio: "ignore" }); return true; } catch { return false; } };
-  const osTools = {
-    claude: "claude",
-    copilot: "github-copilot",
-    cursor: "cursor",
-    both: "claude,github-copilot",
-    all: "claude,github-copilot,cursor",
-  }[forOpt] || "claude,github-copilot,cursor";
+  const osTools = [want.claude && "claude", want.copilot && "github-copilot", want.cursor && "cursor"]
+    .filter(Boolean).join(",") || "claude,github-copilot,cursor";
   const osHint = "para sumarlo después:  npm i -g @fission-ai/openspec@latest  &&  openspec init --tools " + osTools;
   if (hasOpenspec) {
     ok("OpenSpec:     ya inicializado en el repo");
@@ -756,9 +752,10 @@ switch (cmd) {
       "  pr [--assignee u] [--base b] [--draft] [--yes]   crea TU PR/MR precargada (muestra + confirma)\n" +
       "  forge comment <ref> --body-file <f> · forge pr <ref>   comentar/leer una PR ajena (github/gitlab)\n\n" +
       "Instalación:\n" +
-      "  install [--global | --local <repo>] [--force] [--dry-run] [--for claude|cursor|all]   skills → Claude/Cursor\n" +
+      "  install [--global | --local <repo>] [--force] [--dry-run] [--for <asistentes>]   skills → Claude/Cursor\n" +
       "  init [<repo>]                scaffolder interactivo del repo (asistente, gestor, OpenSpec)\n" +
-      "       --for claude|copilot|both|cursor|all   para qué asistente preparar el repo (default all)\n" +
+      "       --for <asistentes>      claude|copilot|cursor (combinables con coma) · o both|all (default all)\n" +
+      "                               ej: --for claude,cursor · --for copilot · --for all\n" +
       "       --pm md|jira|clickup · --openspec   (con flags salteas las preguntas)\n" +
       "  docs <destino>               documentación conceptual → <destino>\n" +
       "  doctor                       diagnóstico del entorno\n\n" +
