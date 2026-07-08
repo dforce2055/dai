@@ -16,6 +16,12 @@ export function loadEnv(path = ".env", env = process.env) {
     val = val.trim();
     if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
+    } else {
+      // Valor sin comillas: recortar comentario inline (espacio + #). Evita que un
+      // `TOKEN=xxx  # nota` meta la nota — y caracteres no-ASCII como ← — en el valor,
+      // que después rompen headers HTTP (ByteString). Para conservar un # literal, usar comillas.
+      const c = val.search(/\s#/);
+      if (c !== -1) val = val.slice(0, c).trimEnd();
     }
     if (!(key in env)) env[key] = val;
   }

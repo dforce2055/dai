@@ -28,7 +28,7 @@ import { parsePrRef, getPR, postComment } from "./lib/forge-api.mjs";
 import { composePrBody, prTitle, forgeTool } from "./lib/pr.mjs";
 import { dirsEqual } from "./lib/fsutil.mjs";
 import { parseFlags, parseAssistants } from "./lib/args.mjs";
-import { skillToPrompt, skillToCursor, constitution, constitutionCursorRule, envFor } from "./lib/bootstrap.mjs";
+import { skillToPrompt, skillToCursor, constitution, constitutionCursorRule, envFor, mergeEnv, upsertBlock, reconcileGitignore } from "./lib/bootstrap.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -500,17 +500,6 @@ async function askYesNo(rl, q, def = false) {
   return ["s", "si", "sí", "y", "yes"].includes(a);
 }
 
-// Asegura que ciertas entradas estén en el .gitignore del repo (crea o agrega).
-function ensureGitignored(repo, entries) {
-  const gi = join(repo, ".gitignore");
-  const cur = existsSync(gi) ? readFileSync(gi, "utf8") : "";
-  const have = new Set(cur.split(/\r?\n/).map((s) => s.trim()));
-  const add = entries.filter((e) => !have.has(e));
-  if (add.length === 0) return false;
-  writeFileSync(gi, cur + (cur && !cur.endsWith("\n") ? "\n" : "") + "\n# dai — secretos, no commitear\n" + add.join("\n") + "\n");
-  return true;
-}
-
 // ── init: scaffolder interactivo del repo ─────────────────────────────────────
 async function cmdInit(repo, opts) {
   repo = repo || ".";   // por defecto, el directorio actual (como git init / npm init)
@@ -568,11 +557,27 @@ async function cmdInit(repo, opts) {
   writeFileSync(join(dai, "VERSION"), readFileSync(join(ROOT, "VERSION"), "utf8"));
   ok(".dai/         moldes (templates) + reglas (governance) del método");
 
-  cpSync(join(ROOT, ".env.example"), join(repo, ".env.example"));
-  const envPath = join(repo, ".env");
-  if (existsSync(envPath)) warn(".env          ya existe — lo dejo como está");
-  else { writeFileSync(envPath, envFor(pm)); ok(`.env          listo, DAI_PM=${pm}${pm === "md" ? "" : " (completa el token)"}`); }
-  if (ensureGitignored(repo, [".env"])) ok(".gitignore    .env agregado (los tokens NO se commitean)");
+  // .env.example — aditivo: agrega las claves de dai que falten (no pisa el del proyecto).
+  const exSrc = readFileSync(join(ROOT, ".env.example"), "utf8");
+  const exPath = join(repo, ".env.example");
+  if (existsSync(exPath)) {
+    const cur = readFileSync(exPath, "utf8"), merged = mergeEnv(cur, exSrc);
+    if (merged !== cur) { writeFileSync(exPath, merged); ok(".env.example  claves de dai agregadas (aditivo)"); }
+    else ok(".env.example  ya tenía la config de dai");
+  } else { writeFileSync(exPath, exSrc); ok(".env.example  creado"); }
+
+  // .env — aditivo: agrega las claves de dai que falten; si no existe, lo crea.
+  const envPath = join(repo, ".env"), envBlock = envFor(pm);
+  if (existsSync(envPath)) {
+    const cur = readFileSync(envPath, "utf8"), merged = mergeEnv(cur, envBlock);
+    if (merged !== cur) { writeFileSync(envPath, merged); ok(`.env          claves de dai agregadas (aditivo, DAI_PM=${pm}${pm === "md" ? "" : " — completa el token"})`); }
+    else ok(".env          ya tenía la config de dai");
+  } else { writeFileSync(envPath, envBlock); ok(`.env          listo, DAI_PM=${pm}${pm === "md" ? "" : " (completa el token)"}`); }
+
+  // .gitignore — versiona los artefactos de dai (según --for), deja fuera solo lo personal.
+  const giPath = join(repo, ".gitignore");
+  const gi = reconcileGitignore(existsSync(giPath) ? readFileSync(giPath, "utf8") : "", want);
+  if (gi.changed) { writeFileSync(giPath, gi.text.endsWith("\n") ? gi.text : gi.text + "\n"); ok(".gitignore    ajustado (skills/constitución versionadas; .env y settings.local.json fuera)"); }
 
   mkdirSync(join(repo, ".github"), { recursive: true });
   cpSync(join(ROOT, "templates", "pull-request.md"), join(repo, ".github", "pull_request_template.md"));
@@ -585,15 +590,17 @@ async function cmdInit(repo, opts) {
     const dir = join(repo, ".claude", "skills");
     mkdirSync(dir, { recursive: true });
     for (const name of skills) cpSync(join(skillsSrc, name), join(dir, name), { recursive: true });
-    writeFileSync(join(repo, "CLAUDE.md"), constitution("claude"));
-    ok(`Claude:       .claude/skills/ (${skills.length}) + CLAUDE.md → conoce el método y las skills`);
+    const cPath = join(repo, "CLAUDE.md"), cCur = existsSync(cPath) ? readFileSync(cPath, "utf8") : "";
+    writeFileSync(cPath, upsertBlock(cCur, constitution("claude")));
+    ok(`Claude:       .claude/skills/ (${skills.length}) + CLAUDE.md${cCur ? " (bloque dai, aditivo)" : ""} → conoce el método y las skills`);
   }
   if (wantCopilot) {
     const pdir = join(repo, ".github", "prompts");
     mkdirSync(pdir, { recursive: true });
     for (const name of skills) writeFileSync(join(pdir, `${name}.prompt.md`), skillToPrompt(readFileSync(join(skillsSrc, name, "SKILL.md"), "utf8")));
-    writeFileSync(join(repo, ".github", "copilot-instructions.md"), constitution("copilot"));
-    ok(`Copilot:      .github/prompts/ (${skills.length}) + copilot-instructions.md`);
+    const ciPath = join(repo, ".github", "copilot-instructions.md"), ciCur = existsSync(ciPath) ? readFileSync(ciPath, "utf8") : "";
+    writeFileSync(ciPath, upsertBlock(ciCur, constitution("copilot")));
+    ok(`Copilot:      .github/prompts/ (${skills.length}) + copilot-instructions.md${ciCur ? " (bloque dai, aditivo)" : ""}`);
   }
   if (wantCursor) {
     const dir = join(repo, ".cursor", "skills");
@@ -670,9 +677,11 @@ function cmdDoctor() {
 
   // Una skill sirve si está en el repo actual (.claude/skills, la puso `dai init`)
   // O global (~/.claude/skills, la puso `dai install`). Reportamos dónde.
+  const skillsRoot = join(ROOT, "skills");
+  const skillNames = readdirSync(skillsRoot).filter((n) => statSync(join(skillsRoot, n)).isDirectory());
   const localDir = join(process.cwd(), ".claude", "skills");
   info("skills (repo local / global ~/.claude/skills):");
-  for (const name of readdirSync(join(ROOT, "skills"))) {
+  for (const name of skillNames) {
     const local = existsSync(join(localDir, name)), global = existsSync(join(CLAUDE_SKILLS_DIR, name));
     if (local && global) ok(`${name}  (local + global)`);
     else if (local) ok(`${name}  (local, este repo)`);
@@ -682,7 +691,7 @@ function cmdDoctor() {
 
   const cursorLocalDir = join(process.cwd(), ".cursor", "skills");
   info("skills Cursor (repo local / global ~/.cursor/skills):");
-  for (const name of readdirSync(join(ROOT, "skills"))) {
+  for (const name of skillNames) {
     const local = existsSync(join(cursorLocalDir, name)), global = existsSync(join(CURSOR_SKILLS_DIR, name));
     if (local && global) ok(`${name}  (local + global)`);
     else if (local) ok(`${name}  (local, este repo)`);

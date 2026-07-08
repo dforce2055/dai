@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>dai — Onboarding del dev</title>
+<meta name="description" content="De clonar el repo a tu primera User Story trazada. Instala el CLI, deja que las skills viajen con el repo, y corre el mismo ciclo para cada historia — con dai." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236366f1'/%3E%3Cstop offset='1' stop-color='%230ea5e9'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Ctext x='32' y='48' font-family='ui-sans-serif,system-ui,Arial' font-size='44' font-weight='800' fill='white' text-anchor='middle'%3Ed%3C/text%3E%3C/svg%3E" />
+<meta name="theme-color" content="#6366f1" />
+<style>
+  /* Autocontenido: mismo sistema de diseño que index.html (tokens, fuentes, animaciones). */
+  :root{
+    --bg:#0b1120; --card:#131c2e; --ink:#eef2f8; --mut:#94a3b8; --line:#263247;
+    --brand:#6366f1; --brand-dark:#4f46e5;
+    --func:#f59e0b; --func-soft:#3a2f12; --func-ink:#fbbf24;   /* el QUÉ */
+    --tech:#0ea5e9; --tech-soft:#10273b; --tech-ink:#7dd3fc;   /* el CÓMO */
+    --ci:#10b981;   --ci-soft:#0f2c22;   --ci-ink:#6ee7b7;     /* la máquina */
+    --danger:#ef4444;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  :root[data-theme="light"]{
+    --bg:#f8fafc; --card:#ffffff; --ink:#0f172a; --mut:#475569; --line:#e2e8f0;
+    --func-soft:#fef3c7; --func-ink:#92400e; --tech-soft:#e0f2fe; --tech-ink:#075985;
+    --ci-soft:#d1fae5; --ci-ink:#065f46;
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --bg:#f8fafc; --card:#ffffff; --ink:#0f172a; --mut:#475569; --line:#e2e8f0;
+      --func-soft:#fef3c7; --func-ink:#92400e; --tech-soft:#e0f2fe; --tech-ink:#075985;
+      --ci-soft:#d1fae5; --ci-ink:#065f46;
+    }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:960px;margin:0 auto;padding:0 20px}
+  a{color:var(--brand);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code,kbd{font-family:var(--mono);font-size:.9em}
+  h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
+  section{padding:64px 0;border-top:1px solid var(--line)}
+  .eyebrow{font-family:var(--mono);font-size:.8rem;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--mut);margin:0 0 8px}
+  h2{font-size:clamp(1.5rem,4vw,2rem);margin:0 0 8px}
+  .lede{color:var(--mut);font-size:1.05rem;max-width:62ch;margin:0 0 28px}
+
+  /* ---------- nav ---------- */
+  nav{position:sticky;top:0;z-index:10;backdrop-filter:blur(10px);
+    background:color-mix(in srgb,var(--bg) 82%,transparent);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;align-items:center;gap:16px;height:56px}
+  nav .logo{font-weight:800;letter-spacing:-.03em;color:var(--ink)}
+  nav .logo b{color:var(--brand)}
+  nav .sp{flex:1}
+  nav a.nl{color:var(--mut);font-size:.9rem}
+  nav a.nl:hover{color:var(--ink);text-decoration:none}
+  nav a.nl.on{color:var(--ink);font-weight:600}
+  .toggle{cursor:pointer;border:1px solid var(--line);background:var(--card);
+    color:var(--ink);border-radius:8px;padding:5px 9px;font-size:.85rem}
+  @media(max-width:640px){nav a.nl{display:none}}
+
+  /* ---------- page header ---------- */
+  .phead{padding:64px 0 8px}
+  .phead h1{font-size:clamp(2rem,6vw,3rem);margin:0 0 16px;font-weight:900}
+  .phead h1 .g{background:linear-gradient(120deg,var(--brand),var(--tech));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .phead p{color:var(--mut);font-size:1.15rem;max-width:60ch;margin:0 0 22px}
+  .meta{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{font-family:var(--mono);font-size:.78rem;padding:4px 11px;border-radius:999px;
+    border:1px solid var(--line);background:var(--card);color:var(--mut)}
+  .chip b{color:var(--ink);font-weight:600}
+
+  /* ---------- terminal (igual que index) ---------- */
+  .term{font-family:var(--mono);font-size:.86rem;background:#0a0f1e;border-radius:12px;
+    padding:16px 18px;color:#cbd5e1;overflow-x:auto;border:1px solid var(--line)}
+  :root[data-theme="light"] .term{background:#0f172a;color:#e2e8f0}
+  @media(prefers-color-scheme:light){:root:not([data-theme="dark"]) .term{background:#0f172a;color:#e2e8f0}}
+  .term .p{color:#6366f1;user-select:none}
+  .term .c{color:#64748b}
+  .term .ok{color:#6ee7b7}
+  .term .warn{color:#fca5a5}
+  .term b{color:#fff;font-weight:600}
+
+  /* ---------- steps / journey (igual que index) ---------- */
+  .steps{position:relative;margin-top:8px}
+  .step{display:grid;grid-template-columns:44px 1fr;gap:18px;padding:14px 0;position:relative}
+  .step:not(:last-child)::before{content:"";position:absolute;left:21px;top:44px;bottom:-14px;
+    width:2px;background:var(--line)}
+  .num{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;
+    font-weight:800;font-family:var(--mono);background:var(--card);border:1px solid var(--line);z-index:1}
+  .step.b .num{border-color:color-mix(in srgb,var(--brand) 60%,var(--line));color:var(--brand)}
+  .step.q .num{border-color:var(--func);color:var(--func-ink)}
+  .step.c .num{border-color:var(--tech);color:var(--tech-ink)}
+  .step.m .num{border-color:var(--ci);color:var(--ci-ink)}
+  .step .body{transition:transform .25s ease}
+  .step .body h3{margin:0 0 3px;font-size:1.08rem}
+  .step .body p{margin:0 0 8px;color:var(--mut);font-size:.95rem}
+  .step .body p:last-child{margin-bottom:0}
+  .step .tool{font-family:var(--mono);font-size:.82rem;background:var(--bg);
+    border:1px solid var(--line);border-radius:8px;padding:3px 9px;display:inline-block;color:var(--ink)}
+  .step .body code{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+
+  .tag{display:inline-block;font-family:var(--mono);font-size:.72rem;font-weight:600;
+    padding:2px 8px;border-radius:999px;letter-spacing:.02em}
+  .tag.q{background:var(--func-soft);color:var(--func-ink)}
+  .tag.c{background:var(--tech-soft);color:var(--tech-ink)}
+  .tag.m{background:var(--ci-soft);color:var(--ci-ink)}
+
+  /* ---------- cards / troubleshooting ---------- */
+  .grid{display:grid;gap:16px}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:720px){.g3{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;
+    transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease}
+  .card:hover{transform:translateY(-4px);border-color:color-mix(in srgb,var(--brand) 55%,var(--line));
+    box-shadow:0 12px 30px -12px color-mix(in srgb,var(--brand) 45%,transparent)}
+  .card h3{margin:0 0 6px;font-size:1rem}
+  .card h3 code{font-family:var(--mono);font-size:.82rem;background:var(--bg);border:1px solid var(--line);
+    border-radius:6px;padding:1px 6px}
+  .card p{margin:0;color:var(--mut);font-size:.92rem}
+  .card p b{color:var(--ink)}
+
+  .callout{margin-top:26px;background:color-mix(in srgb,var(--brand) 8%,transparent);
+    border:1px solid color-mix(in srgb,var(--brand) 30%,var(--line));border-radius:12px;
+    padding:16px 18px;font-size:.95rem}
+  .callout code{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+
+  .btn{display:inline-block;padding:11px 20px;border-radius:10px;font-weight:600;font-size:.95rem}
+  .btn.p{background:var(--brand);color:#fff}
+  .btn.p:hover{background:var(--brand-dark);text-decoration:none}
+  .btn.s{border:1px solid var(--line);color:var(--ink)}
+  .btn.s:hover{text-decoration:none;border-color:var(--brand)}
+  .cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+
+  /* ---------- animaciones (reveal, igual que index) ---------- */
+  .reveal{transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1)}
+  html.anim .reveal{opacity:0;transform:translateY(20px)}
+  html.anim .reveal.in{opacity:1;transform:none}
+  .step .body:hover{transform:translateY(-2px)}
+  @media (prefers-reduced-motion: reduce){
+    html.anim .reveal{opacity:1 !important;transform:none !important}
+    .card:hover,.step .body:hover{transform:none}
+  }
+
+  footer{border-top:1px solid var(--line);padding:40px 0 60px;color:var(--mut);font-size:.9rem}
+  footer .wrap{display:flex;gap:20px;flex-wrap:wrap;align-items:center}
+  footer .sp{flex:1}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="logo" href="index.html"><b>dai</b> · Desarrollo Asistido por IA</a>
+    <span class="sp"></span>
+    <a class="nl" href="index.html#problema">Problema</a>
+    <a class="nl" href="index.html#flujo">El flujo</a>
+    <a class="nl" href="index.html#traza">Trazabilidad</a>
+    <a class="nl on" href="onboarding.html">Onboarding</a>
+    <button class="toggle" id="tg" aria-label="Cambiar tema">◐</button>
+  </div>
+</nav>
+
+<!-- ══════════ HEADER ══════════ -->
+<header class="phead wrap">
+  <p class="eyebrow">Para devs · onboarding</p>
+  <h1>De clonar el repo a tu <span class="g">primera US trazada</span></h1>
+  <p>El repo ya viene configurado: las skills, la constitución y OpenSpec viajan con él.
+     Instalas el CLI una vez, y después corres el mismo ciclo para cada User Story.</p>
+  <div class="meta">
+    <span class="chip">CLI · <b>Node ≥ 18</b></span>
+    <span class="chip">Asistente · <b>Claude / Copilot / Cursor</b></span>
+    <span class="chip">Tracker · <b>ClickUp / Jira / md</b></span>
+  </div>
+</header>
+
+<!-- ══════════ SETUP ══════════ -->
+<section id="setup">
+  <div class="wrap">
+    <p class="eyebrow">Parte A</p>
+    <h2>Setup — una vez por máquina</h2>
+    <p class="lede">Lo único que se instala por máquina es el CLI. Todo lo demás
+      (skills, constitución, OpenSpec) ya está versionado en el repo.</p>
+
+    <div class="steps">
+      <div class="step b"><div class="num">1</div><div class="body">
+        <h3>Instala el CLI y autentica el forge</h3>
+        <p>El comando queda como <code>dai</code>. <code>gh</code> (o <code>glab</code>) lo usa <code>dai pr</code> para crear la PR.</p>
+        <div class="term"><span class="p">$ </span>npm i -g @dforce2055/dai      <span class="c"># el CLI, cero dependencias</span><br><span class="p">$ </span>dai --version<br><span class="p">$ </span>gh auth login                 <span class="c"># o: glab auth login</span></div>
+      </div></div>
+
+      <div class="step b"><div class="num">2</div><div class="body">
+        <h3>Trae el repo ya configurado</h3>
+        <p>Al clonar (o hacer <code>pull</code>) llegan las skills, la constitución y OpenSpec. No corres <code>dai init</code>: eso ya lo hizo quien preparó el repo.</p>
+        <div class="term"><span class="p">$ </span>git clone &lt;repo&gt;  <span class="c"># o: git pull en tu rama base</span></div>
+      </div></div>
+
+      <div class="step b"><div class="num">3</div><div class="body">
+        <h3>Configura tu <code>.env</code> con tu token</h3>
+        <p>Copia el ejemplo y pega <b>tu</b> token del tracker en la variable correspondiente.
+           Pega <b>solo el token</b>, sin comentarios ni espacios en esa línea. El <code>.env</code> está gitignoreado: no se commitea.</p>
+        <div class="term"><span class="p">$ </span>cp .env.example .env   <span class="c"># y pega tu token del tracker</span></div>
+      </div></div>
+
+      <div class="step b"><div class="num">4</div><div class="body">
+        <h3>Reinicia tu asistente</h3>
+        <p>Para que carguen las skills (<code>/grill-*</code>, <code>/tdd</code>, <code>/link-us</code>, <code>/dai-review</code>) y los comandos <code>/opsx:*</code>. Se cargan al arrancar.</p>
+      </div></div>
+
+      <div class="step b"><div class="num">5</div><div class="body">
+        <h3>Verifica</h3>
+        <p>Verde en skills + el tracker con token = listo para trabajar.</p>
+        <div class="term"><span class="p">$ </span>dai doctor</div>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ EL CICLO ══════════ -->
+<section id="ciclo">
+  <div class="wrap">
+    <p class="eyebrow">Parte B</p>
+    <h2>El ciclo — una vez por cada US</h2>
+    <p class="lede">El mismo recorrido para cada historia. Cada paso tiene una skill de IA o un
+      comando que hace el trabajo pesado. <span class="tag q">QUÉ</span>
+      <span class="tag c">CÓMO</span> <span class="tag m">máquina</span></p>
+
+    <div class="steps">
+      <div class="step q"><div class="num">1</div><div class="body">
+        <h3>Trae la US y abre el CÓMO</h3>
+        <p>dai trae la User Story del tracker, crea la branch y siembra el link —
+           <b>correcto por construcción</b>, sin tipear el ID a mano. Parte siempre de tu rama base actualizada.</p>
+        <span class="tool">dai link-us &lt;ID&gt;  →  branch + implements.yaml</span>
+      </div></div>
+
+      <div class="step c"><div class="num">2</div><div class="body">
+        <h3>Diseña con OpenSpec</h3>
+        <p>Exploras la solución y generas la propuesta, el diseño y las tareas — co-localizados
+           con el link, en la misma branch.</p>
+        <span class="tool">/opsx:explore  →  /opsx:propose</span>
+      </div></div>
+
+      <div class="step c"><div class="num">3</div><div class="body">
+        <h3>Implementa con tests primero</h3>
+        <p>TDD en rebanadas verticales: un test, el código mínimo, repetir. La IA escribe el
+           test como spec ejecutable.</p>
+        <span class="tool">/opsx:apply  ·  /tdd</span>
+      </div></div>
+
+      <div class="step m"><div class="num">4</div><div class="body">
+        <h3>Verifica la trazabilidad</h3>
+        <p>¿Tu código sigue al día con la US? dai re-deriva el hash de la US viva y compara.
+           Si el QUÉ cambió, te avisa y te dice cómo resincronizar.</p>
+        <span class="tool">dai check  →  ✅ al día  /  ⚠️ atrasado</span>
+      </div></div>
+
+      <div class="step c"><div class="num">5</div><div class="body">
+        <h3>Crea la PR</h3>
+        <p>Revisas tu propio código + smoke local, y dai arma la PR desde el template,
+           precargada con la US, el estado del check y los enlaces.</p>
+        <span class="tool">dai pr  ·  luego /dai-review &lt;PR&gt; (la revisa un compañero)</span>
+      </div></div>
+
+      <div class="step m"><div class="num">6</div><div class="body">
+        <h3>Estampa la cobertura y cierra</h3>
+        <p>Al mergear, dai escribe en el tracker quién implementó qué. Después cierra la US:
+           vuelve a la base y borra la branch.</p>
+        <span class="tool">dai stamp  →  dai done</span>
+      </div></div>
+    </div>
+
+    <div class="callout">
+      <b>El <code>&lt;ID&gt;</code> de la US</b> es el identificador del tracker. En ClickUp, de una URL
+      como <code>app.clickup.com/t/9013…/86ajecfmy</code>, el ID es <code>86ajecfmy</code>. El método
+      y las convenciones del repo están en su <code>CLAUDE.md</code>.
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ SI ALGO FALLA ══════════ -->
+<section id="ayuda">
+  <div class="wrap">
+    <p class="eyebrow">Parte C</p>
+    <h2>Si algo falla</h2>
+    <p class="lede">Los tres tropiezos más comunes al arrancar, y cómo salir de ellos.</p>
+    <div class="grid g3">
+      <div class="card">
+        <h3><code>dai link-us</code> tira un error de ByteString</h3>
+        <p>Tu línea del token en el <code>.env</code> tiene un comentario o un espacio de más.
+           Deja <b>solo el token</b>, sin nada después.</p>
+      </div>
+      <div class="card">
+        <h3>No aparecen las skills ni <code>/opsx:*</code></h3>
+        <p><b>Reinicia el asistente / IDE.</b> Las skills y los comandos se cargan al arrancar.</p>
+      </div>
+      <div class="card">
+        <h3><code>dai doctor</code> en rojo</h3>
+        <p>Sigue lo que indica cada línea: casi siempre es el token del tracker o falta reiniciar.</p>
+      </div>
+    </div>
+
+    <div class="cta">
+      <a class="btn p" href="https://github.com/dforce2055/dai">Documentación completa</a>
+      <a class="btn s" href="index.html#flujo">Ver el flujo en detalle</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span><b style="color:var(--brand)">dai</b> — Desarrollo Asistido por IA</span>
+    <span class="sp"></span>
+    <a href="index.html">Inicio</a>
+    <a href="https://github.com/dforce2055/dai">GitHub</a>
+    <a href="https://www.npmjs.com/package/@dforce2055/dai">npm</a>
+    <a href="https://github.com/dforce2055/dai/blob/main/docs/PROBAR.md">Guía paso a paso</a>
+  </div>
+</footer>
+
+<script>
+  // JS mínimo: toggle de tema + animaciones de reveal. Igual que index.html.
+  (function(){
+    var r=document.documentElement, t=document.getElementById('tg');
+    try{var s=localStorage.getItem('dai-theme'); if(s) r.setAttribute('data-theme',s);}catch(e){}
+    t.addEventListener('click',function(){
+      var cur=r.getAttribute('data-theme');
+      var m=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
+      var next=(cur||m)==='dark'?'light':'dark';
+      r.setAttribute('data-theme',next);
+      try{localStorage.setItem('dai-theme',next);}catch(e){}
+    });
+
+    var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var els=document.querySelectorAll('section h2, section .lede, .step, .card, .callout, .cta, .term');
+    if(reduce || !('IntersectionObserver' in window)){ return; }
+    r.classList.add('anim');
+    els.forEach(function(el){
+      el.classList.add('reveal');
+      var i=0,p=el.previousElementSibling;
+      while(p){ i++; p=p.previousElementSibling; }
+      el.style.transitionDelay=Math.min(i,6)*70+'ms';
+    });
+    var io=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
+      });
+    },{threshold:.12, rootMargin:'0px 0px -8% 0px'});
+    els.forEach(function(el){ io.observe(el); });
+  })();
+</script>
+</body>
+</html>
