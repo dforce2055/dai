@@ -30,7 +30,6 @@
     "templates",
     "governance",
     "skills",
-    "index.html",
     "manifest.yaml",
     "install.sh",
     ".env.example",
