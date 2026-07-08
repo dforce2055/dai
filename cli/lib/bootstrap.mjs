@@ -130,8 +130,19 @@ export function constitution(kind) {
 - **No vibe coding:** toda implementación arranca de una US con criterios testeables.
 - **TDD:** test primero, por la interfaz pública; sobrevive a un refactor.
 - **El link se autora una vez** (\`implements.yaml\`); la cobertura se **deriva** (nunca a mano).
+- **Verifica el comportamiento, no solo que compile:** que pase el chequeo estático o el build no prueba que funcione; ejercita el flujo real antes de darlo por hecho.
+- **La IA confirma antes de construir:** el asistente declara que entendió esta constitución y la va a obedecer antes de generar código.
 - **Secretos:** en \`.env\` (nunca commiteados). git por **SSH**, APIs por **token scopeado**.
-- Separá el QUÉ (funcional) del CÓMO (técnico); no mezcles.
+- **Docs vivas:** una constitución o arquitectura desactualizada es un defecto, no documentación.
+- Separa el QUÉ (funcional) del CÓMO (técnico); no mezcles.
+
+## Buenas prácticas (agnósticas)
+
+- **Confía en el borde, no en el input:** valida y autoriza en el límite de confianza; no aceptes identidad, permisos ni datos externos sin verificar.
+- **"No existe" > "no autorizado":** si un recurso no pertenece a quien pregunta, responde "no encontrado" en vez de revelar que existe.
+- **Aísla la E/S externa:** toda llamada a un servicio externo vive detrás de un borde dedicado; la capa de presentación no llama afuera directo.
+- **Estático en rojo = no está hecho:** los errores de tipos/lint son bloqueantes, no deuda diferible.
+- **Lo que cambia junto, vive junto:** coloca junto la lógica, la interfaz y los tests de una misma unidad.
 
 ## Herramientas
 
