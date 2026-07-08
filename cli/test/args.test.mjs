@@ -32,3 +32,23 @@ test("camel convierte kebab a camelCase", () => {
   assert.equal(camel("body-file"), "bodyFile");
   assert.equal(camel("json"), "json");
 });
+
+import { parseAssistants } from "../lib/args.mjs";
+
+test("parseAssistants: valores simples", () => {
+  assert.deepEqual(parseAssistants("claude"), { claude: true, copilot: false, cursor: false });
+  assert.deepEqual(parseAssistants("cursor"), { claude: false, copilot: false, cursor: true });
+});
+test("parseAssistants: all / both / default", () => {
+  assert.deepEqual(parseAssistants("all"), { claude: true, copilot: true, cursor: true });
+  assert.deepEqual(parseAssistants("both"), { claude: true, copilot: true, cursor: false });
+  assert.deepEqual(parseAssistants(undefined), { claude: true, copilot: true, cursor: true });
+});
+test("parseAssistants: combinaciones (coma y espacio)", () => {
+  assert.deepEqual(parseAssistants("claude,cursor"), { claude: true, copilot: false, cursor: true });
+  assert.deepEqual(parseAssistants("copilot claude"), { claude: true, copilot: true, cursor: false });
+  assert.deepEqual(parseAssistants("both,cursor"), { claude: true, copilot: true, cursor: true });
+});
+test("parseAssistants: token inválido lanza", () => {
+  assert.throws(() => parseAssistants("claude,vscode"), /inválido: 'vscode'/);
+});
