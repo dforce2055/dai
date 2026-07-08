@@ -53,11 +53,66 @@ export function envFor(pm) {
   return head + "DAI_PM=md\nDAI_MD_US_DIR=.dai/us\n";
 }
 
+// ── Helpers aditivos para `dai init` — no destruir la config de un repo vivo ──
+
+// Une aditivamente variables de entorno: agrega solo las claves KEY= que NO estén
+// ya definidas en `existing`. Idempotente; no toca lo demás. Ignora comentarios.
+export function mergeEnv(existing, block) {
+  const keyOf = (line) => {
+    const m = line.match(/^\s*(?:export\s+)?([\w.-]+)\s*=/);
+    return m ? m[1] : null;
+  };
+  const have = new Set(existing.split(/\r?\n/).map(keyOf).filter(Boolean));
+  const toAdd = block.split(/\r?\n/).filter((line) => { const k = keyOf(line); return k && !have.has(k); });
+  if (toAdd.length === 0) return existing;
+  const sep = existing && !existing.endsWith("\n") ? "\n" : "";
+  return existing + sep + "\n# ── dai ──\n" + toAdd.join("\n") + "\n";
+}
+
+// Inserta o actualiza un bloque delimitado (marcadores HTML) en una constitución,
+// sin pisar el resto del archivo. Idempotente: re-correr actualiza el bloque, no duplica.
+export function upsertBlock(existing, block, marker = "dai") {
+  const start = `<!-- ${marker}:start -->`, end = `<!-- ${marker}:end -->`;
+  const wrapped = `${start}\n${block.trim()}\n${end}`;
+  const i = existing.indexOf(start), j = existing.indexOf(end);
+  if (i !== -1 && j > i) {
+    return existing.slice(0, i) + wrapped + existing.slice(j + end.length);
+  }
+  const base = existing.trimEnd();
+  return base ? `${base}\n\n${wrapped}\n` : `${wrapped}\n`;
+}
+
+// Ajusta el texto de un .gitignore para que los artefactos de dai (según --for)
+// queden versionados, dejando fuera SOLO lo personal (settings.local.json). Quita
+// los ignores "broad" (.claude, CLAUDE.md, .cursor) que los esconderían. Aditivo e
+// idempotente. Devuelve { text, changed }.
+export function reconcileGitignore(text, want) {
+  const norm = (s) => { let t = s.trim(); while (t.startsWith("/")) { t = t.slice(1); } while (t.endsWith("/")) { t = t.slice(0, -1); } return t; };
+  const broad = new Set();
+  const ensure = [".env"];
+  if (want.claude) { broad.add("CLAUDE.md"); broad.add(".claude"); ensure.push(".claude/settings.local.json"); }
+  if (want.cursor) { broad.add(".cursor"); }
+  let changed = false;
+  let lines = text.split(/\r?\n/).filter((line) => {
+    if (line.trim().startsWith("#")) return true;
+    if (broad.has(norm(line))) { changed = true; return false; }
+    return true;
+  });
+  const have = new Set(lines.map((l) => l.trim()));
+  const add = ensure.filter((e) => !have.has(e));
+  if (add.length) {
+    changed = true;
+    if (lines.length && lines[lines.length - 1].trim() !== "") lines.push("");
+    lines.push("# dai — solo lo personal fuera del control de versiones", ...add);
+  }
+  return { text: lines.join("\n"), changed };
+}
+
 // La constitución del repo: se inyecta como CLAUDE.md (Claude) o
 // copilot-instructions.md (Copilot). Mismo núcleo, distinto encabezado.
 export function constitution(kind) {
   const head = kind === "copilot"
-    ? "# Instrucciones de Copilot para este repo\n\nEste repo sigue la metodología **dai**. Aplicá estas reglas en todo lo que generes.\n\n> **Superficie:** los prompts de dai (`.github/prompts/`) se invocan solo en VS Code /\n> JetBrains, o como custom agents en el Copilot CLI — no en la app standalone ni en\n> github.com. El CLI `dai` corre en cualquier terminal."
+    ? "# Instrucciones de Copilot para este repo\n\nEste repo sigue la metodología **dai**. Aplica estas reglas en todo lo que generes.\n\n> **Superficie:** los prompts de dai (`.github/prompts/`) se invocan solo en VS Code /\n> JetBrains, o como custom agents en el Copilot CLI — no en la app standalone ni en\n> github.com. El CLI `dai` corre en cualquier terminal."
     : kind === "cursor"
       ? "# Constitución del proyecto (dai)\n\nEste repo sigue la metodología **dai**. Estas reglas gobiernan todo el trabajo.\n\n> **Superficie:** las skills de dai (`.cursor/skills/`) se invocan con `/nombre-skill`\n> o cuando el agente las detecta por descripción. El CLI `dai` corre en cualquier terminal."
     : "# Constitución del proyecto (dai)\n\nEste repo sigue la metodología **dai**. Estas reglas gobiernan todo el trabajo.";

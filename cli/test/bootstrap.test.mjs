@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseFrontmatter, skillToPrompt, skillToCursor, constitution, constitutionCursorRule, envFor } from "../lib/bootstrap.mjs";
+import { parseFrontmatter, skillToPrompt, skillToCursor, constitution, constitutionCursorRule, envFor, mergeEnv, upsertBlock, reconcileGitignore } from "../lib/bootstrap.mjs";
 
 test("envFor genera el .env por backend", () => {
   assert.match(envFor("md"), /DAI_PM=md/);
@@ -68,4 +68,54 @@ test("constitutionCursorRule genera rule de Cursor alwaysApply", () => {
   assert.match(out, /^---\ndescription: /);
   assert.match(out, /\nalwaysApply: true\n/);
   assert.match(out, /las skills de dai \(`\.cursor\/skills\/`\)/);
+});
+
+// ── helpers aditivos de `dai init` (no destruir config de un repo vivo) ──
+
+test("mergeEnv agrega solo las claves que faltan (aditivo, idempotente)", () => {
+  const existing = "API_TOKEN=xyz\nDAI_PM=clickup\n";
+  const block = "DAI_PM=md\nDAI_MD_US_DIR=.dai/us\n";
+  const out = mergeEnv(existing, block);
+  assert.match(out, /API_TOKEN=xyz/);            // conserva lo del proyecto
+  assert.match(out, /DAI_PM=clickup/);           // NO pisa la clave existente
+  assert.doesNotMatch(out, /DAI_PM=md/);         // no re-agrega DAI_PM
+  assert.match(out, /DAI_MD_US_DIR=\.dai\/us/);  // agrega la que faltaba
+  assert.equal(mergeEnv(out, block), out);       // idempotente
+});
+
+test("mergeEnv crea desde vacío", () => {
+  assert.match(mergeEnv("", "DAI_PM=md\n"), /DAI_PM=md/);
+});
+
+test("upsertBlock inserta un bloque delimitado sin pisar el resto, e idempotente", () => {
+  const proj = "# Constitución del proyecto\n\nReglas propias.\n";
+  const a = upsertBlock(proj, "método dai");
+  assert.match(a, /Reglas propias\./);                 // conserva lo previo
+  assert.match(a, /<!-- dai:start -->\nmétodo dai\n<!-- dai:end -->/);
+  const b = upsertBlock(a, "método dai v2");           // re-correr actualiza, no duplica
+  assert.equal((b.match(/dai:start/g) || []).length, 1);
+  assert.match(b, /método dai v2/);
+  assert.doesNotMatch(b, /método dai v1|método dai\n/);
+});
+
+test("upsertBlock desde vacío es solo el bloque", () => {
+  assert.equal(upsertBlock("", "x"), "<!-- dai:start -->\nx\n<!-- dai:end -->\n");
+});
+
+test("reconcileGitignore versiona artefactos de dai y deja fuera solo lo personal", () => {
+  const gi = "# Misc\n.claude/\nCLAUDE.md\nnode_modules\n";
+  const { text, changed } = reconcileGitignore(gi, { claude: true });
+  assert.ok(changed);
+  assert.doesNotMatch(text, /^\.claude\/$/m);                 // quita el broad-ignore
+  assert.doesNotMatch(text, /^CLAUDE\.md$/m);                 // deja versionar la constitución
+  assert.match(text, /node_modules/);                        // no toca lo demás
+  assert.match(text, /\.claude\/settings\.local\.json/);     // solo lo personal fuera
+  assert.match(text, /^\.env$/m);
+});
+
+test("reconcileGitignore es idempotente y no duplica", () => {
+  const first = reconcileGitignore(".claude/\n", { claude: true }).text;
+  const second = reconcileGitignore(first, { claude: true });
+  assert.equal(second.changed, false);
+  assert.equal(second.text, first);
 });
