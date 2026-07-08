@@ -3,6 +3,29 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
+## [0.2.0] — 2026-07-08
+
+Soporte para **Cursor** como asistente y un `--for` combinable. Incluye la **primera
+contribución de la comunidad** 🎉 (@sermati).
+
+### Agregado
+- **Adaptador de Cursor** ([ADR-0009](docs/adr/0009-adaptador-cursor.md), aporte de la
+  comunidad): `dai init` / `install` / `doctor` soportan Cursor — generan
+  `.cursor/skills/*/SKILL.md` y `.cursor/rules/dai-constitution.mdc` (regla always-on) desde
+  la misma fuente `skills/*/SKILL.md`.
+- **`--for` combinable**: acepta subconjuntos de asistentes (`--for claude,cursor`,
+  `--for copilot`), además de `both` (Claude+Copilot) y `all` (los tres). Nuevo
+  `parseAssistants()` en `args.mjs`.
+
+### Cambiado
+- **Default de `dai init` = `all`** (Claude + Copilot + Cursor) — deja el repo listo para
+  cualquier asistente.
+- El mensaje de "próximos pasos" de `dai init` apunta a la **URL online** de la guía
+  `PROBAR.md` (antes una ruta local que el usuario instalado no encontraba).
+
+### Interno
+- **93 tests** (+6 desde 0.1.1: `skillToCursor`, `constitutionCursorRule`, `parseAssistants`).
+
 ## [0.1.1] — 2026-07-06
 
 Solo documentación y metadata — **el CLI no cambia** (mismo `ac_hash`, mismo protocolo).
@@ -52,5 +75,6 @@ ClickUp y Jira Cloud.
 - Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
   `files` de npm sin tests ni secretos.
 
+[0.2.0]: https://github.com/dforce2055/dai/releases/tag/v0.2.0
 [0.1.1]: https://github.com/dforce2055/dai/releases/tag/v0.1.1
 [0.1.0]: https://github.com/dforce2055/dai/releases/tag/v0.1.0
