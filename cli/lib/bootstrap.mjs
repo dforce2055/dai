@@ -27,6 +27,20 @@ export function skillToPrompt(md) {
   return `${fm}\n\n${body}\n`;
 }
 
+// Transforma un SKILL.md (Claude) en un SKILL.md de Cursor.
+// Conserva name/description/body y ajusta solo el frontmatter.
+export function skillToCursor(md) {
+  const { name, description, body } = parseFrontmatter(md);
+  if (!name) return md.trim() + "\n";
+  const fm = [
+    "---",
+    `name: ${name}`,
+    `description: ${JSON.stringify(description || "")}`,
+    "---",
+  ].join("\n");
+  return `${fm}\n\n${body}\n`;
+}
+
 // Contenido del .env según el backend de PM elegido (tokens vacíos, a completar).
 export function envFor(pm) {
   const head = "# Config de dai — completá lo que falte. NUNCA commitees tokens (.env está gitignored).\n";
@@ -44,6 +58,8 @@ export function envFor(pm) {
 export function constitution(kind) {
   const head = kind === "copilot"
     ? "# Instrucciones de Copilot para este repo\n\nEste repo sigue la metodología **dai**. Aplicá estas reglas en todo lo que generes.\n\n> **Superficie:** los prompts de dai (`.github/prompts/`) se invocan solo en VS Code /\n> JetBrains, o como custom agents en el Copilot CLI — no en la app standalone ni en\n> github.com. El CLI `dai` corre en cualquier terminal."
+    : kind === "cursor"
+      ? "# Constitución del proyecto (dai)\n\nEste repo sigue la metodología **dai**. Estas reglas gobiernan todo el trabajo.\n\n> **Superficie:** las skills de dai (`.cursor/skills/`) se invocan con `/nombre-skill`\n> o cuando el agente las detecta por descripción. El CLI `dai` corre en cualquier terminal."
     : "# Constitución del proyecto (dai)\n\nEste repo sigue la metodología **dai**. Estas reglas gobiernan todo el trabajo.";
   return `${head}
 
@@ -71,4 +87,15 @@ export function constitution(kind) {
 
 Detalle completo de la metodología: ${REPO_URL}
 `;
+}
+
+// Regla de Cursor always-on con el contenido de la constitución (sin título H1).
+export function constitutionCursorRule() {
+  const content = constitution("cursor").replace(/^# .+\n\n/, "");
+  return `---
+description: Metodología dai — constitución del proyecto (valores, reglas, herramientas)
+alwaysApply: true
+---
+
+${content}`;
 }
