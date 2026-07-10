@@ -80,3 +80,19 @@ test("discoverImplements ignora el scaffolding de dai (.claude/.github/.dai)", (
   assert.equal(found.length, 1);
   assert.equal(found[0].change, "real");
 });
+
+test("discoverImplements: includeArchived filtra openspec/changes/archive/", () => {
+  const dir = mkdtempSync(pjoin(tmpdir(), "dai-arch-"));
+  const active = pjoin(dir, "openspec/changes/activo");
+  const arch = pjoin(dir, "openspec/changes/archive/viejo");
+  mkdirSync(active, { recursive: true });
+  mkdirSync(arch, { recursive: true });
+  writeFileSync(pjoin(active, "implements.yaml"), "change: activo\nimplements:\n  - id: A-1\n");
+  writeFileSync(pjoin(arch, "implements.yaml"), "change: viejo\nimplements:\n  - id: A-0\n");
+
+  const all = discoverImplements(dir).map((f) => f.change).sort();
+  assert.deepEqual(all, ["activo", "viejo"]);                        // default: incluye archivados
+
+  const activeOnly = discoverImplements(dir, { includeArchived: false }).map((f) => f.change);
+  assert.deepEqual(activeOnly, ["activo"]);                          // saltea archive/
+});

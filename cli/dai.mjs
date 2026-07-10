@@ -71,7 +71,7 @@ function cmdAcHash(arg) {
 // ── ls ──────────────────────────────────────────────────────────────────────
 function cmdLs(opts) {
   const root = opts.root || process.cwd();
-  const found = discoverImplements(root);
+  const found = discoverImplements(root, { includeArchived: false });
   const rows = [];
   for (const f of found) {
     for (const im of f.implements || []) {
@@ -170,7 +170,7 @@ function gitCommit() { try { return git(["rev-parse", "HEAD"]); } catch { return
 async function cmdCheck() {
   loadEnv();
   const adapter = getAdapter(process.env);
-  const found = discoverImplements(process.cwd());
+  const found = discoverImplements(process.cwd(), { includeArchived: false });
   let worst = 0, n = 0;
   const atrasadas = [];
   for (const f of found) for (const im of f.implements || []) {
@@ -682,6 +682,39 @@ function cmdDocs(dest) {
   ok(`documentación copiada a ${dest}`);
 }
 
+// ── archive: funde los delta specs del change en los specs canónicos y lo archiva ─
+// Lo corre el APROBADOR de la PR, en la branch, al aprobar: es el gate de aprobación
+// (el fold va atado a la aprobación, no a la autoría). Envuelve `openspec archive
+// <change> --yes` — mecánico, va al CLI y no a una skill (ADR-0002). El fold queda
+// sin commitear para que el aprobador lo revise y lo incluya en la PR antes de mergear.
+function cmdArchive(changeArg, opts) {
+  const repo = process.cwd();
+  if (!existsSync(join(repo, "openspec"))) fail("no hay OpenSpec en este repo (falta openspec/). Nada que archivar.", 2);
+
+  let change = changeArg;
+  if (!change) {
+    // Detectar el change ACTIVO (no archivado) por su implements.yaml.
+    const active = discoverImplements(repo, { includeArchived: false })
+      .filter((f) => /[/\\]openspec[/\\]changes[/\\]/.test(f.path))
+      .map((f) => basename(dirname(f.path)));
+    const uniq = [...new Set(active)];
+    if (uniq.length === 0) fail("no encontré un change activo para archivar (¿ya está archivado, o falta `dai link-us`?).", 2);
+    if (uniq.length > 1) fail(`hay varios changes activos: ${uniq.join(", ")}.\n  Pasá cuál: dai archive <change>`, 2);
+    change = uniq[0];
+  }
+
+  info(`archivando '${change}' — funde los delta specs en openspec/specs/ y mueve el change a archive/…`);
+  const args = ["archive", change, "--yes"];
+  if (opts.skipSpecs) args.push("--skip-specs");
+  try {
+    execFileSync(npmBin("openspec"), args, { stdio: "inherit", cwd: repo });
+  } catch (e) {
+    fail(`openspec archive falló (¿tasks incompletas? ¿change inexistente?): ${String(e.message).split("\n")[0]}`, 1);
+  }
+  process.stdout.write("\n");
+  ok(`'${change}' archivado. Revisá los cambios (specs fundidas + change en archive/) y commitealos en la PR antes de mergear.`);
+}
+
 // ── sync: refresca las copias scaffoldeadas a la versión del CLI (ADR-0010) ───
 // Las copias (skills, constitución, templates, PR template) son un CACHÉ derivable
 // del CLI: `dai sync` las re-genera a la versión instalada, aditivo (no pisa la
@@ -864,6 +897,7 @@ switch (cmd) {
   case "publish": cmdPublish(pos[0]).catch((e) => fail(String(e.message))); break;
   case "pr":      cmdPr(opts).catch((e) => fail(String(e.message))); break;
   case "done":    cmdDone(opts); break;
+  case "archive": cmdArchive(pos[0], opts); break;
   case "install": cmdInstall(opts).catch((e) => fail(String(e.message))); break;
   case "init":    cmdInit(pos[0], opts).catch((e) => fail(String(e.message))); break;
   case "sync":    cmdSync(pos[0], opts); break;
@@ -882,6 +916,7 @@ switch (cmd) {
       "  check                        compara vs la US viva → atrasado (ADR-0003)\n" +
       "  stamp                        estampa la cobertura en el tracker (ADR-0005)\n" +
       "  done [--base main] [--force] cierra la US: vuelve a la base, actualiza y borra la branch local (si está mergeada)\n" +
+      "  archive [<change>] [--skip-specs]   funde los delta specs del change en las specs canónicas y lo archiva (lo corre el aprobador en la PR)\n" +
       "  pr [--assignee u] [--base b] [--draft] [--yes]   crea TU PR/MR precargada (muestra + confirma)\n" +
       "  forge comment <ref> --body-file <f> · forge pr <ref>   comentar/leer una PR ajena (github/gitlab)\n\n" +
       "Instalación:\n" +
