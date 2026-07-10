@@ -72,3 +72,19 @@ test("reordenar los criterios cambia el hash (orden significativo)", () => {
 test("sin bloque de criterios devuelve null", () => {
   assert.equal(acHash("# Una US\n\nsin criterios acá"), null);
 });
+
+// ── Golden vectors (ADR-0010) ────────────────────────────────────────────────
+// Estos hashes son el CONTRATO: NO pueden cambiar dentro de una línea major.
+// Si un cambio los rompe, es una ruptura de contrato → obliga a bump MAJOR.
+// (Blindan el invariante que hace seguros a minors/patches y a `dai sync`.)
+test("ac_hash · golden vectors inmutables en la major", () => {
+  assert.equal(
+    acHash("## Criterios de aceptación\n- Dado A\n- Cuando B\n- Entonces C\n"),
+    "6de6deae");
+  assert.equal(
+    acHash("## Criterios de aceptación\n\n- [ ] **AC-1** —\n  - **Dado** una tarea pendiente\n  - **Cuando** la marco\n  - **Entonces** queda hecha\n"),
+    "198657e1");
+  assert.equal(
+    acHash("## 🔗 Criterios de aceptación\n- El sistema valida el email\n- Rechaza duplicados\n"),
+    "a5b63612");
+});
