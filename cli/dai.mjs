@@ -40,6 +40,10 @@ function fail(msg, code = 1) { process.stderr.write("dai: " + msg + "\n"); proce
 const ok = (m) => process.stdout.write(`✓ ${m}\n`);
 const info = (m) => process.stdout.write(`› ${m}\n`);
 const warn = (m) => process.stdout.write(`⚠ ${m}\n`);
+// Color ANSI mínimo — solo si es TTY y no está NO_COLOR (así no ensucia pipes/CI).
+const _color = process.stdout.isTTY && !process.env.NO_COLOR;
+const paint = (code, m) => (_color ? `\x1b[${code}m${m}\x1b[0m` : m);
+const C = { y: (m) => paint("33", m), r: (m) => paint("31", m), cy: (m) => paint("36", m), b: (m) => paint("1", m) };
 const ROOT = join(HERE, "..");            // raíz del paquete dai (cli/ está adentro)
 const CLAUDE_SKILLS_DIR = process.env.CLAUDE_SKILLS_DIR || join(homedir(), ".claude", "skills");
 const CURSOR_SKILLS_DIR = process.env.CURSOR_SKILLS_DIR || join(homedir(), ".cursor", "skills");
@@ -761,6 +765,30 @@ function cmdSync(repo, opts) {
   else { process.stdout.write("\n"); ok(`sync completo — .dai/ ahora en v${cliV}`); process.stdout.write("  (El .env y OpenSpec no se tocan: OpenSpec se actualiza aparte con `openspec`.)\n"); }
 }
 
+// Imprime el estado de version-drift del scaffold (ADR-0010) con color + ícono.
+// Reutilizado por `dai doctor` y `dai version`. Devuelve el estado, o null si el
+// directorio no tiene dai (.dai/VERSION). No imprime nada en ese caso.
+function reportDrift(repo = process.cwd()) {
+  const vf = join(repo, ".dai", "VERSION");
+  if (!existsSync(vf)) return null;
+  const repoV = readFileSync(vf, "utf8").trim();
+  const cliV = readFileSync(join(ROOT, "VERSION"), "utf8").trim();
+  const status = versionDrift(repoV, cliV);
+  switch (status) {
+    case "current":
+      ok(`.dai/ al día con el CLI (v${repoV})`); break;
+    case "minor-behind":
+      process.stdout.write(`${C.b(C.y("⬆️  actualización disponible"))} — CLI ${C.b("v" + cliV)}, tu repo ${repoV}. Actualizá con ${C.cy("dai sync")} · probá con ${C.cy("dai sync --dry-run")}\n`); break;
+    case "major-behind":
+      process.stdout.write(`${C.b(C.r("⚠️  cambio MAYOR"))} — CLI ${C.b("v" + cliV)}, tu repo ${repoV}. Revisá el CHANGELOG/MIGRATION antes de ${C.cy("dai sync")}\n`); break;
+    case "cli-behind":
+      process.stdout.write(`${C.b(C.y("⚠️  CLI atrasado"))} — tu repo se scaffoldeó con v${repoV}, más nuevo que tu CLI (v${cliV}). Actualizá el CLI: ${C.cy("npm i -g @dforce2055/dai")}\n`); break;
+    default:
+      warn(`.dai/ VERSION ilegible: '${repoV}'`);
+  }
+  return status;
+}
+
 // ── doctor: diagnóstico ───────────────────────────────────────────────────────
 function cmdDoctor() {
   loadEnv();
@@ -813,29 +841,13 @@ function cmdDoctor() {
   }
 
   // ── version-drift del scaffold vs el CLI (ADR-0010) ──────────────────────────
-  const daiVersionFile = join(process.cwd(), ".dai", "VERSION");
-  if (existsSync(daiVersionFile)) {
-    info("versión del scaffold:");
-    const repoV = readFileSync(daiVersionFile, "utf8").trim();
-    const cliV = readFileSync(join(ROOT, "VERSION"), "utf8").trim();
-    switch (versionDrift(repoV, cliV)) {
-      case "current":
-        ok(`.dai/ ${repoV} — al día con el CLI`); break;
-      case "minor-behind":
-        info(`.dai/ ${repoV} < CLI v${cliV} — hay refresh disponible: \`dai sync\` (opcional, nada roto)`); break;
-      case "major-behind":
-        warn(`.dai/ ${repoV} < CLI v${cliV} — cambio MAYOR: revisá el CHANGELOG/MIGRATION antes; después \`dai sync\``); break;
-      case "cli-behind":
-        warn(`.dai/ ${repoV} > CLI v${cliV} — el repo se scaffoldeó con una versión más nueva; actualizá el CLI (npm i -g @dforce2055/dai)`); break;
-      default:
-        warn(`.dai/ VERSION ilegible: '${repoV}'`);
-    }
-  }
+  if (existsSync(join(process.cwd(), ".dai", "VERSION"))) { info("versión del scaffold:"); reportDrift(); }
 }
 
 // ── version ───────────────────────────────────────────────────────────────────
 function cmdVersion() {
   process.stdout.write(`dai v${readFileSync(join(HERE, "..", "VERSION"), "utf8").trim()}\n`);
+  reportDrift();   // en un repo con dai, avisa si el scaffold está atrasado (ADR-0010)
 }
 
 let [cmd, ...rest] = process.argv.slice(2);
