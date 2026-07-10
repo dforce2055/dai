@@ -3,6 +3,25 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
+## [0.5.0] — 2026-07-10
+
+**`archive` en el flujo** ([ADR-0011](docs/adr/0011-archive-gate-de-aprobacion.md)): cerrar el CÓMO
+del lado de las specs canónicas, atado a la aprobación de la PR.
+
+### Agregado
+- **`dai archive [<change>]`**: funde los delta specs del change en las specs canónicas
+  (`openspec/specs/`) y lo archiva. Lo corre el **aprobador** de la PR, en la branch, al aprobar
+  (el fold viaja en la PR → elude la base protegida). Detecta el change activo por su `implements.yaml`
+  o le pasás el nombre; envuelve `openspec archive --yes` (mecánico → comando, no skill). Flag `--skip-specs`.
+
+### Cambiado
+- **`dai check` y `dai ls` saltean `openspec/changes/archive/`**: un change shippeado ya no genera
+  ⚠️ de drift falso ni aparece en el listado. `discoverImplements` acepta `includeArchived` (default
+  `true`); `check`/`ls` lo pasan `false`. `stamp`/`done` mantienen el default (lo necesitan post-merge).
+
+### Interno
+- **110 tests** (+1 desde 0.4.0: filtro `includeArchived`).
+
 ## [0.4.0] — 2026-07-10
 
 **Versionado y upgrade** ([ADR-0010](docs/adr/0010-versionado-y-upgrade.md)): mantené tu repo al
@@ -147,6 +166,7 @@ ClickUp y Jira Cloud.
 - Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
   `files` de npm sin tests ni secretos.
 
+[0.5.0]: https://github.com/dforce2055/dai/releases/tag/v0.5.0
 [0.4.0]: https://github.com/dforce2055/dai/releases/tag/v0.4.0
 [0.3.1]: https://github.com/dforce2055/dai/releases/tag/v0.3.1
 [0.3.0]: https://github.com/dforce2055/dai/releases/tag/v0.3.0
