@@ -3,6 +3,31 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
+## [0.4.0] — 2026-07-10
+
+**Versionado y upgrade** ([ADR-0010](docs/adr/0010-versionado-y-upgrade.md)): mantené tu repo al
+día con el CLI sin pisar nada. Las copias scaffoldeadas (skills, constitución, templates) son un
+caché derivable — ahora la máquina te avisa cuando quedaron atrás y las refresca sola.
+
+### Agregado
+- **`dai sync`**: refresca skills, constitución, templates y PR template a la versión del CLI —
+  **aditivo** (conserva tu `CLAUDE.md` propio vía bloque delimitado), sin tocar el `.env` ni OpenSpec.
+  Detecta los asistentes del repo o acepta `--for`; `--dry-run` muestra qué cambiaría.
+- **`dai doctor` · version-drift**: compara `.dai/VERSION` (scaffold del repo) vs el CLI y avisa con
+  color + `⬆️` (misma major → refresh opcional con `dai sync`; major distinta → revisar migración;
+  repo más nuevo → actualizar el CLI).
+- **`dai version`**: además de la versión, muestra el estado de drift si estás en un repo con dai
+  (chequeo liviano). `dai --version` fuera de un repo dai queda limpio (solo la versión).
+- **`lib/semver.mjs`** (comparación de versiones, cero dependencias).
+
+### Interno
+- **Golden vectors de `ac_hash`**: pineados como inmutables dentro de la línea major — blindan el
+  contrato ([ADR-0001](docs/adr/0001-contrato-ac-hash.md)) que hace seguros a los minors/patches y a `dai sync`.
+- **109 tests** (+4 desde 0.3.1: semver ×3, golden vectors ×1).
+
+> Diferido a un futuro major (ya diseñado en el ADR-0010): `dai migrate` + `MIGRATION.md` y estampar
+> `schema:` en el `implements.yaml`.
+
 ## [0.3.1] — 2026-07-10
 
 Pulido de la experiencia de `dai init` y `dai link-us`, y un ejemplo de US listo para probar.
@@ -122,6 +147,7 @@ ClickUp y Jira Cloud.
 - Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
   `files` de npm sin tests ni secretos.
 
+[0.4.0]: https://github.com/dforce2055/dai/releases/tag/v0.4.0
 [0.3.1]: https://github.com/dforce2055/dai/releases/tag/v0.3.1
 [0.3.0]: https://github.com/dforce2055/dai/releases/tag/v0.3.0
 [0.2.0]: https://github.com/dforce2055/dai/releases/tag/v0.2.0
