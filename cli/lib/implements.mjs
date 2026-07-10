@@ -71,7 +71,10 @@ export function parseImplements(text) {
 }
 
 // Camina el árbol desde root y devuelve { path, ...parsed } por cada implements.yaml.
-export function discoverImplements(root) {
+// `includeArchived: false` saltea `openspec/changes/archive/` — los changes shippeados
+// no deben aparecer en `check`/`ls` (ADR-0010). Por defecto los incluye (stamp/done los
+// necesitan post-merge).
+export function discoverImplements(root, { includeArchived = true } = {}) {
   const found = [];
   const walk = (dir) => {
     let entries;
@@ -81,7 +84,9 @@ export function discoverImplements(root) {
       let st;
       try { st = statSync(full); } catch { continue; }
       if (st.isDirectory()) {
-        if (!SKIP_DIRS.has(name)) walk(full);
+        if (SKIP_DIRS.has(name)) continue;
+        if (!includeArchived && name === "archive") continue;
+        walk(full);
       } else if (name === "implements.yaml") {
         try {
           found.push({ path: full, ...parseImplements(readFileSync(full, "utf8")) });

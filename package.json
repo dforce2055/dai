@@ -1,6 +1,6 @@
 {
   "name": "@dforce2055/dai",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Metodología de desarrollo asistido por IA — CLI de acciones deterministas (trazabilidad QUÉ↔CÓMO).",
   "repository": { "type": "git", "url": "git+https://github.com/dforce2055/dai.git" },
   "homepage": "https://dforce2055.github.io/dai/",

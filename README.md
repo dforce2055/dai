@@ -167,6 +167,7 @@ flowchart TD
 | `dai pr [--assignee u] [--base b] [--draft] [--yes]` | crea TU PR/MR precargada: pregunta la branch base (default `main`), muestra el texto y confirma antes de publicar |
 | `dai stamp` | estampa la cobertura inversa en el tracker (branch + commit-ancla) |
 | `dai done [--base main] [--force]` | cierra la US: vuelve a la base, `fetch --prune` + `pull`, y borra la branch local **si está mergeada** (chequeo estricto; `--force` la borra igual). Redes: no estar en la base, sin cambios sueltos, sin commits sin pushear |
+| `dai archive [<change>] [--skip-specs]` | **funde los delta specs del change en las specs canónicas** (`openspec/specs/`) y lo archiva. Lo corre el **aprobador** de la PR (gate de aprobación, [ADR-0011](docs/adr/0011-archive-gate-de-aprobacion.md)); detecta el change activo o le pasás el nombre. Envuelve `openspec archive` |
 | `dai forge comment <ref> --body-file <f>` · `dai forge pr <ref>` | comentar / leer una PR/MR (GitHub/GitLab) |
 | `dai ac-hash <us.md>` | calcula el hash de los criterios de aceptación de una US |
 | `dai doctor` · `dai docs <dest>` · `dai version` | diagnóstico del entorno (incluye **version-drift** del scaffold) · copiar la doc · versión (`dai version` avisa si tu repo quedó atrás) |
