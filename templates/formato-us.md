@@ -127,3 +127,44 @@ Lo que quedó sin resolver y necesita una decisión antes de pasar a implementac
   - spec_version (número legible) lo sube el PO/skill para comunicar; ac_hash lo
     calcula el CI para detectar. El número comunica, el hash detecta.
 -->
+
+---
+
+<!--
+  ══════════════════════════════════════════════════════════════════════════════
+  EJEMPLO LISTO PARA PROBAR — copiá desde el título de abajo hasta el final.
+  Es lo MÍNIMO que funciona (una US real necesita más secciones, ver arriba),
+  pero alcanza para ver el flujo:
+
+    • Sin tracker:  guardalo como .dai/us/EJ-1.md  y corré:
+        dai ac-hash .dai/us/EJ-1.md          # imprime el ac_hash
+        dai link-us EJ-1 --us .dai/us/EJ-1.md --dry-run   # muestra branch + implements.yaml
+    • Con tracker:  pegalo como una US nueva y corré  dai link-us <ID>.
+
+  La clave es la sección "Criterios de aceptación": es lo que se hashea. Sin ella,
+  dai no linkea (por diseño: no hay link sin criterios testeables).
+  ══════════════════════════════════════════════════════════════════════════════
+-->
+
+# Marcar una tarea como completada
+
+## Historia
+
+Como **usuario de la lista de tareas**
+quiero **marcar una tarea como completada**
+para **distinguir de un vistazo lo que ya hice de lo que me falta**.
+
+## Criterios de aceptación
+
+- [ ] **AC-1** —
+  - **Dado** una tarea pendiente en mi lista
+  - **Cuando** la marco como completada
+  - **Entonces** queda diferenciada como hecha y deja de contar en el total de pendientes.
+- [ ] **AC-2** —
+  - **Dado** una tarea ya completada
+  - **Cuando** la vuelvo a marcar
+  - **Entonces** vuelve al estado pendiente y se recuenta en el total.
+- [ ] **AC-3** —
+  - **Dado** que recargo la página
+  - **Cuando** vuelve a cargar mi lista
+  - **Entonces** cada tarea conserva el estado (completada o pendiente) que tenía.

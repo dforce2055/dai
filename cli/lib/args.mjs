@@ -5,6 +5,12 @@
 
 export const camel = (s) => s.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 
+// Tokens válidos de `--for`. Sirve para detectar el error común de separar la lista
+// con un espacio (`--for claude, cursor`): la shell parte antes de que dai lo vea, y
+// `cursor` cae como posicional (el `<repo>`). Con esto damos un hint claro.
+const ASSISTANT_TOKENS = new Set(["claude", "copilot", "cursor", "both", "all"]);
+export const isAssistantToken = (s) => ASSISTANT_TOKENS.has(String(s ?? "").toLowerCase());
+
 // Parsea el valor de `--for` como una LISTA COMBINABLE de asistentes.
 // Acepta "claude", "copilot", "cursor" (combinables con coma o espacio),
 // "both" (= claude+copilot) y "all" (= los tres). Lanza si hay un token inválido.

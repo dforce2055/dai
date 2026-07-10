@@ -3,6 +3,26 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
+## [0.3.1] — 2026-07-10
+
+Pulido de la experiencia de `dai init` y `dai link-us`, y un ejemplo de US listo para probar.
+
+### Corregido
+- **`dai init` · `.env.example`**: ahora refleja el `--pm` elegido — incluye todas las claves del
+  tracker (con el `..._TOKEN`), en vez del template genérico `md`. Antes, al elegir jira/clickup,
+  el `.env.example` quedaba con `DAI_PM=md` y sin el token.
+- **`dai init` · `--for` con espacio**: mensaje claro cuando `--for claude, cursor` (con espacio) hace
+  que la shell parta la lista y un token de asistente caiga como `<repo>` ("no existe el directorio: cursor").
+- **`dai link-us` · `dai ac-hash`**: mensaje accionable cuando la US no tiene sección
+  'Criterios de aceptación' — sugiere agregarla o correr `/grill-user-story <ID>`.
+
+### Agregado
+- **`templates/formato-us.md`**: ejemplo de US copy-paste al final (con criterios testeables) para
+  probar el flujo en 30 segundos, con o sin tracker (`dai ac-hash` / `dai link-us --us … --dry-run`).
+
+### Interno
+- **105 tests** (+1 desde 0.3.0: `isAssistantToken`).
+
 ## [0.3.0] — 2026-07-08
 
 `dai init` ahora es **aditivo**: no pisa la configuración de un repo funcional. Más
@@ -102,6 +122,7 @@ ClickUp y Jira Cloud.
 - Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
   `files` de npm sin tests ni secretos.
 
+[0.3.1]: https://github.com/dforce2055/dai/releases/tag/v0.3.1
 [0.3.0]: https://github.com/dforce2055/dai/releases/tag/v0.3.0
 [0.2.0]: https://github.com/dforce2055/dai/releases/tag/v0.2.0
 [0.1.1]: https://github.com/dforce2055/dai/releases/tag/v0.1.1
