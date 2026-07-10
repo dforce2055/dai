@@ -1,0 +1,4 @@
+# .mailmap — coalesce de identidades para el historial y el gráfico de contributors.
+# El agente de Cursor (cursoragent) quedó como co-autor en un commit de sermati;
+# lo fundimos en el autor humano real. (GitHub aplica .mailmap al graph.)
+ser.mati <matiaserres@gmail.com> Cursor <cursoragent@cursor.com>
