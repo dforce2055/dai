@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseFlags, camel } from "../lib/args.mjs";
+import { parseFlags, camel, isAssistantToken } from "../lib/args.mjs";
 
 test("flags con valor", () => {
   const { opts, pos } = parseFlags(["link-us", "ABC-1", "--us", "u.md", "--autor", "Dev"]);
@@ -51,4 +51,14 @@ test("parseAssistants: combinaciones (coma y espacio)", () => {
 });
 test("parseAssistants: token inválido lanza", () => {
   assert.throws(() => parseAssistants("claude,vscode"), /inválido: 'vscode'/);
+});
+
+test("isAssistantToken detecta tokens de --for (hint del espacio)", () => {
+  assert.ok(isAssistantToken("cursor"));
+  assert.ok(isAssistantToken("CLAUDE"));   // case-insensitive
+  assert.ok(isAssistantToken("both"));
+  assert.ok(isAssistantToken("all"));
+  assert.equal(isAssistantToken("mi-repo"), false);
+  assert.equal(isAssistantToken(undefined), false);
+  assert.equal(isAssistantToken(""), false);
 });

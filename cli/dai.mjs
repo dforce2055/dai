@@ -27,7 +27,7 @@ import { branchUrl, commitUrl, parseRemote, detectForge } from "./lib/forge-url.
 import { parsePrRef, getPR, postComment } from "./lib/forge-api.mjs";
 import { composePrBody, prTitle, forgeTool } from "./lib/pr.mjs";
 import { dirsEqual } from "./lib/fsutil.mjs";
-import { parseFlags, parseAssistants } from "./lib/args.mjs";
+import { parseFlags, parseAssistants, isAssistantToken } from "./lib/args.mjs";
 import { skillToPrompt, skillToCursor, constitution, constitutionCursorRule, envFor, mergeEnv, upsertBlock, reconcileGitignore } from "./lib/bootstrap.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -59,7 +59,7 @@ function trackerUrl(id) {
 function cmdAcHash(arg) {
   const md = arg ? readFileSync(arg, "utf8") : readFileSync(0, "utf8");
   const h = acHash(md);
-  if (h == null) fail("la US no tiene bloque de 'Criterios de aceptación'.", 2);
+  if (h == null) fail("la US no tiene un bloque 'Criterios de aceptación' (criterios testeables bajo '## Criterios de aceptación').", 2);
   process.stdout.write(h + "\n");
 }
 
@@ -98,7 +98,7 @@ async function cmdLinkUs(key, opts) {
     // Fuente local: un .md con la US.
     const md = readFileSync(opts.us, "utf8");
     hash = acHash(md);
-    if (hash == null) fail("la US no tiene 'Criterios de aceptación' → no se puede calcular ac_hash.", 2);
+    if (hash == null) fail(`la US en ${opts.us} no tiene una sección 'Criterios de aceptación' con criterios testeables → sin ac_hash.\n  Agregá los criterios bajo '## Criterios de aceptación', o corré /grill-user-story para pulir la US.`, 2);
     title = opts.title || extractTitle(md);
   } else {
     // Fuente tracker: traer la US del adaptador (mismo hash que usará `dai check`).
@@ -107,7 +107,7 @@ async function cmdLinkUs(key, opts) {
     const us = await adapter.fetchUS(key);
     if (!us) fail(`no encontré la US ${key} en el backend ${adapter.kind}. Pasa --us <md> o revisa el .env.`, 2);
     hash = us.ac_hash;
-    if (hash == null) fail(`la US ${key} no tiene 'Criterios de aceptación' → sin ac_hash.`, 2);
+    if (hash == null) fail(`la US ${key} no tiene una sección 'Criterios de aceptación' con criterios testeables → sin ac_hash, no se puede linkear.\n  Agregá la sección en el tracker, o corré /grill-user-story ${key} para pulir la US (te interroga y la re-publica).`, 2);
     title = opts.title || us.title;
     version = us.spec_version || "v1";
   }
@@ -503,7 +503,13 @@ async function askYesNo(rl, q, def = false) {
 // ── init: scaffolder interactivo del repo ─────────────────────────────────────
 async function cmdInit(repo, opts) {
   repo = repo || ".";   // por defecto, el directorio actual (como git init / npm init)
-  if (!existsSync(repo)) fail(`no existe el directorio: ${repo}`);
+  if (!existsSync(repo)) {
+    // Error común: `--for claude, cursor` con espacio → la shell parte y 'cursor' cae acá como repo.
+    const hint = isAssistantToken(repo)
+      ? `\n  ¿Separaste --for con un espacio? '${repo}' quedó como <repo>. Usá coma SIN espacio: --for claude,cursor`
+      : "";
+    fail(`no existe el directorio: ${repo}${hint}`);
+  }
   const rl = process.stdin.isTTY ? createInterface({ input: process.stdin, output: process.stdout }) : null;
 
   process.stdout.write("\n  dai · configurar este repo para desarrollo asistido por IA\n");
@@ -557,8 +563,9 @@ async function cmdInit(repo, opts) {
   writeFileSync(join(dai, "VERSION"), readFileSync(join(ROOT, "VERSION"), "utf8"));
   ok(".dai/         moldes (templates) + reglas (governance) del método");
 
-  // .env.example — aditivo: agrega las claves de dai que falten (no pisa el del proyecto).
-  const exSrc = readFileSync(join(ROOT, ".env.example"), "utf8");
+  // .env.example — aditivo, reflejando el --pm elegido: mismas claves que el .env
+  // (con valores VACÍOS, sin secretos) para que el token del tracker esté presente.
+  const exSrc = envFor(pm);
   const exPath = join(repo, ".env.example");
   if (existsSync(exPath)) {
     const cur = readFileSync(exPath, "utf8"), merged = mergeEnv(cur, exSrc);
