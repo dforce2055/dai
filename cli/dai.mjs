@@ -28,6 +28,7 @@ import { parsePrRef, getPR, postComment } from "./lib/forge-api.mjs";
 import { composePrBody, prTitle, forgeTool } from "./lib/pr.mjs";
 import { dirsEqual } from "./lib/fsutil.mjs";
 import { parseFlags, parseAssistants, isAssistantToken } from "./lib/args.mjs";
+import { versionDrift } from "./lib/semver.mjs";
 import { skillToPrompt, skillToCursor, constitution, constitutionCursorRule, envFor, mergeEnv, upsertBlock, reconcileGitignore } from "./lib/bootstrap.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -39,6 +40,10 @@ function fail(msg, code = 1) { process.stderr.write("dai: " + msg + "\n"); proce
 const ok = (m) => process.stdout.write(`✓ ${m}\n`);
 const info = (m) => process.stdout.write(`› ${m}\n`);
 const warn = (m) => process.stdout.write(`⚠ ${m}\n`);
+// Color ANSI mínimo — solo si es TTY y no está NO_COLOR (así no ensucia pipes/CI).
+const _color = process.stdout.isTTY && !process.env.NO_COLOR;
+const paint = (code, m) => (_color ? `\x1b[${code}m${m}\x1b[0m` : m);
+const C = { y: (m) => paint("33", m), r: (m) => paint("31", m), cy: (m) => paint("36", m), b: (m) => paint("1", m) };
 const ROOT = join(HERE, "..");            // raíz del paquete dai (cli/ está adentro)
 const CLAUDE_SKILLS_DIR = process.env.CLAUDE_SKILLS_DIR || join(homedir(), ".claude", "skills");
 const CURSOR_SKILLS_DIR = process.env.CURSOR_SKILLS_DIR || join(homedir(), ".cursor", "skills");
@@ -677,6 +682,113 @@ function cmdDocs(dest) {
   ok(`documentación copiada a ${dest}`);
 }
 
+// ── sync: refresca las copias scaffoldeadas a la versión del CLI (ADR-0010) ───
+// Las copias (skills, constitución, templates, PR template) son un CACHÉ derivable
+// del CLI: `dai sync` las re-genera a la versión instalada, aditivo (no pisa la
+// constitución propia del proyecto). NO toca el `.env` ni OpenSpec. Opt-in.
+function cmdSync(repo, opts) {
+  repo = repo || ".";
+  if (!existsSync(repo)) fail(`no existe el directorio: ${repo}`, 2);
+  const daiDir = join(repo, ".dai");
+  if (!existsSync(daiDir)) fail("este repo no tiene dai (falta .dai/). Corré `dai init` primero.", 2);
+
+  // Asistentes: --for override, o detectar los que ya están en el repo.
+  let want;
+  if (typeof opts.for === "string") {
+    try { want = parseAssistants(opts.for); } catch (e) { fail(`--for ${e.message}`); }
+  } else {
+    want = {
+      claude: existsSync(join(repo, ".claude", "skills")),
+      copilot: existsSync(join(repo, ".github", "prompts")),
+      cursor: existsSync(join(repo, ".cursor", "skills")),
+    };
+    if (!want.claude && !want.copilot && !want.cursor)
+      fail("no detecté asistentes instalados (.claude/.cursor/.github/prompts). Pasá --for.", 2);
+  }
+
+  const cliV = readFileSync(join(ROOT, "VERSION"), "utf8").trim();
+  const repoV = existsSync(join(daiDir, "VERSION")) ? readFileSync(join(daiDir, "VERSION"), "utf8").trim() : "?";
+  const dry = !!opts.dryRun;
+  const forStr = [want.claude && "claude", want.copilot && "copilot", want.cursor && "cursor"].filter(Boolean).join("+");
+  info(`dai sync — ${repoV} → v${cliV}  ·  asistentes: ${forStr}${dry ? "  [dry-run]" : ""}`);
+
+  const skillsSrc = join(ROOT, "skills");
+  const skills = readdirSync(skillsSrc).filter((n) => statSync(join(skillsSrc, n)).isDirectory());
+  const step = (label, fn) => { if (dry) info(`[dry-run] ${label}`); else { fn(); ok(label); } };
+
+  // 1. .dai/ (templates + governance) + VERSION
+  step(`.dai/         moldes + governance → v${cliV}`, () => {
+    for (const sub of ["templates", "governance"]) {
+      const src = join(ROOT, sub);
+      if (existsSync(src)) { mkdirSync(join(daiDir, sub), { recursive: true }); cpSync(src, join(daiDir, sub), { recursive: true }); }
+    }
+    writeFileSync(join(daiDir, "VERSION"), readFileSync(join(ROOT, "VERSION"), "utf8"));
+  });
+
+  // 2. PR template
+  step(".github/      pull_request_template.md", () => {
+    mkdirSync(join(repo, ".github"), { recursive: true });
+    cpSync(join(ROOT, "templates", "pull-request.md"), join(repo, ".github", "pull_request_template.md"));
+  });
+
+  // 3. skills + constitución por asistente (aditivo: upsertBlock no pisa lo del proyecto)
+  if (want.claude) step(`Claude:       .claude/skills/ (${skills.length}) + CLAUDE.md (bloque dai)`, () => {
+    const dir = join(repo, ".claude", "skills"); mkdirSync(dir, { recursive: true });
+    for (const name of skills) cpSync(join(skillsSrc, name), join(dir, name), { recursive: true });
+    const cPath = join(repo, "CLAUDE.md"), cCur = existsSync(cPath) ? readFileSync(cPath, "utf8") : "";
+    writeFileSync(cPath, upsertBlock(cCur, constitution("claude")));
+  });
+  if (want.copilot) step(`Copilot:      .github/prompts/ (${skills.length}) + copilot-instructions.md`, () => {
+    const pdir = join(repo, ".github", "prompts"); mkdirSync(pdir, { recursive: true });
+    for (const name of skills) writeFileSync(join(pdir, `${name}.prompt.md`), skillToPrompt(readFileSync(join(skillsSrc, name, "SKILL.md"), "utf8")));
+    const ciPath = join(repo, ".github", "copilot-instructions.md"), ciCur = existsSync(ciPath) ? readFileSync(ciPath, "utf8") : "";
+    writeFileSync(ciPath, upsertBlock(ciCur, constitution("copilot")));
+  });
+  if (want.cursor) step(`Cursor:       .cursor/skills/ (${skills.length}) + .cursor/rules/dai-constitution.mdc`, () => {
+    const dir = join(repo, ".cursor", "skills"); mkdirSync(dir, { recursive: true });
+    for (const name of skills) {
+      const src = join(skillsSrc, name), target = join(dir, name);
+      cpSync(src, target, { recursive: true });
+      writeFileSync(join(target, "SKILL.md"), skillToCursor(readFileSync(join(src, "SKILL.md"), "utf8")));
+    }
+    mkdirSync(join(repo, ".cursor", "rules"), { recursive: true });
+    writeFileSync(join(repo, ".cursor", "rules", "dai-constitution.mdc"), constitutionCursorRule());
+  });
+
+  // 4. .gitignore: versiona los artefactos, deja fuera solo lo personal
+  const giPath = join(repo, ".gitignore");
+  const gi = reconcileGitignore(existsSync(giPath) ? readFileSync(giPath, "utf8") : "", want);
+  if (gi.changed) step(".gitignore    ajustado (artefactos versionados; settings.local.json fuera)",
+    () => writeFileSync(giPath, gi.text.endsWith("\n") ? gi.text : gi.text + "\n"));
+
+  if (dry) info("dry-run: nada escrito. Quitá --dry-run para aplicar.");
+  else { process.stdout.write("\n"); ok(`sync completo — .dai/ ahora en v${cliV}`); process.stdout.write("  (El .env y OpenSpec no se tocan: OpenSpec se actualiza aparte con `openspec`.)\n"); }
+}
+
+// Imprime el estado de version-drift del scaffold (ADR-0010) con color + ícono.
+// Reutilizado por `dai doctor` y `dai version`. Devuelve el estado, o null si el
+// directorio no tiene dai (.dai/VERSION). No imprime nada en ese caso.
+function reportDrift(repo = process.cwd()) {
+  const vf = join(repo, ".dai", "VERSION");
+  if (!existsSync(vf)) return null;
+  const repoV = readFileSync(vf, "utf8").trim();
+  const cliV = readFileSync(join(ROOT, "VERSION"), "utf8").trim();
+  const status = versionDrift(repoV, cliV);
+  switch (status) {
+    case "current":
+      ok(`.dai/ al día con el CLI (v${repoV})`); break;
+    case "minor-behind":
+      process.stdout.write(`${C.b(C.y("⬆️  actualización disponible"))} — CLI ${C.b("v" + cliV)}, tu repo ${repoV}. Actualizá con ${C.cy("dai sync")} · probá con ${C.cy("dai sync --dry-run")}\n`); break;
+    case "major-behind":
+      process.stdout.write(`${C.b(C.r("⚠️  cambio MAYOR"))} — CLI ${C.b("v" + cliV)}, tu repo ${repoV}. Revisá el CHANGELOG/MIGRATION antes de ${C.cy("dai sync")}\n`); break;
+    case "cli-behind":
+      process.stdout.write(`${C.b(C.y("⚠️  CLI atrasado"))} — tu repo se scaffoldeó con v${repoV}, más nuevo que tu CLI (v${cliV}). Actualizá el CLI: ${C.cy("npm i -g @dforce2055/dai")}\n`); break;
+    default:
+      warn(`.dai/ VERSION ilegible: '${repoV}'`);
+  }
+  return status;
+}
+
 // ── doctor: diagnóstico ───────────────────────────────────────────────────────
 function cmdDoctor() {
   loadEnv();
@@ -727,11 +839,15 @@ function cmdDoctor() {
     process.env.DAI_CLICKUP_LIST_ID ? ok(`lista=${process.env.DAI_CLICKUP_LIST_ID} (para dai publish)`)
       : warn("DAI_CLICKUP_LIST_ID vacío — solo hace falta para `dai publish` (crear tareas)");
   }
+
+  // ── version-drift del scaffold vs el CLI (ADR-0010) ──────────────────────────
+  if (existsSync(join(process.cwd(), ".dai", "VERSION"))) { info("versión del scaffold:"); reportDrift(); }
 }
 
 // ── version ───────────────────────────────────────────────────────────────────
 function cmdVersion() {
   process.stdout.write(`dai v${readFileSync(join(HERE, "..", "VERSION"), "utf8").trim()}\n`);
+  reportDrift();   // en un repo con dai, avisa si el scaffold está atrasado (ADR-0010)
 }
 
 let [cmd, ...rest] = process.argv.slice(2);
@@ -750,6 +866,7 @@ switch (cmd) {
   case "done":    cmdDone(opts); break;
   case "install": cmdInstall(opts).catch((e) => fail(String(e.message))); break;
   case "init":    cmdInit(pos[0], opts).catch((e) => fail(String(e.message))); break;
+  case "sync":    cmdSync(pos[0], opts); break;
   case "docs":    cmdDocs(pos[0]); break;
   case "doctor":  cmdDoctor(); break;
   case "version": cmdVersion(); break;
@@ -773,6 +890,7 @@ switch (cmd) {
       "       --for <asistentes>      claude|copilot|cursor (combinables con coma) · o both|all (default all)\n" +
       "                               ej: --for claude,cursor · --for copilot · --for all\n" +
       "       --pm md|jira|clickup · --openspec   (con flags salteas las preguntas)\n" +
+      "  sync [<repo>] [--dry-run] [--for <asistentes>]   refresca skills/constitución/templates a la versión del CLI (aditivo; no toca .env ni OpenSpec)\n" +
       "  docs <destino>               documentación conceptual → <destino>\n" +
       "  doctor                       diagnóstico del entorno\n\n" +
       "  (config: .env — ver .env.example)\n"

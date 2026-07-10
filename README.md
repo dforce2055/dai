@@ -158,6 +158,7 @@ flowchart TD
 |---|---|
 | `dai init [<repo>]` | scaffolder interactivo del repo. Flags: `--for claude\|copilot\|both\|cursor\|all` (asistente, default `all`) · `--pm md\|jira\|clickup` (tracker) · `--openspec` |
 | `dai install [--global \| --local <repo>] [--force] [--dry-run] [--for claude\|cursor\|all]` | instala/actualiza skills de IA en Claude y/o Cursor (`--for all` por defecto). `--force` re-copia aunque ya existan. Ej: `dai install --local . --for cursor --force` · `dai install --global --for all --force` |
+| `dai sync [--dry-run] [--for <asistentes>]` | **refresca** skills, constitución, templates y PR template a la versión del CLI — **aditivo** (no pisa tu `CLAUDE.md`), no toca el `.env` ni OpenSpec. Detecta los asistentes del repo o pasás `--for`. `--dry-run` muestra qué cambiaría ([ADR-0010](docs/adr/0010-versionado-y-upgrade.md)) |
 | `dai publish <us.md>` | crea la US en el tracker (Jira/ClickUp/md) desde un `.md` y devuelve el key. Es el fallback del MCP para publicar sin el asistente |
 | `dai link-us <ID> [--us <md>]` | crea branch + `implements.yaml`; sin `--us` trae la US del tracker |
 | `dai link-us <ID> --resync` | re-estampa el `ac_hash` contra la US viva (tras un ⚠️ de check) |
@@ -168,7 +169,14 @@ flowchart TD
 | `dai done [--base main] [--force]` | cierra la US: vuelve a la base, `fetch --prune` + `pull`, y borra la branch local **si está mergeada** (chequeo estricto; `--force` la borra igual). Redes: no estar en la base, sin cambios sueltos, sin commits sin pushear |
 | `dai forge comment <ref> --body-file <f>` · `dai forge pr <ref>` | comentar / leer una PR/MR (GitHub/GitLab) |
 | `dai ac-hash <us.md>` | calcula el hash de los criterios de aceptación de una US |
-| `dai doctor` · `dai docs <dest>` · `dai --version` | diagnóstico del entorno · copiar la doc · versión |
+| `dai doctor` · `dai docs <dest>` · `dai version` | diagnóstico del entorno (incluye **version-drift** del scaffold) · copiar la doc · versión (`dai version` avisa si tu repo quedó atrás) |
+
+> **🆕 Mantené tu repo al día — `dai sync`.** Las skills, la constitución y los templates son un
+> *caché derivable* del CLI. Cuando actualizás `dai` (`npm i -g @dforce2055/dai`), **`dai doctor` y
+> `dai version` te avisan solos** si tu scaffold quedó atrás — con color y un `⬆️` —, y **`dai sync`**
+> lo refresca: **aditivo** (conserva tu `CLAUDE.md` propio), sin tocar el `.env` ni OpenSpec. Probá sin
+> riesgo con `dai sync --dry-run`. El versionado es semver: patch/minor no rompen nada; solo un major
+> pediría migración. ([ADR-0010](docs/adr/0010-versionado-y-upgrade.md))
 
 Skills (se invocan en el asistente): `/doc-to-backlog` · `/grill-intent` · `/grill-epic` · `/grill-user-story` · `/link-us` ·
 `/tdd` · `/dai-review`. Config del tracker (`md`\|`jira`\|`clickup`) y tokens: en `.env` —

@@ -15,6 +15,7 @@ decisión cambia, se escribe un ADR nuevo que supersede al viejo. Molde en
 | [0007](0007-modelo-de-autenticacion.md) | Modelo de auth: SSH para git, tokens scopeados para forge/tracker, sin contraseñas | aceptado |
 | [0008](0008-estrategia-de-i18n.md) | Estrategia de i18n: fuente única (español) + traducciones derivadas, `DAI_LANG` en el CLI, por fases | propuesto |
 | [0009](0009-adaptador-cursor.md) | Adaptador nativo para Cursor (skills + rules) con `dai init`/`install`/`doctor` | propuesto |
+| [0010](0010-versionado-y-upgrade.md) | Versionado y upgrade: compatibilidad por semver, `doctor` version-drift, `dai sync` aditivo | propuesto |
 
 > Estas son las decisiones que cierran las "Decisiones abiertas" de
 > [`METODOLOGIA.md §7`](../METODOLOGIA.md) y las enmiendas al
