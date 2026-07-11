@@ -18,3 +18,25 @@ jobs:
           node-version: ${{ matrix.node }}
       # Cero dependencias: no hace falta `npm ci`, los tests corren con node --test.
       - run: npm test
+
+  authorship:
+    name: authorship
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Autoría humana (sin agentes)
+        # El código de dai lo autora y revisa una persona (governance/human-authorship.md).
+        # Rechaza author/committer/co-author de agentes en los commits del PR.
+        run: |
+          zero='0000000000000000000000000000000000000000'
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            range='${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}'
+          elif [ -n "${{ github.event.before }}" ] && [ "${{ github.event.before }}" != "$zero" ]; then
+            range='${{ github.event.before }}..${{ github.sha }}'
+          else
+            echo "Sin rango que validar (branch nueva); ok."; exit 0
+          fi
+          echo "Validando rango: $range"
+          sh scripts/no-agent-authors.sh --range "$range"
