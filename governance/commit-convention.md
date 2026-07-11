@@ -35,6 +35,10 @@
 
 Se dejan pasar sin validar: `Merge …`, `Revert …`, `fixup!`/`squash!` y commits de bots (`🤖…`).
 
+> Esto es solo la validación de **formato**. La **autoría** es otra regla: en el repo
+> de dai no se aceptan commits autorados ni co-autorados por un agente
+> (ver [`human-authorship.md`](human-authorship.md)).
+
 ## Relación con la trazabilidad
 
 El link formal QUÉ↔CÓMO vive en el `implements.yaml` (no en el mensaje del commit). Pero si
