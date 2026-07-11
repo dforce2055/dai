@@ -16,6 +16,13 @@ git clone <tu-fork> dai && cd dai
 npm test        # 48 tests, sin `npm install` (no hay deps)
 ```
 
+Opcional, para que los hooks del repo te avisen antes de commitear (cero
+dependencias, sin husky):
+
+```bash
+git config core.hooksPath .githooks   # valida convención de commits + autoría humana
+```
+
 ## Reglas de oro
 
 1. **Cero dependencias de runtime.** El CLI corre en redes cerradas sin `npm install`
@@ -29,6 +36,11 @@ npm test        # 48 tests, sin `npm install` (no hay deps)
    necesita un ADR (ver abajo).
 4. **Secretos nunca en el repo.** Tokens solo en `.env` (gitignored) o el secret
    store del CI. git usa **SSH**, las APIs usan **tokens scopeados** (ADR-0007).
+5. **Autoría humana.** El código de `dai` lo **autora y revisa una persona**. No se
+   aceptan commits cuyo *author*, *committer* o `Co-authored-by` sea un agente o bot
+   (Cursor, Copilot, Claude, …). Un agente puede ayudarte, pero el cambio lo firmas
+   tú: con tu identidad y sin el trailer del agente. Un check de CI lo bloquea en cada
+   PR (ver [`governance/human-authorship.md`](governance/human-authorship.md)).
 
 ## Flujo (la propia metodología)
 
