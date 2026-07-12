@@ -28,7 +28,7 @@ import { parsePrRef, getPR, postComment } from "./lib/forge-api.mjs";
 import { composePrBody, prTitle, forgeTool } from "./lib/pr.mjs";
 import { dirsEqual } from "./lib/fsutil.mjs";
 import { parseFlags, parseAssistants, isAssistantToken } from "./lib/args.mjs";
-import { versionDrift } from "./lib/semver.mjs";
+import { versionDrift, planUpgrade } from "./lib/semver.mjs";
 import { skillToPrompt, skillToCursor, constitution, constitutionCursorRule, envFor, mergeEnv, upsertBlock, reconcileGitignore } from "./lib/bootstrap.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -822,6 +822,43 @@ function reportDrift(repo = process.cwd()) {
   return status;
 }
 
+// ── upgrade: self-update del CLI global (ADR-0012) ────────────────────────────
+// Actualiza el paquete npm global de dai a la última publicada. NO toca el repo:
+// si hay drift del scaffold, solo lo reporta (el `dai sync` queda explícito, del
+// mantenedor). El nombre sale de package.json → robusto si cambia el scope.
+function cmdUpgrade(opts) {
+  const name = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")).name;
+  const currentV = readFileSync(join(ROOT, "VERSION"), "utf8").trim();
+  const manual = C.cy(`npm i -g ${name}@latest`);
+  info(`dai upgrade — CLI v${currentV} (${name})`);
+
+  let latestV;
+  try {
+    latestV = execFileSync(npmBin("npm"), ["view", name, "version"], { encoding: "utf8" }).trim();
+  } catch {
+    fail(`no pude consultar el registry (¿sin red?). Actualizá a mano: ${manual}`, 1);
+  }
+
+  const plan = planUpgrade(currentV, latestV);
+  if (plan.action === "unknown") { warn(`no pude comparar versiones (actual '${currentV}', última '${latestV}')`); return; }
+  if (plan.action === "up-to-date") { ok(`ya estás en la última (v${currentV})`); reportDrift(); return; }
+  if (plan.action === "ahead") { info(`tu CLI (v${currentV}) es más nuevo que el registry (v${latestV}) — nada que actualizar`); reportDrift(); return; }
+
+  // plan.action === "upgrade"
+  if (opts.check) { process.stdout.write(`${C.b(C.y("⬆️  hay update"))} — v${plan.from} → v${plan.to}. Corré ${C.cy("dai upgrade")}\n`); return; }
+  if (opts.dryRun) { info(`[dry-run] correría: npm i -g ${name}@latest  (v${plan.from} → v${plan.to})`); return; }
+
+  info(`actualizando v${plan.from} → v${plan.to} …`);
+  try {
+    execFileSync(npmBin("npm"), ["install", "-g", `${name}@latest`], { stdio: "inherit" });
+  } catch {
+    fail(`el install falló. Probá a mano: ${manual}`, 1);
+  }
+  ok(`CLI actualizado a v${plan.to}`);
+  const st = reportDrift();
+  if (st === null) process.stdout.write("  (No estás en un repo dai — entrá al repo y, si hace falta, corré `dai sync`.)\n");
+}
+
 // ── doctor: diagnóstico ───────────────────────────────────────────────────────
 function cmdDoctor() {
   loadEnv();
@@ -901,6 +938,8 @@ switch (cmd) {
   case "install": cmdInstall(opts).catch((e) => fail(String(e.message))); break;
   case "init":    cmdInit(pos[0], opts).catch((e) => fail(String(e.message))); break;
   case "sync":    cmdSync(pos[0], opts); break;
+  case "upgrade":
+  case "update":  cmdUpgrade(opts); break;
   case "docs":    cmdDocs(pos[0]); break;
   case "doctor":  cmdDoctor(); break;
   case "version": cmdVersion(); break;
@@ -926,6 +965,7 @@ switch (cmd) {
       "                               ej: --for claude,cursor · --for copilot · --for all\n" +
       "       --pm md|jira|clickup · --openspec   (con flags salteas las preguntas)\n" +
       "  sync [<repo>] [--dry-run] [--for <asistentes>]   refresca skills/constitución/templates a la versión del CLI (aditivo; no toca .env ni OpenSpec)\n" +
+      "  upgrade [--check] [--dry-run]   (alias: update) actualiza el CLI global a la última (npm i -g …@latest) y avisa si el repo quedó atrasado (ADR-0012)\n" +
       "  docs <destino>               documentación conceptual → <destino>\n" +
       "  doctor                       diagnóstico del entorno\n\n" +
       "  (config: .env — ver .env.example)\n"
