@@ -28,3 +28,18 @@ export function versionDrift(repoV, cliV) {
   if (cmp < 0) return "cli-behind";
   return c.major > r.major ? "major-behind" : "minor-behind";
 }
+
+// Plan de `dai upgrade` (ADR-0012): compara el CLI instalado (currentV) con la
+// última publicada en el registry (latestV). Núcleo puro; el I/O (npm view /
+// npm i -g) vive en el comando.
+//   up-to-date → iguales                        → { action, version }
+//   ahead      → el CLI local es más nuevo       → { action, current, latest }
+//   upgrade    → hay una versión más nueva        → { action, from, to }
+//   unknown    → alguna versión no parsea         → { action }
+export function planUpgrade(currentV, latestV) {
+  const cmp = compareVersions(currentV, latestV);
+  if (cmp === null) return { action: "unknown" };
+  if (cmp === 0) return { action: "up-to-date", version: currentV };
+  if (cmp > 0) return { action: "ahead", current: currentV, latest: latestV };
+  return { action: "upgrade", from: currentV, to: latestV };
+}

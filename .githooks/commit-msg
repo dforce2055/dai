@@ -1,0 +1,19 @@
+#!/bin/sh
+# =============================================================================
+# commit-msg (repo dai) · autoría humana + convención de commits
+# =============================================================================
+# Cero dependencias: POSIX sh. Corre dos validaciones sobre cada commit:
+#   1. Autoría humana  — author/committer/co-author no pueden ser un agente.
+#   2. Convención       — el mensaje sigue Conventional Commits.
+#
+# Instalación (una vez por clon):
+#   git config core.hooksPath .githooks
+# =============================================================================
+
+root=$(git rev-parse --show-toplevel)
+
+# 1) Autoría humana.
+sh "$root/scripts/no-agent-authors.sh" --pending "$1" || exit 1
+
+# 2) Convención de commits (reusa el template versionado, sin duplicar).
+exec sh "$root/templates/commit-msg" "$1"
