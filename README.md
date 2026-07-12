@@ -159,6 +159,7 @@ flowchart TD
 | `dai init [<repo>]` | scaffolder interactivo del repo. Flags: `--for claude\|copilot\|both\|cursor\|all` (asistente, default `all`) · `--pm md\|jira\|clickup` (tracker) · `--openspec` |
 | `dai install [--global \| --local <repo>] [--force] [--dry-run] [--for claude\|cursor\|all]` | instala/actualiza skills de IA en Claude y/o Cursor (`--for all` por defecto). `--force` re-copia aunque ya existan. Ej: `dai install --local . --for cursor --force` · `dai install --global --for all --force` |
 | `dai sync [--dry-run] [--for <asistentes>]` | **refresca** skills, constitución, templates y PR template a la versión del CLI — **aditivo** (no pisa tu `CLAUDE.md`), no toca el `.env` ni OpenSpec. Detecta los asistentes del repo o pasás `--for`. `--dry-run` muestra qué cambiaría ([ADR-0010](docs/adr/0010-versionado-y-upgrade.md)) |
+| `dai upgrade [--check] [--dry-run]` · alias `dai update` | **actualiza el CLI global** a la última publicada (`npm i -g …@latest`) — self-update. **No toca el repo**: reporta el drift del scaffold pero deja el `dai sync` al mantenedor. `--check` solo informa · `--dry-run` muestra el comando ([ADR-0012](docs/adr/0012-upgrade-self-update-del-cli.md)) |
 | `dai publish <us.md>` | crea la US en el tracker (Jira/ClickUp/md) desde un `.md` y devuelve el key. Es el fallback del MCP para publicar sin el asistente |
 | `dai link-us <ID> [--us <md>]` | crea branch + `implements.yaml`; sin `--us` trae la US del tracker |
 | `dai link-us <ID> --resync` | re-estampa el `ac_hash` contra la US viva (tras un ⚠️ de check) |
@@ -173,7 +174,7 @@ flowchart TD
 | `dai doctor` · `dai docs <dest>` · `dai version` | diagnóstico del entorno (incluye **version-drift** del scaffold) · copiar la doc · versión (`dai version` avisa si tu repo quedó atrás) |
 
 > **🆕 Mantené tu repo al día — `dai sync`.** Las skills, la constitución y los templates son un
-> *caché derivable* del CLI. Cuando actualizás `dai` (`npm i -g @dforce2055/dai`), **`dai doctor` y
+> *caché derivable* del CLI. Cuando actualizás `dai` (`dai upgrade`), **`dai doctor` y
 > `dai version` te avisan solos** si tu scaffold quedó atrás — con color y un `⬆️` —, y **`dai sync`**
 > lo refresca: **aditivo** (conserva tu `CLAUDE.md` propio), sin tocar el `.env` ni OpenSpec. Probá sin
 > riesgo con `dai sync --dry-run`. El versionado es semver: patch/minor no rompen nada; solo un major
