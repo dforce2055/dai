@@ -127,7 +127,7 @@ flowchart TD
 
 | # | Fase | Cómo | Quién |
 |---|---|---|---|
-| 1 | **Instalar el CLI** | `npm i -g @dforce2055/dai` (o `npm link` en dev) · `dai --version` | dev |
+| 1 | **Instalar el CLI** | `npm i -g @dforce2055/dai` (o `npm link` en dev) · `dai --version` · actualizar después: `dai upgrade` | dev |
 | 2 | **Bootstrap del repo** | `dai init` → `.dai` + Claude/Copilot/Cursor + config + PR template | dev/lead |
 | 3a | **Definir el QUÉ** | `/grill-user-story` (una US) · `/grill-epic` (algo grande) · `/doc-to-backlog` (un doc) — te interrogan hasta una US testeable | PO / analista |
 | 3b | **Publicar la US** | la skill la sube al tracker vía **MCP**, o con **`dai publish <us.md>`** (crea el issue vía token, sin MCP) → devuelve el key | PO / IA |
