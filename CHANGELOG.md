@@ -3,6 +3,21 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
+## [0.6.0] — 2026-07-12
+
+Self-update del CLI y blindaje de autoría del repo.
+
+### Agregado
+- `dai upgrade` (alias `update`): actualiza el CLI global a la última publicada
+  (`npm i -g …@latest`), con `--check` y `--dry-run`. No toca el repo: reporta el
+  drift del scaffold pero deja el `dai sync` explícito del mantenedor (ADR-0012).
+
+### Interno
+- Guard de autoría: rechaza commits autorados/co-autorados por agentes de IA
+  (check de CI `authorship` + hook local + `governance/human-authorship.md`).
+- Eliminado `.mailmap` (ya no cumplía función).
+- **111 tests** (+1: `planUpgrade`).
+
 ## [0.5.0] — 2026-07-10
 
 **`archive` en el flujo** ([ADR-0011](docs/adr/0011-archive-gate-de-aprobacion.md)): cerrar el CÓMO
@@ -166,6 +181,7 @@ ClickUp y Jira Cloud.
 - Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
   `files` de npm sin tests ni secretos.
 
+[0.6.0]: https://github.com/dforce2055/dai/releases/tag/v0.6.0
 [0.5.0]: https://github.com/dforce2055/dai/releases/tag/v0.5.0
 [0.4.0]: https://github.com/dforce2055/dai/releases/tag/v0.4.0
 [0.3.1]: https://github.com/dforce2055/dai/releases/tag/v0.3.1
