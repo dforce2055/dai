@@ -3,6 +3,16 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
+## [Unreleased]
+
+**dai es el distribuidor de skills de cualquier stack, sin opinar sobre su contenido.**
+
+### Agregado
+- `dai skills install` — namespace de skills (`dai install` queda como alias). Con
+  `--from <git-url|path>[#ref]` instala **skills externas** por-stack (.NET, Java,
+  Rust…) desde un repo/dir, convertidas para los 3 asistentes (Claude/Cursor/Copilot).
+  Self-service, one-off, sin registro; `dai sync` no las toca ([ADR-0013](docs/adr/0013-skills-externas-install-from.md)).
+
 ## [0.6.0] — 2026-07-12
 
 Self-update del CLI y blindaje de autoría del repo.
@@ -181,6 +191,7 @@ ClickUp y Jira Cloud.
 - Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
   `files` de npm sin tests ni secretos.
 
+[Unreleased]: https://github.com/dforce2055/dai/compare/v0.6.0...develop
 [0.6.0]: https://github.com/dforce2055/dai/releases/tag/v0.6.0
 [0.5.0]: https://github.com/dforce2055/dai/releases/tag/v0.5.0
 [0.4.0]: https://github.com/dforce2055/dai/releases/tag/v0.4.0

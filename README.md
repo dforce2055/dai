@@ -180,6 +180,13 @@ flowchart TD
 > riesgo con `dai sync --dry-run`. El versionado es semver: patch/minor no rompen nada; solo un major
 > pediría migración. ([ADR-0010](docs/adr/0010-versionado-y-upgrade.md))
 
+> **🧩 Skills de cualquier stack — `dai skills install --from`.** Además de las skills de
+> dai, cada equipo suma las suyas (por-stack: .NET, Java, Rust…) desde su propio repo:
+> `dai skills install --from github.com/tu-org/net-skills`. dai las **convierte para los 3
+> asistentes** (Claude/Cursor/Copilot) e instala. **dai es el distribuidor de skills de
+> cualquier stack, sin opinar sobre su contenido** — self-service, sin registro; `dai sync`
+> sigue siendo solo de dai. ([ADR-0013](docs/adr/0013-skills-externas-install-from.md))
+
 Skills (se invocan en el asistente): `/doc-to-backlog` · `/grill-intent` · `/grill-epic` · `/grill-user-story` · `/link-us` ·
 `/tdd` · `/dai-review`. Config del tracker (`md`\|`jira`\|`clickup`) y tokens: en `.env` —
 ver [`.env.example`](.env.example). Auth (SSH + tokens): [ADR-0007](docs/adr/0007-modelo-de-autenticacion.md).
