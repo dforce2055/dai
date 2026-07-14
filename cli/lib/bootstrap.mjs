@@ -14,6 +14,18 @@ export function parseFrontmatter(md) {
   return { name, description, body: m[2].trim() };
 }
 
+// Valida el contrato MÍNIMO de un SKILL.md para que dai lo ingiera y lo convierta a
+// los 3 asistentes (y para que Claude/Cursor/Copilot lo carguen): frontmatter con
+// `name` y `description`. Devuelve null si está OK, o un string con el motivo.
+// NO valida el contenido de la skill — eso es criterio del equipo (ADR-0013).
+export function validateSkill(md) {
+  const { name, description } = parseFrontmatter(md);
+  if (!name && !description) return "sin frontmatter (falta name y description)";
+  if (!name) return "falta 'name' en el frontmatter";
+  if (!description) return "falta 'description' en el frontmatter";
+  return null;
+}
+
 // Transforma un SKILL.md (Claude) en un prompt file de Copilot (.prompt.md).
 // Cambia el frontmatter; el cuerpo (la lógica) es el mismo.
 export function skillToPrompt(md) {
