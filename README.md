@@ -49,7 +49,7 @@ deja las skills disponibles:
 
 ```bash
 npm i -g @dforce2055/dai        # el CLI
-dai install                     # skills de IA → Claude y Cursor (global por defecto)
+dai skills install              # skills de IA → Claude y Cursor (global por defecto)
 ```
 
 Y después, en el chat del asistente, según lo que tengas:
@@ -157,7 +157,8 @@ flowchart TD
 | Comando | Qué hace |
 |---|---|
 | `dai init [<repo>]` | scaffolder interactivo del repo. Flags: `--for claude\|copilot\|both\|cursor\|all` (asistente, default `all`) · `--pm md\|jira\|clickup` (tracker) · `--openspec` |
-| `dai install [--global \| --local <repo>] [--force] [--dry-run] [--for claude\|cursor\|all]` | instala/actualiza skills de IA en Claude y/o Cursor (`--for all` por defecto). `--force` re-copia aunque ya existan. Ej: `dai install --local . --for cursor --force` · `dai install --global --for all --force` |
+| `dai skills install [--global \| --local <repo>] [--force] [--dry-run] [--for claude\|cursor\|all]` | instala/actualiza las skills de dai en Claude y/o Cursor (`--for all` por defecto). `--force` re-copia. Alias: **`dai install`**. Ej: `dai skills install --local . --for cursor --force` |
+| `dai skills install --from <git-url\|path>[#ref] [--for …]` | instala **skills externas** (por-stack: .NET, Java, …) desde un repo/dir, **convertidas para los 3 asistentes**. Self-service, one-off, sin registro; `dai sync` no las toca. Colisión con una skill de dai → salta ([ADR-0013](docs/adr/0013-skills-externas-install-from.md)). Ej: `dai skills install --from github.com/mi-org/net-skills` |
 | `dai sync [--dry-run] [--for <asistentes>]` | **refresca** skills, constitución, templates y PR template a la versión del CLI — **aditivo** (no pisa tu `CLAUDE.md`), no toca el `.env` ni OpenSpec. Detecta los asistentes del repo o pasás `--for`. `--dry-run` muestra qué cambiaría ([ADR-0010](docs/adr/0010-versionado-y-upgrade.md)) |
 | `dai publish <us.md>` | crea la US en el tracker (Jira/ClickUp/md) desde un `.md` y devuelve el key. Es el fallback del MCP para publicar sin el asistente |
 | `dai link-us <ID> [--us <md>]` | crea branch + `implements.yaml`; sin `--us` trae la US del tracker |
@@ -178,6 +179,27 @@ flowchart TD
 > lo refresca: **aditivo** (conserva tu `CLAUDE.md` propio), sin tocar el `.env` ni OpenSpec. Probá sin
 > riesgo con `dai sync --dry-run`. El versionado es semver: patch/minor no rompen nada; solo un major
 > pediría migración. ([ADR-0010](docs/adr/0010-versionado-y-upgrade.md))
+
+> **🧩 Skills de cualquier stack — `dai skills install --from`.** Además de las skills de
+> dai, cada equipo suma las suyas (por-stack: .NET, Java, Rust…) desde su propio repo:
+> `dai skills install --from github.com/tu-org/net-skills`. dai las **convierte para los 3
+> asistentes** (Claude/Cursor/Copilot) e instala. **dai es el distribuidor de skills de
+> cualquier stack, sin opinar sobre su contenido** — self-service, sin registro; `dai sync`
+> sigue siendo solo de dai. ([ADR-0013](docs/adr/0013-skills-externas-install-from.md))
+>
+> La fuente puede ser **pública, privada (por SSH) o un path local**: dai no hace auth
+> propia, delega en git — **si podés `git clone` el repo, dai instala desde ahí**. Para
+> privados usá la forma SSH (`git@github.com:tu-org/net-skills.git`), consistente con el
+> modelo de auth de dai ([ADR-0007](docs/adr/0007-modelo-de-autenticacion.md)). Público =
+> cero fricción entre equipos/máquinas.
+>
+> **Cómo armar una skill que dai ingiera.** Cada skill es un directorio con un `SKILL.md`
+> en **formato Agent Skills de Claude**: frontmatter con **`name`** y **`description`**
+> (obligatorios) + el cuerpo con las instrucciones. dai **valida ese contrato**: si a un
+> `SKILL.md` le falta `name`/`description`, o un dir no tiene `SKILL.md`, lo **saltea con
+> un warn** (no instala una skill rota). El **contenido** no lo valida — bajo tu criterio.
+> Molde: [`templates/skill.md`](templates/skill.md) · ejemplos reales: las skills de dai
+> en [`skills/`](skills/).
 
 Skills (se invocan en el asistente): `/doc-to-backlog` · `/grill-intent` · `/grill-epic` · `/grill-user-story` · `/link-us` ·
 `/tdd` · `/dai-review`. Config del tracker (`md`\|`jira`\|`clickup`) y tokens: en `.env` —
