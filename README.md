@@ -49,7 +49,7 @@ deja las skills disponibles:
 
 ```bash
 npm i -g @dforce2055/dai        # el CLI
-dai install                     # skills de IA → Claude y Cursor (global por defecto)
+dai skills install              # skills de IA → Claude y Cursor (global por defecto)
 ```
 
 Y después, en el chat del asistente, según lo que tengas:
@@ -157,7 +157,8 @@ flowchart TD
 | Comando | Qué hace |
 |---|---|
 | `dai init [<repo>]` | scaffolder interactivo del repo. Flags: `--for claude\|copilot\|both\|cursor\|all` (asistente, default `all`) · `--pm md\|jira\|clickup` (tracker) · `--openspec` |
-| `dai install [--global \| --local <repo>] [--force] [--dry-run] [--for claude\|cursor\|all]` | instala/actualiza skills de IA en Claude y/o Cursor (`--for all` por defecto). `--force` re-copia aunque ya existan. Ej: `dai install --local . --for cursor --force` · `dai install --global --for all --force` |
+| `dai skills install [--global \| --local <repo>] [--force] [--dry-run] [--for claude\|cursor\|all]` | instala/actualiza las skills de dai en Claude y/o Cursor (`--for all` por defecto). `--force` re-copia. Alias: **`dai install`**. Ej: `dai skills install --local . --for cursor --force` |
+| `dai skills install --from <git-url\|path>[#ref] [--for …]` | instala **skills externas** (por-stack: .NET, Java, …) desde un repo/dir, **convertidas para los 3 asistentes**. Self-service, one-off, sin registro; `dai sync` no las toca. Colisión con una skill de dai → salta ([ADR-0013](docs/adr/0013-skills-externas-install-from.md)). Ej: `dai skills install --from github.com/mi-org/net-skills` |
 | `dai sync [--dry-run] [--for <asistentes>]` | **refresca** skills, constitución, templates y PR template a la versión del CLI — **aditivo** (no pisa tu `CLAUDE.md`), no toca el `.env` ni OpenSpec. Detecta los asistentes del repo o pasás `--for`. `--dry-run` muestra qué cambiaría ([ADR-0010](docs/adr/0010-versionado-y-upgrade.md)) |
 | `dai publish <us.md>` | crea la US en el tracker (Jira/ClickUp/md) desde un `.md` y devuelve el key. Es el fallback del MCP para publicar sin el asistente |
 | `dai link-us <ID> [--us <md>]` | crea branch + `implements.yaml`; sin `--us` trae la US del tracker |

@@ -29,6 +29,7 @@ import { composePrBody, prTitle, forgeTool } from "./lib/pr.mjs";
 import { dirsEqual } from "./lib/fsutil.mjs";
 import { parseFlags, parseAssistants, isAssistantToken } from "./lib/args.mjs";
 import { versionDrift, planUpgrade } from "./lib/semver.mjs";
+import { parseSource } from "./lib/skills-source.mjs";
 import { skillToPrompt, skillToCursor, constitution, constitutionCursorRule, envFor, mergeEnv, upsertBlock, reconcileGitignore } from "./lib/bootstrap.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -416,6 +417,7 @@ async function cmdPr(opts) {
 
 // ── install: skills → ~/.claude/skills o <repo>/.claude/skills ────────────────
 async function cmdInstall(opts) {
+  if (opts.from !== undefined) return cmdInstallFrom(opts);   // skills externas (ADR-0013)
   const skillsSrc = join(ROOT, "skills");
   const skills = readdirSync(skillsSrc).filter((n) => statSync(join(skillsSrc, n)).isDirectory());
   let want;
@@ -487,6 +489,82 @@ async function cmdInstall(opts) {
     if (wantCursor) await installOne({ name, scope, repo, kind: "cursor" });
   }
   if (rl) rl.close();
+}
+
+// ── skills install --from: skills EXTERNAS (por-stack) desde un repo/dir ───────
+// Self-service, one-off, sin registro ni sync (ADR-0013). Convierte cada skill
+// para los 3 asistentes y la instala en el repo. No pisa las skills built-in de
+// dai (colisión → warn + skip). `dai sync` NO las toca: es solo de dai.
+function cmdInstallFrom(opts) {
+  if (typeof opts.from !== "string" || !opts.from.trim())
+    fail("--from necesita una fuente: un git URL (github.com/org/skills[#ref]) o un path local", 2);
+  let want;
+  try { want = parseAssistants(typeof opts.for === "string" ? opts.for : "all"); }
+  catch (e) { fail(`--for ${e.message}`); }
+
+  let src;
+  try { src = parseSource(opts.from); } catch (e) { fail(`--from ${e.message}`, 2); }
+
+  // Resolver la fuente a un directorio local.
+  let root, tmp = null;
+  if (src.type === "git") {
+    tmp = mkdtempSync(join(tmpdir(), "dai-skills-"));
+    info(`clonando ${src.location}${src.ref ? " @ " + src.ref : ""} …`);
+    const args = ["clone", "--depth", "1"];
+    if (src.ref) args.push("--branch", src.ref);
+    args.push(src.location, tmp);
+    try { git(args); }
+    catch (e) { rmSync(tmp, { recursive: true, force: true }); fail(`no pude clonar la fuente: ${String(e.message).split("\n")[0]}`, 1); }
+    root = tmp;
+  } else {
+    root = src.location;
+    if (!existsSync(root)) fail(`no existe la fuente: ${root}`, 2);
+  }
+
+  const cleanup = () => { if (tmp) rmSync(tmp, { recursive: true, force: true }); };
+
+  // El dir de skills: <root>/skills, o <root> si ya contiene <name>/SKILL.md.
+  const skillsDir = existsSync(join(root, "skills")) ? join(root, "skills") : root;
+  let skills;
+  try {
+    skills = readdirSync(skillsDir).filter((n) => {
+      const d = join(skillsDir, n);
+      return statSync(d).isDirectory() && existsSync(join(d, "SKILL.md"));
+    });
+  } catch { cleanup(); fail(`no pude leer la fuente: ${skillsDir}`, 2); }
+  if (skills.length === 0) { cleanup(); fail("la fuente no tiene skills (esperaba directorios con SKILL.md)", 2); }
+
+  // Destino: repo local (default cwd), o --local <repo> / --global.
+  const repo = opts.global ? homedir() : (typeof opts.local === "string" ? opts.local : process.cwd());
+  const builtins = new Set(readdirSync(join(ROOT, "skills")));
+  const forStr = ["claude", "copilot", "cursor"].filter((a) => want[a]).join("+");
+  info(`skills install --from ${opts.from}  ·  ${skills.length} skill(s)  ·  asistentes: ${forStr}${opts.dryRun ? "  [dry-run]" : ""}`);
+
+  let installed = 0, skipped = 0;
+  for (const name of skills) {
+    if (builtins.has(name)) { warn(`'${name}' choca con una skill de dai — salto (renombrala, p.ej. ${name}-<stack>)`); skipped++; continue; }
+    const srcDir = join(skillsDir, name);
+    const md = readFileSync(join(srcDir, "SKILL.md"), "utf8");
+    if (opts.dryRun) { info(`[dry-run] ${name} → ${forStr}`); continue; }
+    if (want.claude) {
+      const t = join(repo, ".claude", "skills", name);
+      rmSync(t, { recursive: true, force: true }); mkdirSync(dirname(t), { recursive: true }); cpSync(srcDir, t, { recursive: true });
+    }
+    if (want.cursor) {
+      const t = join(repo, ".cursor", "skills", name);
+      rmSync(t, { recursive: true, force: true }); cpSync(srcDir, t, { recursive: true }); writeFileSync(join(t, "SKILL.md"), skillToCursor(md));
+    }
+    if (want.copilot) {
+      const pdir = join(repo, ".github", "prompts"); mkdirSync(pdir, { recursive: true });
+      writeFileSync(join(pdir, `${name}.prompt.md`), skillToPrompt(md));
+    }
+    ok(name); installed++;
+  }
+  cleanup();
+  if (opts.dryRun) { info("dry-run: nada escrito."); return; }
+  process.stdout.write("\n");
+  ok(`${installed} skill(s) externa(s) instalada(s)${skipped ? `, ${skipped} salteada(s)` : ""} desde ${opts.from}`);
+  warn("skills externas — bajo tu criterio: dai las convierte e instala, no las vetea ni las trackea. `dai sync` no las toca.");
 }
 
 // ── helpers de prompt interactivo ─────────────────────────────────────────────
@@ -935,7 +1013,11 @@ switch (cmd) {
   case "pr":      cmdPr(opts).catch((e) => fail(String(e.message))); break;
   case "done":    cmdDone(opts); break;
   case "archive": cmdArchive(pos[0], opts); break;
-  case "install": cmdInstall(opts).catch((e) => fail(String(e.message))); break;
+  case "install": cmdInstall(opts).catch((e) => fail(String(e.message))); break;   // alias de `dai skills install`
+  case "skills":
+    if (pos[0] === "install" || pos[0] === undefined) cmdInstall(opts).catch((e) => fail(String(e.message)));
+    else fail(`subcomando de skills desconocido: '${pos[0]}' (por ahora: install)`, 2);
+    break;
   case "init":    cmdInit(pos[0], opts).catch((e) => fail(String(e.message))); break;
   case "sync":    cmdSync(pos[0], opts); break;
   case "upgrade":
@@ -959,7 +1041,8 @@ switch (cmd) {
       "  pr [--assignee u] [--base b] [--draft] [--yes]   crea TU PR/MR precargada (muestra + confirma)\n" +
       "  forge comment <ref> --body-file <f> · forge pr <ref>   comentar/leer una PR ajena (github/gitlab)\n\n" +
       "Instalación:\n" +
-      "  install [--global | --local <repo>] [--force] [--dry-run] [--for <asistentes>]   skills → Claude/Cursor\n" +
+      "  skills install [--global | --local <repo>] [--force] [--dry-run] [--for <asistentes>]   instala las skills de dai (alias: `install`)\n" +
+      "  skills install --from <git-url|path>[#ref] [--for <asistentes>]   instala skills EXTERNAS (por-stack), convertidas para los 3 asistentes (ADR-0013)\n" +
       "  init [<repo>]                scaffolder interactivo del repo (asistente, gestor, OpenSpec)\n" +
       "       --for <asistentes>      claude|copilot|cursor (combinables con coma) · o both|all (default all)\n" +
       "                               ej: --for claude,cursor · --for copilot · --for all\n" +
