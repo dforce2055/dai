@@ -3,7 +3,7 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
-## [Unreleased]
+## [0.7.0] — 2026-07-14
 
 **dai es el distribuidor de skills de cualquier stack, sin opinar sobre su contenido.**
 
@@ -194,7 +194,7 @@ ClickUp y Jira Cloud.
 - Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
   `files` de npm sin tests ni secretos.
 
-[Unreleased]: https://github.com/dforce2055/dai/compare/v0.6.0...develop
+[0.7.0]: https://github.com/dforce2055/dai/releases/tag/v0.7.0
 [0.6.0]: https://github.com/dforce2055/dai/releases/tag/v0.6.0
 [0.5.0]: https://github.com/dforce2055/dai/releases/tag/v0.5.0
 [0.4.0]: https://github.com/dforce2055/dai/releases/tag/v0.4.0
