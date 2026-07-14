@@ -10,7 +10,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado se
 ### Agregado
 - `dai skills install` — namespace de skills (`dai install` queda como alias). Con
   `--from <git-url|path>[#ref]` instala **skills externas** por-stack (.NET, Java,
-  Rust…) desde un repo/dir, convertidas para los 3 asistentes (Claude/Cursor/Copilot).
+  Rust…) desde un repo git (público o privado por SSH) o un path local, convertidas
+  para los 3 asistentes (Claude/Cursor/Copilot).
   Self-service, one-off, sin registro; `dai sync` no las toca ([ADR-0013](docs/adr/0013-skills-externas-install-from.md)).
 
 ## [0.6.0] — 2026-07-12

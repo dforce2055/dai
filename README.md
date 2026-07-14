@@ -186,6 +186,12 @@ flowchart TD
 > asistentes** (Claude/Cursor/Copilot) e instala. **dai es el distribuidor de skills de
 > cualquier stack, sin opinar sobre su contenido** — self-service, sin registro; `dai sync`
 > sigue siendo solo de dai. ([ADR-0013](docs/adr/0013-skills-externas-install-from.md))
+>
+> La fuente puede ser **pública, privada (por SSH) o un path local**: dai no hace auth
+> propia, delega en git — **si podés `git clone` el repo, dai instala desde ahí**. Para
+> privados usá la forma SSH (`git@github.com:tu-org/net-skills.git`), consistente con el
+> modelo de auth de dai ([ADR-0007](docs/adr/0007-modelo-de-autenticacion.md)). Público =
+> cero fricción entre equipos/máquinas.
 
 Skills (se invocan en el asistente): `/doc-to-backlog` · `/grill-intent` · `/grill-epic` · `/grill-user-story` · `/link-us` ·
 `/tdd` · `/dai-review`. Config del tracker (`md`\|`jira`\|`clickup`) y tokens: en `.env` —
