@@ -1,6 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseFrontmatter, skillToPrompt, skillToCursor, constitution, constitutionCursorRule, envFor, mergeEnv, upsertBlock, reconcileGitignore } from "../lib/bootstrap.mjs";
+import { parseFrontmatter, validateSkill, skillToPrompt, skillToCursor, constitution, constitutionCursorRule, envFor, mergeEnv, upsertBlock, reconcileGitignore } from "../lib/bootstrap.mjs";
+
+test("validateSkill exige name y description en el frontmatter (ADR-0013)", () => {
+  assert.equal(validateSkill("---\nname: x\ndescription: y\n---\n\nbody"), null);
+  assert.match(validateSkill("---\ndescription: y\n---\nb"), /name/);
+  assert.match(validateSkill("---\nname: x\n---\nb"), /description/);
+  assert.match(validateSkill("sin frontmatter"), /frontmatter/);
+});
 
 test("envFor genera el .env por backend", () => {
   assert.match(envFor("md"), /DAI_PM=md/);

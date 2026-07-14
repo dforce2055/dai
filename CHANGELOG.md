@@ -13,6 +13,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado se
   Rust…) desde un repo git (público o privado por SSH) o un path local, convertidas
   para los 3 asistentes (Claude/Cursor/Copilot).
   Self-service, one-off, sin registro; `dai sync` no las toca ([ADR-0013](docs/adr/0013-skills-externas-install-from.md)).
+  Valida el contrato mínimo (`SKILL.md` con `name` + `description`) y saltea con aviso
+  las malformadas; molde en [`templates/skill.md`](templates/skill.md). No valida el contenido.
 
 ## [0.6.0] — 2026-07-12
 

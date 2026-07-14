@@ -30,7 +30,7 @@ import { dirsEqual } from "./lib/fsutil.mjs";
 import { parseFlags, parseAssistants, isAssistantToken } from "./lib/args.mjs";
 import { versionDrift, planUpgrade } from "./lib/semver.mjs";
 import { parseSource } from "./lib/skills-source.mjs";
-import { skillToPrompt, skillToCursor, constitution, constitutionCursorRule, envFor, mergeEnv, upsertBlock, reconcileGitignore } from "./lib/bootstrap.mjs";
+import { skillToPrompt, skillToCursor, validateSkill, constitution, constitutionCursorRule, envFor, mergeEnv, upsertBlock, reconcileGitignore } from "./lib/bootstrap.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -525,26 +525,30 @@ function cmdInstallFrom(opts) {
 
   // El dir de skills: <root>/skills, o <root> si ya contiene <name>/SKILL.md.
   const skillsDir = existsSync(join(root, "skills")) ? join(root, "skills") : root;
-  let skills;
+  let entries;
   try {
-    skills = readdirSync(skillsDir).filter((n) => {
-      const d = join(skillsDir, n);
-      return statSync(d).isDirectory() && existsSync(join(d, "SKILL.md"));
+    entries = readdirSync(skillsDir).filter((n) => {
+      try { return statSync(join(skillsDir, n)).isDirectory(); } catch { return false; }
     });
   } catch { cleanup(); fail(`no pude leer la fuente: ${skillsDir}`, 2); }
-  if (skills.length === 0) { cleanup(); fail("la fuente no tiene skills (esperaba directorios con SKILL.md)", 2); }
+  if (entries.length === 0) { cleanup(); fail("la fuente no tiene directorios de skill", 2); }
 
   // Destino: repo local (default cwd), o --local <repo> / --global.
   const repo = opts.global ? homedir() : (typeof opts.local === "string" ? opts.local : process.cwd());
   const builtins = new Set(readdirSync(join(ROOT, "skills")));
   const forStr = ["claude", "copilot", "cursor"].filter((a) => want[a]).join("+");
-  info(`skills install --from ${opts.from}  ·  ${skills.length} skill(s)  ·  asistentes: ${forStr}${opts.dryRun ? "  [dry-run]" : ""}`);
+  info(`skills install --from ${opts.from}  ·  ${entries.length} candidata(s)  ·  asistentes: ${forStr}${opts.dryRun ? "  [dry-run]" : ""}`);
 
   let installed = 0, skipped = 0;
-  for (const name of skills) {
-    if (builtins.has(name)) { warn(`'${name}' choca con una skill de dai — salto (renombrala, p.ej. ${name}-<stack>)`); skipped++; continue; }
+  for (const name of entries) {
     const srcDir = join(skillsDir, name);
-    const md = readFileSync(join(srcDir, "SKILL.md"), "utf8");
+    const skillPath = join(srcDir, "SKILL.md");
+    // Validación estructural (contrato mínimo, no contenido — ADR-0013).
+    if (!existsSync(skillPath)) { warn(`'${name}' no tiene SKILL.md — salto`); skipped++; continue; }
+    if (builtins.has(name)) { warn(`'${name}' choca con una skill de dai — salto (renombrala, p.ej. ${name}-<stack>)`); skipped++; continue; }
+    const md = readFileSync(skillPath, "utf8");
+    const bad = validateSkill(md);
+    if (bad) { warn(`'${name}' inválida: ${bad} — salto (ver templates/skill.md)`); skipped++; continue; }
     if (opts.dryRun) { info(`[dry-run] ${name} → ${forStr}`); continue; }
     if (want.claude) {
       const t = join(repo, ".claude", "skills", name);
@@ -563,6 +567,9 @@ function cmdInstallFrom(opts) {
   cleanup();
   if (opts.dryRun) { info("dry-run: nada escrito."); return; }
   process.stdout.write("\n");
+  if (installed === 0) {
+    fail(`0 skills instaladas${skipped ? ` (${skipped} salteada(s))` : ""} — revisá el formato: cada skill es un dir con SKILL.md y frontmatter (name + description). Molde en templates/skill.md`, 1);
+  }
   ok(`${installed} skill(s) externa(s) instalada(s)${skipped ? `, ${skipped} salteada(s)` : ""} desde ${opts.from}`);
   warn("skills externas — bajo tu criterio: dai las convierte e instala, no las vetea ni las trackea. `dai sync` no las toca.");
 }

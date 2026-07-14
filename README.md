@@ -192,6 +192,14 @@ flowchart TD
 > privados usá la forma SSH (`git@github.com:tu-org/net-skills.git`), consistente con el
 > modelo de auth de dai ([ADR-0007](docs/adr/0007-modelo-de-autenticacion.md)). Público =
 > cero fricción entre equipos/máquinas.
+>
+> **Cómo armar una skill que dai ingiera.** Cada skill es un directorio con un `SKILL.md`
+> en **formato Agent Skills de Claude**: frontmatter con **`name`** y **`description`**
+> (obligatorios) + el cuerpo con las instrucciones. dai **valida ese contrato**: si a un
+> `SKILL.md` le falta `name`/`description`, o un dir no tiene `SKILL.md`, lo **saltea con
+> un warn** (no instala una skill rota). El **contenido** no lo valida — bajo tu criterio.
+> Molde: [`templates/skill.md`](templates/skill.md) · ejemplos reales: las skills de dai
+> en [`skills/`](skills/).
 
 Skills (se invocan en el asistente): `/doc-to-backlog` · `/grill-intent` · `/grill-epic` · `/grill-user-story` · `/link-us` ·
 `/tdd` · `/dai-review`. Config del tracker (`md`\|`jira`\|`clickup`) y tokens: en `.env` —
