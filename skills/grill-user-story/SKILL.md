@@ -1,6 +1,6 @@
 ---
 name: grill-user-story
-description: Interroga a un PO o analista funcional para producir una User Story funcional y testeable siguiendo el formato del modelo de trazabilidad — o pule una US vaga existente. Se queda a nivel funcional/usuario y se niega a derivar en diseño técnico o a emitir una US con criterios no testeables. Al terminar, PUBLICA la US en el tracker configurado del repo (Jira o ClickUp, según DAI_PM del .env) usando su MCP; si no hay MCP/token, deja un .md con el mismo formato para copiar y pegar. Invocar como /grill-user-story, opcionalmente con un título, un ID/URL del tracker, y/o una US rústica existente. Usar antes de opsx:propose, o cuando alguien dice "necesito una US", "convierte esto en una US como corresponde", o "esta historia está muy vaga".
+description: "Interroga a un PO o analista funcional para producir una User Story funcional y testeable siguiendo el formato del modelo de trazabilidad — o pule una US vaga existente. Se queda a nivel funcional/usuario y se niega a derivar en diseño técnico o a emitir una US con criterios no testeables. Al terminar, PUBLICA la US en el tracker configurado del repo (Jira o ClickUp, según DAI_PM del .env) usando su MCP; si no hay MCP/token, deja un .md con el mismo formato para copiar y pegar. Invocar como /grill-user-story, opcionalmente con un título, un ID/URL del tracker, y/o una US rústica existente. Usar antes de opsx:propose, o cuando alguien dice \"necesito una US\", \"convierte esto en una US como corresponde\", o \"esta historia está muy vaga\"."
 ---
 
 # grill-user-story
@@ -65,11 +65,24 @@ La US se produce UNA vez con el formato de `../../templates/formato-us.md`. Lo q
    - Si NO hay MCP del tracker conectado (pero sí `DAI_PM=jira|clickup` + token en `.env`):
      escribe la US como `.md` (formato `formato-us.md`) y publícala con el comando:
      **`dai publish <ruta-del-md>`** → crea el issue/tarea vía REST y devuelve el key.
-     (Jira necesita además `DAI_JIRA_PROJECT` en el `.env`.)
+     (Jira necesita además `DAI_JIRA_PROJECT` en el `.env` — la clave del **proyecto**,
+     `PROJ`, no la de un ticket.)
+   - **Si la US pertenece a una épica:** `dai publish <us.md> --parent <KEY-de-la-épica>`.
+   - **Si el proyecto exige campos propios** (típico en Jira corporativo): van con
+     `--field alias=valor`, repetible. Los alias son los de `.dai/jira-fields.json`, y
+     `dai doctor` te dice cuáles hay. Si el valor cambia según la US (p. ej. una
+     clasificación Mejora/Corrección), **pregúntaselo a la persona** durante el
+     interrogatorio — no lo elijas tú, es una decisión de negocio.
+     Ej.: `dai publish us.md --parent PROJ-42 --field clasificacion=Corrección`
    - Si tampoco hay token (o `DAI_PM=md`): deja solo el `.md` para que la persona lo
      pegue a mano en el tracker. Avisa el motivo.
    - El contenido es **idéntico** en los tres caminos (MCP / `dai publish` / manual).
-4. **Estado.** Dejar la US en `pulida`. Ofrecer que el dev siga con `dai link-us <ID>` → `opsx:propose` (lado técnico).
+4. **Si `dai publish` falla, para y reporta el error tal cual.** No improvises una llamada
+   a la API del tracker por fuera, ni bajes la verificación TLS para pasar un proxy: el
+   atajo publica igual, pero el `## Criterios de aceptación` puede quedar mal formado y
+   **el link QUÉ↔CÓMO se rompe en silencio**. Si el error nombra un campo obligatorio que
+   falta, decláralo en `.dai/jira-fields.json` (molde en `.dai/templates/`) y reintenta.
+5. **Estado.** Dejar la US en `pulida`. Ofrecer que el dev siga con `dai link-us <ID>` → `opsx:propose` (lado técnico).
 
 ## Hand-off
 

@@ -1,6 +1,6 @@
 ---
 name: grill-epic
-description: Interroga a un PO o analista funcional para producir una ÉPICA bien formada — un bloque grande de valor de negocio que se parte en varias User Stories — siguiendo el template del método. O toma una US que resultó demasiado grande y la promueve a épica. Se queda a nivel funcional/alcance: define el objetivo de negocio y la partición en US, NUNCA criterios de aceptación (esos viven en cada US) ni diseño técnico. Al terminar, publica la épica en Jira/ClickUp (o deja un .md) y hace handoff de cada US hija a grill-user-story. Invocar como /grill-epic, opcionalmente con un título, un ID/URL del tracker, o una US grande a promover. Usar cuando algo es demasiado grande para una sola US.
+description: "Interroga a un PO o analista funcional para producir una ÉPICA bien formada — un bloque grande de valor de negocio que se parte en varias User Stories — siguiendo el template del método. O toma una US que resultó demasiado grande y la promueve a épica. Se queda a nivel funcional/alcance: define el objetivo de negocio y la partición en US, NUNCA criterios de aceptación (esos viven en cada US) ni diseño técnico. Al terminar, publica la épica en Jira/ClickUp (o deja un .md) y hace handoff de cada US hija a grill-user-story. Invocar como /grill-epic, opcionalmente con un título, un ID/URL del tracker, o una US grande a promover. Usar cuando algo es demasiado grande para una sola US."
 ---
 
 # grill-epic
@@ -60,10 +60,18 @@ la forma. Nunca reescribas el formato inline.
 1. **Armar la épica** con el formato de `templates/epica.md`: metadata (`ID`, autor,
    estado, US que la componen) + objetivo + alcance (in/out) + lista de US + métricas +
    dependencias.
-2. **Publicar en el tracker** (según `DAI_PM` del `.env`: `jira` → MCP de Atlassian ·
-   `clickup` → MCP de ClickUp · `md`/sin token → `.md` para pegar a mano). **No asumas
-   el tracker: lee `DAI_PM` primero.** Crear el ticket de épica; las US hijas se crean
-   como tickets vinculados (o quedan listadas para crearse).
+2. **Publicar en el tracker.** **No asumas el tracker: lee `DAI_PM` del `.env` primero.**
+   Tres caminos, mismo contenido:
+   - **Con MCP** (`jira` → MCP de Atlassian · `clickup` → MCP de ClickUp): crea el ticket
+     de épica; las US hijas se crean como tickets vinculados (o quedan listadas).
+   - **Sin MCP, con token** (`DAI_PM=jira` + token en `.env`): escribe la épica como `.md`
+     y publícala con **`dai publish <epica.md> --issuetype Epic`**. Devuelve el key. Si el
+     proyecto exige campos propios, van con `--field alias=valor` (los declarados en
+     `.dai/jira-fields.json`; `dai doctor` te los lista). Después, cada US hija se cuelga
+     con `dai publish <us.md> --parent <KEY-de-la-épica>`.
+   - **Sin token** (o `DAI_PM=md`): deja el `.md` para pegar a mano, y avisa el motivo.
+   - Si `dai` falla, **para y reporta el error tal cual**. No improvises una llamada a la
+     API del tracker por fuera: publicaría igual pero rompería el link en silencio.
 3. **Handoff.** Ofrecer pasar **cada US hija** por `/grill-user-story` para convertirla
    de "título en la lista" a US testeable con criterios. Ese es el paso que las hace
    linkeables (`dai link-us`).

@@ -1,6 +1,6 @@
 ---
 name: link-us
-description: Del lado del dev — crea la branch desde el link de la User Story en Jira SIN margen de error y genera el archivo implements.yaml con el link a la US (id + version + ac_hash). Es la que hace que el link QUÉ↔CÓMO sea correcto por construcción, sin que el dev tipee el key a mano. Invocar como /link-us ABC-### (o con la URL del ticket de Jira). Usar al arrancar la implementación de una US, antes o junto con opsx:explore / opsx:propose.
+description: "Del lado del dev — crea la branch desde el link de la User Story en Jira SIN margen de error y genera el archivo implements.yaml con el link a la US (id + version + ac_hash). Es la que hace que el link QUÉ↔CÓMO sea correcto por construcción, sin que el dev tipee el key a mano. Invocar como /link-us ABC-### (o con la URL del ticket de Jira). Usar al arrancar la implementación de una US, antes o junto con opsx:explore / opsx:propose."
 ---
 
 # link-us

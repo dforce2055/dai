@@ -17,6 +17,10 @@ decisión cambia, se escribe un ADR nuevo que supersede al viejo. Molde en
 | [0009](0009-adaptador-cursor.md) | Adaptador nativo para Cursor (skills + rules) con `dai init`/`install`/`doctor` | propuesto |
 | [0010](0010-versionado-y-upgrade.md) | Versionado y upgrade: compatibilidad por semver, `doctor` version-drift, `dai sync` aditivo | propuesto |
 | [0011](0011-archive-gate-de-aprobacion.md) | `archive` es un gate de aprobación: `dai archive` (comando) lo corre el aprobador; `check`/`ls` saltean `archive/` | aceptado |
+| [0012](0012-upgrade-self-update-del-cli.md) | `dai upgrade`: self-update del CLI + `dai sync` del scaffold | aceptado |
+| [0013](0013-skills-externas-install-from.md) | `dai skills install --from`: skills externas por-stack, sin registro ni gatekeeping | aceptado |
+| [0014](0014-copilot-agent-skills.md) | Copilot lee `SKILL.md` nativo (Agent Skills): se elimina el adaptador `.prompt.md` — modifica la 0002 | aceptado |
+| [0015](0015-jira-corporativo.md) | `dai publish` en Jira corporativo: campos propios declarados, `--parent`/`--issuetype`, TLS con CA (nunca apagar la verificación) | aceptado |
 
 > Estas son las decisiones que cierran las "Decisiones abiertas" de
 > [`METODOLOGIA.md §7`](../METODOLOGIA.md) y las enmiendas al

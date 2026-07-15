@@ -1,6 +1,6 @@
 ---
 name: grill-intent
-description: Gate 0 of the SDD workflow — challenge the *problem* behind a clean user story before any spec is generated. Interrogates whether this is the right problem, for the right user, within constraints, and whether the story's implied solution is a premature jump. Produces intent.md and a verdict that can be "go to spec", "reframe", or "don't build". In the spirit of grill-me, specialized for problem-challenge. Invoke as /grill-intent on a user story (the output of grill-user-story). Use after grill-user-story and before openspec propose.
+description: "Gate 0 of the SDD workflow — challenge the *problem* behind a clean user story before any spec is generated. Interrogates whether this is the right problem, for the right user, within constraints, and whether the story's implied solution is a premature jump. Produces intent.md and a verdict that can be \"go to spec\", \"reframe\", or \"don't build\". In the spirit of grill-me, specialized for problem-challenge. Invoke as /grill-intent on a user story (the output of grill-user-story). Use after grill-user-story and before openspec propose."
 ---
 
 # grill-intent — Gate 0, challenge the problem

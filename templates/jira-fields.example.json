@@ -1,0 +1,49 @@
+{
+  "_comentario": [
+    "Molde de .dai/jira-fields.json — los campos PROPIOS que tu Jira exige al crear un issue.",
+    "Copialo a .dai/jira-fields.json y ajustalo. Si tu Jira no exige campos propios, no lo",
+    "necesitás: sin archivo, dai publica igual que siempre (ADR-0015).",
+    "",
+    "Se declara por issuetype porque los campos obligatorios de una Story y de una Epic casi",
+    "nunca son los mismos. Un campo declarado TIENE que resolver a un valor (por 'default' o",
+    "por --field): se declara porque Jira lo exige. Si es opcional, no lo declares.",
+    "",
+    "  field    el id de Jira (requerido). Lo ves en la URL al editar el campo, o te lo dice",
+    "           el error 400 de Jira cuando falta.",
+    "  shape    cómo se envuelve el valor para la API:",
+    "             select → {\"value\": X}      un desplegable (el caso típico)",
+    "             text   → X                 texto plano",
+    "             multi  → [{\"value\": X}]    lista (el valor se parte por comas)",
+    "             raw    → JSON tal cual     escape hatch para cualquier forma rara",
+    "           Si lo omitís: con 'options' es select; sin 'options', text.",
+    "  default  el valor si no pasás --field. Omitilo cuando el valor cambia SIEMPRE según",
+    "           la US: así dai te lo pide en vez de inventar uno.",
+    "  options  los valores válidos. dai los valida ANTES de llamar a Jira: un typo da un",
+    "           error local con la lista, no un 400 críptico.",
+    "",
+    "Uso:",
+    "  dai publish us.md                                 (usa los defaults)",
+    "  dai publish us.md --field clasificacion=Corrección",
+    "  dai publish us.md --parent PROJ-42            (la cuelga de su épica)",
+    "  dai publish epica.md --issuetype Epic --field clasificacion=Mejora",
+    "",
+    "Verificá que parsee con:  dai doctor"
+  ],
+
+  "Story": {
+    "clasificacion": {
+      "field": "customfield_10042",
+      "shape": "select",
+      "default": "Mejora",
+      "options": ["Mejora", "Corrección"]
+    }
+  },
+
+  "Epic": {
+    "clasificacion": {
+      "field": "customfield_10042",
+      "shape": "select",
+      "options": ["Mejora", "Corrección"]
+    }
+  }
+}

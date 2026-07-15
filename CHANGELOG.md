@@ -3,6 +3,70 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
+## [0.8.0] — 2026-07-15
+
+**El primer analista funcional real usó dai contra un Jira corporativo, y encontró el
+hueco entre "anda en mi Jira de juguete" y "anda en el de una empresa".**
+
+### Agregado
+- **Campos propios de Jira**, declarados por issuetype en `.dai/jira-fields.json` (o
+  `DAI_JIRA_FIELDS_FILE`) con nombre humano, forma, default y opciones válidas. dai valida
+  **antes** de llamar a la red: un typo da `'Mejraa' no es opción de 'clasificacion' —
+  válidas: Mejora | Corrección`, no un 400 críptico. El valor se elige por US con
+  `dai publish us.md --field clasificacion=Corrección` (repetible), porque la clasificación
+  cambia según la historia y un default fijo publicaría todas iguales ([ADR-0015](docs/adr/0015-jira-corporativo.md)).
+- `dai publish --parent <KEY>` — cuelga la US de su épica (antes `createUS` nunca mandaba
+  `parent`, así que las US quedaban sueltas).
+- `dai publish --issuetype <T>` — **`grill-epic` gana su fallback por CLI**: hasta ahora, sin
+  MCP, una épica quedaba en un `.md` para pegar a mano.
+- **Diagnóstico de TLS**: un fallo de certificado ahora enseña `NODE_EXTRA_CA_CERTS` (el caso
+  típico es el proxy corporativo: Node no usa el trust store del sistema) y explica por qué
+  `NODE_TLS_REJECT_UNAUTHORIZED=0` no es una alternativa — apaga la verificación entera y por
+  ahí viaja tu token.
+- **Constitución**: dos reglas nuevas para todos los asistentes — no bajar la seguridad para
+  avanzar, y parar y avisar si el CLI no llega en vez de improvisar la llamada por fuera.
+
+### Cambiado
+- **Copilot lee `SKILL.md` nativo** ([ADR-0014](docs/adr/0014-copilot-agent-skills.md)).
+  `dai init --for copilot` genera `.github/skills/` (copia cruda, **con los `templates/`**) en
+  vez de `.github/prompts/*.prompt.md`, y borra los prompts viejos de dai para que no dupliquen
+  cada `/comando`. Los prompt files propios del equipo no se tocan.
+- **`dai skills install --for copilot` ya existe** → `~/.copilot/skills/`. Antes warneaba
+  *"Copilot no tiene skills instalables"*: era cierto hasta que GitHub adoptó Agent Skills, y
+  por eso una skill "instalada global" no le aparecía a nadie que usara la app o el CLI de
+  Copilot (`~/.claude/skills` solo lo mira VS Code).
+- **`dai doctor` reporta solo los asistentes que el repo usa.** Antes listaba los tres siempre:
+  quien configuraba uno veía 14 warnings de los otros dos y leía "está todo roto". Ahora
+  también chequea Copilot, valida `DAI_JIRA_PROJECT` y que el archivo de campos parsee.
+- **Un flag repetido acumula** (`--field a=1 --field b=2`) en vez de que gane el último en
+  silencio.
+
+### Arreglado
+- **`doc-to-backlog` y `grill-epic` no cargaban en Copilot.** Sus descripciones tenían un `: `
+  suelto (*"…épicas finales: extrae…"*), que un parser YAML lee como el arranque de un mapa y
+  descarta la skill entera — justo las dos que más necesita un analista funcional. El defecto
+  siempre estuvo en la fuente: lo tapaban nuestro `parseFrontmatter` (que es un regex, no YAML)
+  y la conversión a `.prompt.md` (que citaba el valor al serializarlo). Ahora las 7
+  descripciones van citadas, **`validateSkill` valida que `name` y `description` sean escalares
+  YAML válidos**, y el molde de `templates/skill.md` cita por defecto.
+- `DAI_JIRA_PROJECT=PROJ-42` (la clave de un **ticket**, el error de config más común) daba
+  un 400 de Jira que no lo explicaba. Ahora falla **antes de la red**, con los dos caminos:
+  `DAI_JIRA_PROJECT=PROJ`, o `--parent PROJ-42` si querías colgarla de esa épica.
+
+### Quitado
+- `skillToPrompt()` y el adaptador `.github/prompts/` de Copilot. Cuando el formato de una
+  skill es un estándar abierto, el mejor adaptador es ninguno.
+
+### Interno
+- **158 tests** (+39 desde 0.7.0): `jira-fields` ×19, `http`/TLS ×7, contrato YAML del
+  frontmatter ×7, `assertProjectKey` y el payload de `createUS` ×6.
+- **Primera verificación en Windows.** Hasta ahora dai no se había instalado nunca en Windows
+  (no hay CI de esa plataforma): se probó el ciclo completo — install, `dai init --for copilot`,
+  skills globales en `~/.copilot/skills`, y Copilot cargando las 7. Los campos propios de Jira
+  y el diagnóstico de TLS están cubiertos por tests contra un Jira simulado, **todavía no
+  contra un Jira corporativo real**.
+- `lib/jira-fields.mjs` y `lib/http.mjs` nuevos, cero dependencias (como el resto del CLI).
+
 ## [0.7.0] — 2026-07-14
 
 **dai es el distribuidor de skills de cualquier stack, sin opinar sobre su contenido.**
@@ -194,6 +258,7 @@ ClickUp y Jira Cloud.
 - Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
   `files` de npm sin tests ni secretos.
 
+[0.8.0]: https://github.com/dforce2055/dai/releases/tag/v0.8.0
 [0.7.0]: https://github.com/dforce2055/dai/releases/tag/v0.7.0
 [0.6.0]: https://github.com/dforce2055/dai/releases/tag/v0.6.0
 [0.5.0]: https://github.com/dforce2055/dai/releases/tag/v0.5.0

@@ -4,40 +4,78 @@
 
 const REPO_URL = "https://github.com/dforce2055/dai";
 
+// Un escalar YAML "plano" (sin comillas) no puede contener `: ` ni ` #`, ni empezar con
+// un indicador: YAML lo leería como un mapa, un comentario o una estructura.
+//
+// Esto importa porque el parser de acá es un regex, no YAML — se traga cualquier cosa.
+// Mientras dai CONVERTÍA el SKILL.md para Copilot y Cursor, el `JSON.stringify` de la
+// conversión citaba el valor y tapaba el problema sin querer. Al entregar el SKILL.md
+// crudo (ADR-0014) lo lee un parser YAML de verdad, y ahí una descripción con un `: `
+// suelto tira abajo la skill entera. Le pasó a `doc-to-backlog` y a `grill-epic`.
+const YAML_INDICATORS = /^[-?:,[\]{}#&*!|>'"%@`]/;
+export function yamlScalarIssue(raw) {
+  const v = String(raw ?? "").trim();
+  if (v === "") return "está vacío";
+  const quoted = (v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"));
+  if (quoted && v.length >= 2) return null;      // citado: YAML acepta lo que sea adentro
+  if (v.includes(": ")) return "contiene ': ' sin comillas (YAML lo lee como un mapa)";
+  if (v.includes(" #")) return "contiene ' #' sin comillas (YAML lo lee como un comentario)";
+  if (YAML_INDICATORS.test(v)) return `empieza con '${v[0]}', que YAML reserva`;
+  return null;
+}
+
+// El valor crudo de una clave del frontmatter, tal cual está escrito (con comillas si
+// las tiene). Es lo que hay que validar: `parseFrontmatter` ya las saca.
+export function rawFrontmatterValue(md, key) {
+  const m = md.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
+  if (!m) return null;
+  const line = m[1].match(new RegExp(`^${key}:\\s*(.+)$`, "m"));
+  return line ? line[1].trim() : null;
+}
+
+// Saca las comillas de un escalar YAML citado. Sin comillas, lo devuelve tal cual.
+function unquoteScalar(s) {
+  if (s == null) return null;
+  const v = s.trim();
+  if (v.length >= 2 && v.startsWith('"') && v.endsWith('"')) {
+    try { return JSON.parse(v); } catch { return v.slice(1, -1); }
+  }
+  if (v.length >= 2 && v.startsWith("'") && v.endsWith("'")) return v.slice(1, -1).replace(/''/g, "'");
+  return v;
+}
+
 // Parsea el frontmatter YAML de un SKILL.md → { name, description, body }.
+// Devuelve los valores YA sin comillas, para que quien los reserialice (skillToCursor)
+// no los cite dos veces.
 export function parseFrontmatter(md) {
   const m = md.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
   if (!m) return { name: null, description: null, body: md.trim() };
   const fm = m[1];
-  const name = (fm.match(/^name:\s*(.+)$/m) || [])[1]?.trim() || null;
-  const description = (fm.match(/^description:\s*(.+)$/m) || [])[1]?.trim() || null;
+  const name = unquoteScalar((fm.match(/^name:\s*(.+)$/m) || [])[1]) || null;
+  const description = unquoteScalar((fm.match(/^description:\s*(.+)$/m) || [])[1]) || null;
   return { name, description, body: m[2].trim() };
 }
 
-// Valida el contrato MÍNIMO de un SKILL.md para que dai lo ingiera y lo convierta a
-// los 3 asistentes (y para que Claude/Cursor/Copilot lo carguen): frontmatter con
-// `name` y `description`. Devuelve null si está OK, o un string con el motivo.
+// Valida el contrato MÍNIMO de un SKILL.md para que dai lo ingiera y los asistentes lo
+// carguen: frontmatter con `name` y `description`, y que ambos sean YAML válido — si no,
+// el asistente descarta la skill entera. Devuelve null si está OK, o el motivo.
 // NO valida el contenido de la skill — eso es criterio del equipo (ADR-0013).
 export function validateSkill(md) {
   const { name, description } = parseFrontmatter(md);
   if (!name && !description) return "sin frontmatter (falta name y description)";
   if (!name) return "falta 'name' en el frontmatter";
   if (!description) return "falta 'description' en el frontmatter";
+  for (const key of ["name", "description"]) {
+    const issue = yamlScalarIssue(rawFrontmatterValue(md, key));
+    if (issue) return `'${key}' no es YAML válido: ${issue} — citá el valor con comillas dobles`;
+  }
   return null;
 }
 
-// Transforma un SKILL.md (Claude) en un prompt file de Copilot (.prompt.md).
-// Cambia el frontmatter; el cuerpo (la lógica) es el mismo.
-export function skillToPrompt(md) {
-  const { description, body } = parseFrontmatter(md);
-  const fm = [
-    "---",
-    "mode: agent",
-    description ? `description: ${JSON.stringify(description)}` : null,
-    "---",
-  ].filter((x) => x !== null).join("\n");
-  return `${fm}\n\n${body}\n`;
-}
+// Los archivos de Copilot que dai generaba ANTES de que Copilot adoptara Agent Skills
+// (ADR-0014). `dai init` los borra al reencontrarlos, para que no queden duplicando
+// cada `/comando` con una copia vieja y sin templates.
+export const stalePromptFiles = (skills) => skills.map((n) => `${n}.prompt.md`);
 
 // Transforma un SKILL.md (Claude) en un SKILL.md de Cursor.
 // Conserva name/description/body y ajusta solo el frontmatter.
@@ -60,7 +98,17 @@ export function envFor(pm) {
     return head + "DAI_PM=clickup\nDAI_CLICKUP_TOKEN=\nDAI_CLICKUP_LIST_ID=\nDAI_TRACKER_URL_TEMPLATE=https://app.clickup.com/t/{id}\n";
   }
   if (pm === "jira") {
-    return head + "DAI_PM=jira\nDAI_JIRA_BASE_URL=\nDAI_JIRA_EMAIL=\nDAI_JIRA_TOKEN=\nDAI_JIRA_PROJECT=\nDAI_JIRA_ISSUETYPE=Story\nDAI_TRACKER_URL_TEMPLATE=\n";
+    return head +
+      "DAI_PM=jira\n" +
+      "DAI_JIRA_BASE_URL=\n" +
+      "DAI_JIRA_EMAIL=\n" +
+      "DAI_JIRA_TOKEN=\n" +
+      "# La clave del PROYECTO (p. ej. PROJ), no la de un ticket (PROJ-123).\n" +
+      "DAI_JIRA_PROJECT=\n" +
+      "DAI_JIRA_ISSUETYPE=Story\n" +
+      "# Campos propios que tu Jira exige al crear. Si el archivo no existe, se ignora.\n" +
+      "DAI_JIRA_FIELDS_FILE=.dai/jira-fields.json\n" +
+      "DAI_TRACKER_URL_TEMPLATE=\n";
   }
   return head + "DAI_PM=md\nDAI_MD_US_DIR=.dai/us\n";
 }
@@ -124,7 +172,7 @@ export function reconcileGitignore(text, want) {
 // copilot-instructions.md (Copilot). Mismo núcleo, distinto encabezado.
 export function constitution(kind) {
   const head = kind === "copilot"
-    ? "# Instrucciones de Copilot para este repo\n\nEste repo sigue la metodología **dai**. Aplica estas reglas en todo lo que generes.\n\n> **Superficie:** los prompts de dai (`.github/prompts/`) se invocan solo en VS Code /\n> JetBrains, o como custom agents en el Copilot CLI — no en la app standalone ni en\n> github.com. El CLI `dai` corre en cualquier terminal."
+    ? "# Instrucciones de Copilot para este repo\n\nEste repo sigue la metodología **dai**. Aplica estas reglas en todo lo que generes.\n\n> **Superficie:** las skills de dai (`.github/skills/`) se invocan con `/nombre-skill`, o\n> cuando el agente las detecta por su descripción. Funcionan en el Copilot CLI, en la app,\n> y en modo agente de VS Code / JetBrains (ADR-0014). El CLI `dai` corre en cualquier\n> terminal."
     : kind === "cursor"
       ? "# Constitución del proyecto (dai)\n\nEste repo sigue la metodología **dai**. Estas reglas gobiernan todo el trabajo.\n\n> **Superficie:** las skills de dai (`.cursor/skills/`) se invocan con `/nombre-skill`\n> o cuando el agente las detecta por descripción. El CLI `dai` corre en cualquier terminal."
     : "# Constitución del proyecto (dai)\n\nEste repo sigue la metodología **dai**. Estas reglas gobiernan todo el trabajo.";
@@ -145,6 +193,8 @@ export function constitution(kind) {
 - **Verifica el comportamiento, no solo que compile:** que pase el chequeo estático o el build no prueba que funcione; ejercita el flujo real antes de darlo por hecho.
 - **La IA confirma antes de construir:** el asistente declara que entendió esta constitución y la va a obedecer antes de generar código.
 - **Secretos:** en \`.env\` (nunca commiteados). git por **SSH**, APIs por **token scopeado**.
+- **No bajes la seguridad para avanzar:** si una llamada falla por el certificado, declara la CA (\`NODE_EXTRA_CA_CERTS\`). **Nunca** \`NODE_TLS_REJECT_UNAUTHORIZED=0\`, \`verify=False\`, \`-k\` ni equivalentes: apagan la verificación de toda la conexión, y por ahí viajan los tokens.
+- **Si el CLI no llega, para y dilo:** cuando \`dai\` no cubre un caso, repórtalo — no improvises una llamada a la API por fuera. El atajo publica igual, pero rompe el link QUÉ↔CÓMO en silencio y nadie se entera hasta que la trazabilidad ya está mal.
 - **Docs vivas:** una constitución o arquitectura desactualizada es un defecto, no documentación.
 - Separa el QUÉ (funcional) del CÓMO (técnico); no mezcles.
 

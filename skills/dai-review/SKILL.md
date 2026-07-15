@@ -1,6 +1,6 @@
 ---
 name: dai-review
-description: Revisa una Pull/Merge Request de un repo remoto (GitHub o GitLab) de forma consciente de la metodología dai, y deja un comentario estándar en español con errores y mejoras. Corre `dai check` (¿la US está atrasada?), valida el Definition of Done, hace el review de código (correctitud + calidad), compone el comentario estándar y lo postea — vía el MCP del forge si está disponible, o vía `dai forge comment` (token) si no. Invocar como /dai-review <URL-de-la-PR o número>. Usar en el paso 6 de SCRUM-CON-IA (code review), antes de que un partner humano firme.
+description: "Revisa una Pull/Merge Request de un repo remoto (GitHub o GitLab) de forma consciente de la metodología dai, y deja un comentario estándar en español con errores y mejoras. Corre `dai check` (¿la US está atrasada?), valida el Definition of Done, hace el review de código (correctitud + calidad), compone el comentario estándar y lo postea — vía el MCP del forge si está disponible, o vía `dai forge comment` (token) si no. Invocar como /dai-review <URL-de-la-PR o número>. Usar en el paso 6 de SCRUM-CON-IA (code review), antes de que un partner humano firme."
 ---
 
 # dai-review — review de PR consciente de la metodología
