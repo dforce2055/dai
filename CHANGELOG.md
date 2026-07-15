@@ -3,7 +3,7 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
-## [No publicado]
+## [0.8.0] — 2026-07-15
 
 **El primer analista funcional real usó dai contra un Jira corporativo, y encontró el
 hueco entre "anda en mi Jira de juguete" y "anda en el de una empresa".**
@@ -56,6 +56,16 @@ hueco entre "anda en mi Jira de juguete" y "anda en el de una empresa".**
 ### Quitado
 - `skillToPrompt()` y el adaptador `.github/prompts/` de Copilot. Cuando el formato de una
   skill es un estándar abierto, el mejor adaptador es ninguno.
+
+### Interno
+- **158 tests** (+39 desde 0.7.0): `jira-fields` ×19, `http`/TLS ×7, contrato YAML del
+  frontmatter ×7, `assertProjectKey` y el payload de `createUS` ×6.
+- **Primera verificación en Windows.** Hasta ahora dai no se había instalado nunca en Windows
+  (no hay CI de esa plataforma): se probó el ciclo completo — install, `dai init --for copilot`,
+  skills globales en `~/.copilot/skills`, y Copilot cargando las 7. Los campos propios de Jira
+  y el diagnóstico de TLS están cubiertos por tests contra un Jira simulado, **todavía no
+  contra un Jira corporativo real**.
+- `lib/jira-fields.mjs` y `lib/http.mjs` nuevos, cero dependencias (como el resto del CLI).
 
 ## [0.7.0] — 2026-07-14
 
@@ -248,6 +258,7 @@ ClickUp y Jira Cloud.
 - Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
   `files` de npm sin tests ni secretos.
 
+[0.8.0]: https://github.com/dforce2055/dai/releases/tag/v0.8.0
 [0.7.0]: https://github.com/dforce2055/dai/releases/tag/v0.7.0
 [0.6.0]: https://github.com/dforce2055/dai/releases/tag/v0.6.0
 [0.5.0]: https://github.com/dforce2055/dai/releases/tag/v0.5.0
