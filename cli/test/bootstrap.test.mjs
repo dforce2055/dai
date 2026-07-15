@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseFrontmatter, validateSkill, stalePromptFiles, skillToCursor, constitution, constitutionCursorRule, envFor, mergeEnv, upsertBlock, reconcileGitignore } from "../lib/bootstrap.mjs";
+import { parseFrontmatter, validateSkill, yamlScalarIssue, stalePromptFiles, skillToCursor, constitution, constitutionCursorRule, envFor, mergeEnv, upsertBlock, reconcileGitignore } from "../lib/bootstrap.mjs";
 
 test("validateSkill exige name y description en el frontmatter (ADR-0013)", () => {
   assert.equal(validateSkill("---\nname: x\ndescription: y\n---\n\nbody"), null);
@@ -125,4 +125,63 @@ test("reconcileGitignore es idempotente y no duplica", () => {
   const second = reconcileGitignore(first, { claude: true });
   assert.equal(second.changed, false);
   assert.equal(second.text, first);
+});
+
+// ── el frontmatter tiene que ser YAML válido, no "válido para nuestro regex" ──
+// Copilot lee el SKILL.md crudo con un parser YAML estricto (ADR-0014): una descripción
+// con un ': ' suelto tira abajo la skill ENTERA. Vivió escondido porque el parser de acá
+// es un regex y porque la conversión a Copilot/Cursor citaba el valor y lo tapaba.
+// Le pasó de verdad a doc-to-backlog ("...épicas finales: extrae...") y a grill-epic.
+
+test("yamlScalarIssue caza el ': ' sin comillas (el bug real)", () => {
+  assert.match(yamlScalarIssue("NO emite US ni épicas finales: extrae candidatos"), /': ' sin comillas/);
+  assert.match(yamlScalarIssue("Se queda a nivel funcional/alcance: define el objetivo"), /': ' sin comillas/);
+});
+
+test("yamlScalarIssue acepta lo que YAML acepta", () => {
+  assert.equal(yamlScalarIssue("Una descripción normal, sin trampas"), null);
+  assert.equal(yamlScalarIssue("grill-epic"), null);
+  assert.equal(yamlScalarIssue("Los dos puntos pegados sí:van bien"), null);   // sin espacio, no es mapa
+});
+
+test("yamlScalarIssue: citado vale todo", () => {
+  assert.equal(yamlScalarIssue('"NO emite US ni épicas finales: extrae candidatos"'), null);
+  assert.equal(yamlScalarIssue("'con comillas simples: también'"), null);
+});
+
+test("yamlScalarIssue: comentario e indicadores", () => {
+  assert.match(yamlScalarIssue("algo #esto no, pero esto sí #comentario"), /' #' sin comillas/);
+  assert.match(yamlScalarIssue("- empieza con guion"), /empieza con '-'/);
+  assert.match(yamlScalarIssue("*ancla"), /empieza con '\*'/);
+  assert.match(yamlScalarIssue(""), /vacío/);
+});
+
+test("validateSkill rechaza el frontmatter que Copilot no puede parsear", () => {
+  const roto = '---\nname: doc-to-backlog\ndescription: Toma un doc. NO emite US finales: extrae candidatos\n---\n\nbody';
+  assert.match(validateSkill(roto), /'description' no es YAML válido[\s\S]*': ' sin comillas[\s\S]*comillas dobles/);
+});
+
+test("validateSkill acepta la misma descripción, citada", () => {
+  const ok = '---\nname: doc-to-backlog\ndescription: "Toma un doc. NO emite US finales: extrae candidatos"\n---\n\nbody';
+  assert.equal(validateSkill(ok), null);
+});
+
+test("parseFrontmatter saca las comillas (si no, skillToCursor citaría dos veces)", () => {
+  const md = '---\nname: x\ndescription: "Con \\"comillas\\" adentro: y dos puntos"\n---\n\nbody';
+  const { description } = parseFrontmatter(md);
+  assert.equal(description, 'Con "comillas" adentro: y dos puntos');
+  const cur = skillToCursor(md);
+  assert.match(cur, /^description: "Con \\"comillas\\" adentro: y dos puntos"$/m);   // citada UNA vez
+  assert.doesNotMatch(cur, /description: "\\"/);                                     // no doble-citada
+});
+
+test("las 7 skills que dai distribuye pasan su propia validación", async () => {
+  const { readFileSync, readdirSync, statSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const root = new URL("../../skills/", import.meta.url).pathname;
+  const names = readdirSync(root).filter((d) => statSync(join(root, d)).isDirectory());
+  assert.ok(names.length >= 7, "deberían ser al menos 7 skills");
+  for (const n of names) {
+    assert.equal(validateSkill(readFileSync(join(root, n, "SKILL.md"), "utf8")), null, `${n} no valida`);
+  }
 });

@@ -42,6 +42,13 @@ hueco entre "anda en mi Jira de juguete" y "anda en el de una empresa".**
   silencio.
 
 ### Arreglado
+- **`doc-to-backlog` y `grill-epic` no cargaban en Copilot.** Sus descripciones tenían un `: `
+  suelto (*"…épicas finales: extrae…"*), que un parser YAML lee como el arranque de un mapa y
+  descarta la skill entera — justo las dos que más necesita un analista funcional. El defecto
+  siempre estuvo en la fuente: lo tapaban nuestro `parseFrontmatter` (que es un regex, no YAML)
+  y la conversión a `.prompt.md` (que citaba el valor al serializarlo). Ahora las 7
+  descripciones van citadas, **`validateSkill` valida que `name` y `description` sean escalares
+  YAML válidos**, y el molde de `templates/skill.md` cita por defecto.
 - `DAI_JIRA_PROJECT=PROJ-42` (la clave de un **ticket**, el error de config más común) daba
   un 400 de Jira que no lo explicaba. Ahora falla **antes de la red**, con los dos caminos:
   `DAI_JIRA_PROJECT=PROJ`, o `--parent PROJ-42` si querías colgarla de esa épica.

@@ -65,6 +65,19 @@ skills. Tres fallas encadenadas, todas nuestras:
   La tabla del README se corrige: la única superficie sin skills es el chat de
   github.com.
 - **Los `templates/` de las skills llegan a Copilot por primera vez.**
+- **El frontmatter pasó a tener un lector estricto, y eso destapó un defecto viejo.**
+  Nuestro `parseFrontmatter` es un regex, no YAML: se tragaba cualquier cosa. Y la
+  conversión que borramos hacía `JSON.stringify(description)`, que citaba el valor —
+  o sea que **estaba tapando el bug sin querer**. Al entregar el `SKILL.md` crudo, lo
+  lee un parser YAML real, y `doc-to-backlog` y `grill-epic` **fallaron al cargar**: sus
+  descripciones tenían un `: ` suelto (*"…épicas finales: extrae…"*, *"…nivel
+  funcional/alcance: define…"*) que YAML interpreta como el arranque de un mapa. Las dos
+  skills que más necesita un analista funcional, invisibles.
+  Se citan las descripciones de las 7, y **`validateSkill` ahora valida que `name` y
+  `description` sean escalares YAML válidos** — el molde de `templates/skill.md` también
+  cita por defecto. La lección general: **un adaptador que "arregla" el input esconde el
+  defecto en la fuente**. Mientras convertíamos, el `SKILL.md` inválido era nuestro
+  secreto; entregándolo crudo, el contrato es real y hay que cumplirlo.
 - **Menos código, no más:** se borra una transformación y su test. La capa 3 de la
   ADR-0002 sigue siendo la decisión correcta — lo que cambió es que Copilot dejó de
   necesitarla, no que la idea estuviera mal. Cuando el formato de una skill es un

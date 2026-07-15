@@ -4,25 +4,71 @@
 
 const REPO_URL = "https://github.com/dforce2055/dai";
 
+// Un escalar YAML "plano" (sin comillas) no puede contener `: ` ni ` #`, ni empezar con
+// un indicador: YAML lo leería como un mapa, un comentario o una estructura.
+//
+// Esto importa porque el parser de acá es un regex, no YAML — se traga cualquier cosa.
+// Mientras dai CONVERTÍA el SKILL.md para Copilot y Cursor, el `JSON.stringify` de la
+// conversión citaba el valor y tapaba el problema sin querer. Al entregar el SKILL.md
+// crudo (ADR-0014) lo lee un parser YAML de verdad, y ahí una descripción con un `: `
+// suelto tira abajo la skill entera. Le pasó a `doc-to-backlog` y a `grill-epic`.
+const YAML_INDICATORS = /^[-?:,[\]{}#&*!|>'"%@`]/;
+export function yamlScalarIssue(raw) {
+  const v = String(raw ?? "").trim();
+  if (v === "") return "está vacío";
+  const quoted = (v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"));
+  if (quoted && v.length >= 2) return null;      // citado: YAML acepta lo que sea adentro
+  if (v.includes(": ")) return "contiene ': ' sin comillas (YAML lo lee como un mapa)";
+  if (v.includes(" #")) return "contiene ' #' sin comillas (YAML lo lee como un comentario)";
+  if (YAML_INDICATORS.test(v)) return `empieza con '${v[0]}', que YAML reserva`;
+  return null;
+}
+
+// El valor crudo de una clave del frontmatter, tal cual está escrito (con comillas si
+// las tiene). Es lo que hay que validar: `parseFrontmatter` ya las saca.
+export function rawFrontmatterValue(md, key) {
+  const m = md.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
+  if (!m) return null;
+  const line = m[1].match(new RegExp(`^${key}:\\s*(.+)$`, "m"));
+  return line ? line[1].trim() : null;
+}
+
+// Saca las comillas de un escalar YAML citado. Sin comillas, lo devuelve tal cual.
+function unquoteScalar(s) {
+  if (s == null) return null;
+  const v = s.trim();
+  if (v.length >= 2 && v.startsWith('"') && v.endsWith('"')) {
+    try { return JSON.parse(v); } catch { return v.slice(1, -1); }
+  }
+  if (v.length >= 2 && v.startsWith("'") && v.endsWith("'")) return v.slice(1, -1).replace(/''/g, "'");
+  return v;
+}
+
 // Parsea el frontmatter YAML de un SKILL.md → { name, description, body }.
+// Devuelve los valores YA sin comillas, para que quien los reserialice (skillToCursor)
+// no los cite dos veces.
 export function parseFrontmatter(md) {
   const m = md.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
   if (!m) return { name: null, description: null, body: md.trim() };
   const fm = m[1];
-  const name = (fm.match(/^name:\s*(.+)$/m) || [])[1]?.trim() || null;
-  const description = (fm.match(/^description:\s*(.+)$/m) || [])[1]?.trim() || null;
+  const name = unquoteScalar((fm.match(/^name:\s*(.+)$/m) || [])[1]) || null;
+  const description = unquoteScalar((fm.match(/^description:\s*(.+)$/m) || [])[1]) || null;
   return { name, description, body: m[2].trim() };
 }
 
-// Valida el contrato MÍNIMO de un SKILL.md para que dai lo ingiera y lo convierta a
-// los 3 asistentes (y para que Claude/Cursor/Copilot lo carguen): frontmatter con
-// `name` y `description`. Devuelve null si está OK, o un string con el motivo.
+// Valida el contrato MÍNIMO de un SKILL.md para que dai lo ingiera y los asistentes lo
+// carguen: frontmatter con `name` y `description`, y que ambos sean YAML válido — si no,
+// el asistente descarta la skill entera. Devuelve null si está OK, o el motivo.
 // NO valida el contenido de la skill — eso es criterio del equipo (ADR-0013).
 export function validateSkill(md) {
   const { name, description } = parseFrontmatter(md);
   if (!name && !description) return "sin frontmatter (falta name y description)";
   if (!name) return "falta 'name' en el frontmatter";
   if (!description) return "falta 'description' en el frontmatter";
+  for (const key of ["name", "description"]) {
+    const issue = yamlScalarIssue(rawFrontmatterValue(md, key));
+    if (issue) return `'${key}' no es YAML válido: ${issue} — citá el valor con comillas dobles`;
+  }
   return null;
 }
 

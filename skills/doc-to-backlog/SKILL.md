@@ -1,6 +1,6 @@
 ---
 name: doc-to-backlog
-description: Toma un documento de análisis (PDF, Word, o un archivo en Drive/SharePoint/ClickUp vía MCP) y produce un BACKLOG CANDIDATO — un mapa de épicas y User Stories propuestas — para que el funcional lo priorice y lo valide. NO emite US ni épicas finales: extrae candidatos marcados "sin validar" y hace handoff de cada sobreviviente a grill-epic / grill-user-story (modo refinar). Es la puerta de entrada del caso "llegué con un documento y quiero sacar el backlog". Invocar como /doc-to-backlog con el path o el link del documento. Usar antes de grill-epic / grill-user-story cuando el input es un doc grande.
+description: "Toma un documento de análisis (PDF, Word, o un archivo en Drive/SharePoint/ClickUp vía MCP) y produce un BACKLOG CANDIDATO — un mapa de épicas y User Stories propuestas — para que el funcional lo priorice y lo valide. NO emite US ni épicas finales: extrae candidatos marcados \"sin validar\" y hace handoff de cada sobreviviente a grill-epic / grill-user-story (modo refinar). Es la puerta de entrada del caso \"llegué con un documento y quiero sacar el backlog\". Invocar como /doc-to-backlog con el path o el link del documento. Usar antes de grill-epic / grill-user-story cuando el input es un doc grande."
 ---
 
 # doc-to-backlog

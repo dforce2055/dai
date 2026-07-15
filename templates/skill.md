@@ -1,9 +1,9 @@
 <!--
   MOLDE DE SKILL · dai
   ─────────────────────────────────────────────────────────────────
-  Formato: Agent Skills de Claude (SKILL.md). dai lo INGIERE y lo convierte a los 3
-  asistentes (Claude copia · Cursor `skillToCursor` · Copilot `.prompt.md`), con
-  `dai skills install --from <repo|path>` (ADR-0013).
+  Formato: Agent Skills (SKILL.md) — un estándar abierto que leen Claude, Copilot y
+  Cursor. dai lo INGIERE y lo distribuye a los 3 (Claude y Copilot copia cruda · Cursor
+  `skillToCursor`), con `dai skills install --from <repo|path>` (ADR-0013 · ADR-0014).
 
   Estructura del repo/dir fuente:
       skills/
@@ -15,13 +15,17 @@
     - frontmatter con `name` y `description` (ambos obligatorios, en una línea).
     - `name`: slug en kebab-case, IGUAL al nombre del directorio.
     - `description`: una frase — con esto el agente decide CUÁNDO usar la skill.
+    - ambos, YAML VÁLIDO. Ojo: los asistentes parsean el frontmatter con YAML de
+      verdad, y un `: ` (dos puntos + espacio) suelto en la descripción hace que YAML
+      la lea como un mapa y DESCARTE LA SKILL ENTERA. Por eso la descripción va
+      SIEMPRE entre comillas dobles: te deja escribir la frase que quieras.
 
   dai NO valida el CONTENIDO (qué dice la skill, qué hacen sus scripts): eso es
   criterio del equipo. Las instalás bajo tu propio riesgo.
 -->
 ---
 name: mi-skill
-description: Qué hace la skill y cuándo conviene invocarla — concreto y orientado al disparador.
+description: "Qué hace la skill y cuándo conviene invocarla: concreto y orientado al disparador. Las comillas dobles no son decorativas — sin ellas, un ': ' rompe el YAML."
 ---
 
 # <Título de la skill>

@@ -1,6 +1,6 @@
 ---
 name: grill-user-story
-description: Interroga a un PO o analista funcional para producir una User Story funcional y testeable siguiendo el formato del modelo de trazabilidad — o pule una US vaga existente. Se queda a nivel funcional/usuario y se niega a derivar en diseño técnico o a emitir una US con criterios no testeables. Al terminar, PUBLICA la US en el tracker configurado del repo (Jira o ClickUp, según DAI_PM del .env) usando su MCP; si no hay MCP/token, deja un .md con el mismo formato para copiar y pegar. Invocar como /grill-user-story, opcionalmente con un título, un ID/URL del tracker, y/o una US rústica existente. Usar antes de opsx:propose, o cuando alguien dice "necesito una US", "convierte esto en una US como corresponde", o "esta historia está muy vaga".
+description: "Interroga a un PO o analista funcional para producir una User Story funcional y testeable siguiendo el formato del modelo de trazabilidad — o pule una US vaga existente. Se queda a nivel funcional/usuario y se niega a derivar en diseño técnico o a emitir una US con criterios no testeables. Al terminar, PUBLICA la US en el tracker configurado del repo (Jira o ClickUp, según DAI_PM del .env) usando su MCP; si no hay MCP/token, deja un .md con el mismo formato para copiar y pegar. Invocar como /grill-user-story, opcionalmente con un título, un ID/URL del tracker, y/o una US rústica existente. Usar antes de opsx:propose, o cuando alguien dice \"necesito una US\", \"convierte esto en una US como corresponde\", o \"esta historia está muy vaga\"."
 ---
 
 # grill-user-story

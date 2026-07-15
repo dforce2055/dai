@@ -1,6 +1,6 @@
 ---
 name: grill-epic
-description: Interroga a un PO o analista funcional para producir una ÉPICA bien formada — un bloque grande de valor de negocio que se parte en varias User Stories — siguiendo el template del método. O toma una US que resultó demasiado grande y la promueve a épica. Se queda a nivel funcional/alcance: define el objetivo de negocio y la partición en US, NUNCA criterios de aceptación (esos viven en cada US) ni diseño técnico. Al terminar, publica la épica en Jira/ClickUp (o deja un .md) y hace handoff de cada US hija a grill-user-story. Invocar como /grill-epic, opcionalmente con un título, un ID/URL del tracker, o una US grande a promover. Usar cuando algo es demasiado grande para una sola US.
+description: "Interroga a un PO o analista funcional para producir una ÉPICA bien formada — un bloque grande de valor de negocio que se parte en varias User Stories — siguiendo el template del método. O toma una US que resultó demasiado grande y la promueve a épica. Se queda a nivel funcional/alcance: define el objetivo de negocio y la partición en US, NUNCA criterios de aceptación (esos viven en cada US) ni diseño técnico. Al terminar, publica la épica en Jira/ClickUp (o deja un .md) y hace handoff de cada US hija a grill-user-story. Invocar como /grill-epic, opcionalmente con un título, un ID/URL del tracker, o una US grande a promover. Usar cuando algo es demasiado grande para una sola US."
 ---
 
 # grill-epic
