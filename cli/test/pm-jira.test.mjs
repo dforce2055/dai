@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { jiraIssueUrl, jiraCommentUrl, jiraAuthHeaders, jiraIssueToText, jiraAdapter, adfToMarkdown, markdownToAdf } from "../lib/pm-jira.mjs";
+import { jiraIssueUrl, jiraCommentUrl, jiraAuthHeaders, jiraIssueToText, jiraAdapter, adfToMarkdown, markdownToAdf, assertProjectKey } from "../lib/pm-jira.mjs";
 import { parseUS } from "../lib/us.mjs";
 import { acHash } from "../lib/ac-hash.mjs";
 import { withMockFetch, mockResponse } from "./helpers.mjs";
@@ -122,4 +122,83 @@ test("[red] jira createUS postea a /issue con project+issuetype y devuelve el ke
 
 test("[red] jira createUS sin DAI_JIRA_PROJECT → error claro", async () => {
   await assert.rejects(jiraAdapter(ENV).createUS({ title: "X", descriptionMarkdown: "y" }), /DAI_JIRA_PROJECT/);
+});
+
+// ── clave de proyecto vs clave de ticket ──────────────────────────────────────
+// El error de config más común: pegar la épica que uno tiene a mano en
+// DAI_JIRA_PROJECT. Jira contesta un 400 que no lo explica; dai sí.
+
+test("assertProjectKey acepta una clave de proyecto", () => {
+  assert.equal(assertProjectKey("PROJ"), "PROJ");
+  assert.equal(assertProjectKey("  PROJ  "), "PROJ");   // tolera espacios del .env
+  assert.equal(assertProjectKey("AB2"), "AB2");
+});
+
+test("assertProjectKey: una issue key explica el error y da los dos caminos", () => {
+  assert.throws(() => assertProjectKey("PROJ-42"), (e) => {
+    assert.match(e.message, /es la clave de un ticket, no la del proyecto/);
+    assert.match(e.message, /DAI_JIRA_PROJECT=PROJ/);        // qué poner
+    assert.match(e.message, /--parent PROJ-42/);          // qué querías, quizás
+    return true;
+  });
+});
+
+test("assertProjectKey: vacía o con forma rara", () => {
+  assert.throws(() => assertProjectKey(""), /falta DAI_JIRA_PROJECT/);
+  assert.throws(() => assertProjectKey(undefined), /falta DAI_JIRA_PROJECT/);
+  assert.throws(() => assertProjectKey("mi proyecto"), /no parece una clave de proyecto/);
+  assert.throws(() => assertProjectKey("2PROJ"), /no parece una clave de proyecto/);
+});
+
+test("[red] jira createUS manda --parent y los campos propios del proyecto", async () => {
+  await withMockFetch(() => mockResponse(201, { key: "PROJ-125" }), async (calls) => {
+    const env2 = { ...ENV, DAI_JIRA_PROJECT: "PROJ" };
+    await jiraAdapter(env2).createUS({
+      title: "Seleccionar índice al crear subproducto",
+      descriptionMarkdown: "# X\n\n## Criterios de aceptación\n- Dado y",
+      parent: "PROJ-42",
+      fields: { customfield_10042: { value: "Corrección" } },
+    });
+    const body = JSON.parse(calls[0].opts.body);
+    assert.deepEqual(body.fields.parent, { key: "PROJ-42" });
+    assert.deepEqual(body.fields.customfield_10042, { value: "Corrección" });
+    assert.equal(body.fields.project.key, "PROJ");
+  });
+});
+
+test("[red] jira createUS: --issuetype pisa el del .env (así se publica una épica)", async () => {
+  await withMockFetch(() => mockResponse(201, { key: "PROJ-1" }), async (calls) => {
+    const env2 = { ...ENV, DAI_JIRA_PROJECT: "PROJ", DAI_JIRA_ISSUETYPE: "Story" };
+    await jiraAdapter(env2).createUS({ title: "Épica", descriptionMarkdown: "# E", issuetype: "Epic" });
+    assert.deepEqual(JSON.parse(calls[0].opts.body).fields.issuetype, { name: "Epic" });
+  });
+});
+
+test("[red] jira createUS: un 400 sugiere declarar el campo, no improvisar la llamada", async () => {
+  await withMockFetch(
+    () => mockResponse(400, { errors: { customfield_10042: "Tipo de trabajo is required." } }),
+    async () => {
+      const env2 = { ...ENV, DAI_JIRA_PROJECT: "PROJ" };
+      await assert.rejects(
+        jiraAdapter(env2).createUS({ title: "X", descriptionMarkdown: "y" }),
+        (e) => {
+          assert.match(e.message, /jira 400/);
+          assert.match(e.message, /customfield_10042/);
+          assert.match(e.message, /\.dai\/jira-fields\.json/);
+          return true;
+        },
+      );
+    },
+  );
+});
+
+test("[red] jira createUS: DAI_JIRA_PROJECT con una issue key falla ANTES de la red", async () => {
+  await withMockFetch(
+    () => { throw new Error("no se debería haber llamado a la red"); },
+    async (calls) => {
+      const env2 = { ...ENV, DAI_JIRA_PROJECT: "PROJ-42" };
+      await assert.rejects(jiraAdapter(env2).createUS({ title: "X", descriptionMarkdown: "y" }), /clave de un ticket/);
+      assert.equal(calls.length, 0);   // ni un request gastado
+    },
+  );
 });

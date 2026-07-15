@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseFlags, camel, isAssistantToken } from "../lib/args.mjs";
+import { parseFlags, camel, isAssistantToken, asList } from "../lib/args.mjs";
 
 test("flags con valor", () => {
   const { opts, pos } = parseFlags(["link-us", "ABC-1", "--us", "u.md", "--autor", "Dev"]);
@@ -61,4 +61,24 @@ test("isAssistantToken detecta tokens de --for (hint del espacio)", () => {
   assert.equal(isAssistantToken("mi-repo"), false);
   assert.equal(isAssistantToken(undefined), false);
   assert.equal(isAssistantToken(""), false);
+});
+
+// ── flags repetibles (--field alias=valor, para los campos propios de Jira) ────
+// Antes el último ganaba en silencio: `--field a=1 --field b=2` perdía 'a' sin avisar.
+
+test("un flag repetido acumula en lista", () => {
+  const { opts } = parseFlags(["publish", "us.md", "--field", "a=1", "--field", "b=2"]);
+  assert.deepEqual(opts.field, ["a=1", "b=2"]);
+});
+
+test("un flag que viene una sola vez sigue siendo string (no rompe lo de antes)", () => {
+  const { opts } = parseFlags(["publish", "us.md", "--field", "a=1"]);
+  assert.equal(opts.field, "a=1");
+  assert.equal(parseFlags(["init", "--for", "claude"]).opts.for, "claude");
+});
+
+test("asList normaliza 0, 1 o N ocurrencias", () => {
+  assert.deepEqual(asList(undefined), []);
+  assert.deepEqual(asList("a=1"), ["a=1"]);
+  assert.deepEqual(asList(["a=1", "b=2"]), ["a=1", "b=2"]);
 });

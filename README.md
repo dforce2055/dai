@@ -266,12 +266,18 @@ Las skills se invocan en el asistente — **no en todas sus superficies** (lími
 | **Claude Desktop** | ✅ | `~/.claude/skills/` (global) — sin IDE ni consola |
 | **Claude Code** | ✅ | `~/.claude/skills/` + `.claude/skills/` del repo |
 | **Cursor Agent (IDE)** | ✅ | `.cursor/skills/*/SKILL.md` + `.cursor/rules/*.mdc` |
-| **Copilot en VS Code / JetBrains** | ✅ | los `.github/prompts/*.prompt.md` |
-| **Copilot CLI** | ✅ | custom agents |
-| **Copilot app standalone / github.com chat** | ❌ | los prompt files son solo-IDE |
+| **Copilot app / CLI** | ✅ | `~/.copilot/skills/` (global) + `.github/skills/` del repo |
+| **Copilot en VS Code / JetBrains** | ✅ | ídem (modo agente) |
+| **Copilot code review · cloud agent** | ✅ | `.github/skills/` del repo |
+| **Chat de github.com** | ❌ | no carga skills |
 
-El analista sin IDE cierra con **Claude Desktop**; con Copilot necesita **VS Code o el Copilot
-CLI**. El CLI `dai` corre en cualquier terminal, con cualquier asistente o ninguno.
+**El analista no necesita IDE**: cierra el ciclo con **Claude Desktop** o con la **app / CLI de
+Copilot**. El CLI `dai` corre en cualquier terminal, con cualquier asistente o ninguno.
+
+> Copilot lee el `SKILL.md` **tal cual**, sin conversión ([ADR-0014](docs/adr/0014-copilot-agent-skills.md)).
+> Si vienes de dai ≤ 0.7, corre `dai init --for copilot` una vez: cambia los
+> `.github/prompts/*.prompt.md` por `.github/skills/` (con los `templates/`, que antes se
+> perdían) y limpia los viejos para que no te dupliquen cada `/comando`.
 
 ## Se adapta a cualquier escala
 

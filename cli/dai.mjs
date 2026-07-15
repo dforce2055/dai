@@ -27,10 +27,12 @@ import { branchUrl, commitUrl, parseRemote, detectForge } from "./lib/forge-url.
 import { parsePrRef, getPR, postComment } from "./lib/forge-api.mjs";
 import { composePrBody, prTitle, forgeTool } from "./lib/pr.mjs";
 import { dirsEqual } from "./lib/fsutil.mjs";
-import { parseFlags, parseAssistants, isAssistantToken } from "./lib/args.mjs";
+import { parseFlags, parseAssistants, isAssistantToken, asList } from "./lib/args.mjs";
 import { versionDrift, planUpgrade } from "./lib/semver.mjs";
 import { parseSource } from "./lib/skills-source.mjs";
-import { skillToPrompt, skillToCursor, validateSkill, constitution, constitutionCursorRule, envFor, mergeEnv, upsertBlock, reconcileGitignore } from "./lib/bootstrap.mjs";
+import { skillToCursor, validateSkill, constitution, constitutionCursorRule, envFor, mergeEnv, upsertBlock, reconcileGitignore, stalePromptFiles } from "./lib/bootstrap.mjs";
+import { parseFieldsFile, parseFieldOverrides, resolveJiraFields } from "./lib/jira-fields.mjs";
+import { assertProjectKey } from "./lib/pm-jira.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -48,6 +50,9 @@ const C = { y: (m) => paint("33", m), r: (m) => paint("31", m), cy: (m) => paint
 const ROOT = join(HERE, "..");            // raíz del paquete dai (cli/ está adentro)
 const CLAUDE_SKILLS_DIR = process.env.CLAUDE_SKILLS_DIR || join(homedir(), ".claude", "skills");
 const CURSOR_SKILLS_DIR = process.env.CURSOR_SKILLS_DIR || join(homedir(), ".cursor", "skills");
+// Copilot lee las skills personales de ~/.copilot/skills (NO de ~/.claude/skills, que
+// solo mira VS Code). Por eso una skill "instalada global" no le aparecía (ADR-0014).
+const COPILOT_SKILLS_DIR = process.env.COPILOT_SKILLS_DIR || join(homedir(), ".copilot", "skills");
 function git(args, opts = {}) {
   // stderr en 'pipe' (no 'inherit') para no filtrar errores de git a la salida;
   // quedan en e.stderr para quien quiera inspeccionarlos.
@@ -238,16 +243,45 @@ async function cmdForge(sub, ref, opts) {
 }
 
 // ── publish: crea la US en el tracker desde un .md (fallback del MCP) ──────────
-async function cmdPublish(file) {
-  if (!file) fail("uso: dai publish <archivo-us.md>", 1);
+
+// Los campos propios que exige el proyecto, declarados en .dai/jira-fields.json
+// (o donde apunte DAI_JIRA_FIELDS_FILE). Sin archivo → {}: un Jira sin campos
+// obligatorios publica igual que siempre.
+function loadJiraFieldsSpec() {
+  const path = process.env.DAI_JIRA_FIELDS_FILE || join(".dai", "jira-fields.json");
+  if (!existsSync(path)) return {};
+  return parseFieldsFile(readFileSync(path, "utf8"), path);
+}
+
+async function cmdPublish(file, opts = {}) {
+  if (!file) fail("uso: dai publish <archivo-us.md> [--parent KEY] [--issuetype T] [--field alias=valor]", 1);
   loadEnv();
   const md = readFileSync(file, "utf8");
   const title = extractTitle(md);
   if (!title) fail("no pude extraer el título de la US (falta un '# Título').", 1);
   const adapter = getAdapter(process.env);
   if (typeof adapter.createUS !== "function") fail(`el backend '${adapter.kind}' no soporta crear US.`, 1);
-  const r = await adapter.createUS({ title, descriptionMarkdown: md });
+
+  const parent = typeof opts.parent === "string" ? opts.parent : undefined;
+  const issuetype = typeof opts.issuetype === "string" ? opts.issuetype : undefined;
+  const project = typeof opts.project === "string" ? opts.project : undefined;
+
+  // Los campos propios son cosa de Jira; los otros backends no los usan.
+  let fields;
+  if (adapter.kind === "jira") {
+    const type = issuetype || process.env.DAI_JIRA_ISSUETYPE || "Story";
+    fields = resolveJiraFields({
+      spec: loadJiraFieldsSpec(),
+      issuetype: type,
+      overrides: parseFieldOverrides(asList(opts.field)),
+    });
+  } else if (opts.field !== undefined) {
+    fail(`--field es solo para jira (DAI_PM=${adapter.kind}).`, 2);
+  }
+
+  const r = await adapter.createUS({ title, descriptionMarkdown: md, parent, issuetype, project, fields });
   ok(`US publicada en ${adapter.kind}: ${r.id}${r.url ? `  →  ${r.url}` : ""}`);
+  if (parent) info(`colgada de ${parent}`);
   info(`Próximo paso (el dev abre el CÓMO):  dai link-us ${r.id}`);
 }
 
@@ -423,12 +457,9 @@ async function cmdInstall(opts) {
   let want;
   try { want = parseAssistants(typeof opts.for === "string" ? opts.for : "all"); }
   catch (e) { fail(`--for ${e.message}`); }
-  // Copilot no tiene skills instalables (no hay dir global ni local de skills de Copilot):
-  // sus prompts los genera `dai init` en el repo. Se ignora en `install`.
-  if (want.copilot) warn("Copilot no tiene skills instalables — se generan con `dai init` en el repo. Ignoro 'copilot'.");
-  const wantClaude = want.claude, wantCursor = want.cursor;
-  if (!wantClaude && !wantCursor) fail("nada para instalar: pasá --for claude|cursor|all.");
-  const installFor = [wantClaude && "claude", wantCursor && "cursor"].filter(Boolean).join("+");
+  const wantClaude = want.claude, wantCursor = want.cursor, wantCopilot = want.copilot;
+  if (!wantClaude && !wantCursor && !wantCopilot) fail("nada para instalar: pasá --for claude|copilot|cursor|all.");
+  const installFor = [wantClaude && "claude", wantCopilot && "copilot", wantCursor && "cursor"].filter(Boolean).join("+");
   const interactive = process.stdin.isTTY && !opts.global && opts.local === undefined;
   const rl = interactive ? createInterface({ input: process.stdin, output: process.stdout }) : null;
 
@@ -439,17 +470,21 @@ async function cmdInstall(opts) {
     return a === "l" ? { scope: "local", repo: process.cwd() } : a === "s" ? { scope: "skip" } : { scope: "global" };
   };
 
+  // Cada asistente tiene SU dir: Claude ~/.claude/skills · Copilot ~/.copilot/skills
+  // (ADR-0014) · Cursor ~/.cursor/skills. Local, el de Copilot es .github/skills.
+  const LOCAL_DIR = { claude: [".claude", "skills"], copilot: [".github", "skills"], cursor: [".cursor", "skills"] };
+  const GLOBAL_DIR = { claude: CLAUDE_SKILLS_DIR, copilot: COPILOT_SKILLS_DIR, cursor: CURSOR_SKILLS_DIR };
+
   const installOne = async ({ name, scope, repo, kind }) => {
     const src = join(skillsSrc, name);
-    const targetDir = scope === "local"
-      ? join(repo, kind === "cursor" ? ".cursor" : ".claude", "skills")
-      : kind === "cursor" ? CURSOR_SKILLS_DIR : CLAUDE_SKILLS_DIR;
+    const targetDir = scope === "local" ? join(repo, ...LOCAL_DIR[kind]) : GLOBAL_DIR[kind];
     const target = join(targetDir, name);
-    const label = kind === "cursor" ? `${name} (cursor)` : `${name} (claude)`;
+    const label = `${name} (${kind})`;
 
     let sameAsSource = false;
     if (existsSync(target)) {
-      if (kind === "claude") {
+      if (kind !== "cursor") {
+        // claude y copilot son copia cruda del SKILL.md: comparación directa.
         sameAsSource = dirsEqual(src, target);
       } else {
         const tempRoot = mkdtempSync(join(tmpdir(), "dai-cursor-skill-"));
@@ -486,6 +521,7 @@ async function cmdInstall(opts) {
     const { scope, repo } = await scopeFor(name);
     if (scope === "skip") { warn(`salto ${name}`); continue; }
     if (wantClaude) await installOne({ name, scope, repo, kind: "claude" });
+    if (wantCopilot) await installOne({ name, scope, repo, kind: "copilot" });
     if (wantCursor) await installOne({ name, scope, repo, kind: "cursor" });
   }
   if (rl) rl.close();
@@ -692,12 +728,20 @@ async function cmdInit(repo, opts) {
     ok(`Claude:       .claude/skills/ (${skills.length}) + CLAUDE.md${cCur ? " (bloque dai, aditivo)" : ""} → conoce el método y las skills`);
   }
   if (wantCopilot) {
-    const pdir = join(repo, ".github", "prompts");
-    mkdirSync(pdir, { recursive: true });
-    for (const name of skills) writeFileSync(join(pdir, `${name}.prompt.md`), skillToPrompt(readFileSync(join(skillsSrc, name, "SKILL.md"), "utf8")));
+    // Copilot lee SKILL.md nativo (Agent Skills, ADR-0014): copia cruda, sin convertir.
+    // Así viajan también los templates/ que la conversión a .prompt.md perdía.
+    const dir = join(repo, ".github", "skills");
+    mkdirSync(dir, { recursive: true });
+    for (const name of skills) cpSync(join(skillsSrc, name), join(dir, name), { recursive: true });
     const ciPath = join(repo, ".github", "copilot-instructions.md"), ciCur = existsSync(ciPath) ? readFileSync(ciPath, "utf8") : "";
     writeFileSync(ciPath, upsertBlock(ciCur, constitution("copilot")));
-    ok(`Copilot:      .github/prompts/ (${skills.length}) + copilot-instructions.md${ciCur ? " (bloque dai, aditivo)" : ""}`);
+    ok(`Copilot:      .github/skills/ (${skills.length}) + copilot-instructions.md${ciCur ? " (bloque dai, aditivo)" : ""}`);
+    // Los .prompt.md de versiones previas duplicarían cada /comando con una copia
+    // vieja y sin templates. Solo borramos los que generó dai, nunca los del equipo.
+    const pdir = join(repo, ".github", "prompts");
+    const stale = existsSync(pdir) ? stalePromptFiles(skills).filter((f) => existsSync(join(pdir, f))) : [];
+    for (const f of stale) rmSync(join(pdir, f), { force: true });
+    if (stale.length) info(`              quité ${stale.length} .prompt.md viejo(s) de .github/prompts/ — ahora son skills`);
   }
   if (wantCursor) {
     const dir = join(repo, ".cursor", "skills");
@@ -949,35 +993,52 @@ function cmdDoctor() {
   loadEnv();
   info(`dai doctor — versión v${readFileSync(join(ROOT, "VERSION"), "utf8").trim()}`);
 
-  // Una skill sirve si está en el repo actual (.claude/skills, la puso `dai init`)
-  // O global (~/.claude/skills, la puso `dai install`). Reportamos dónde.
+  // Una skill sirve si está en el repo actual (la puso `dai init`) o global (la puso
+  // `dai install`). Reportamos dónde — y SOLO de los asistentes que este repo usa: antes
+  // se listaban los tres siempre, así que quien configuró uno veía 14 warnings de los
+  // otros dos y leía "está todo roto" cuando estaba todo bien.
   const skillsRoot = join(ROOT, "skills");
   const skillNames = readdirSync(skillsRoot).filter((n) => statSync(join(skillsRoot, n)).isDirectory());
-  const localDir = join(process.cwd(), ".claude", "skills");
-  info("skills (repo local / global ~/.claude/skills):");
-  for (const name of skillNames) {
-    const local = existsSync(join(localDir, name)), global = existsSync(join(CLAUDE_SKILLS_DIR, name));
-    if (local && global) ok(`${name}  (local + global)`);
-    else if (local) ok(`${name}  (local, este repo)`);
-    else if (global) ok(`${name}  (global)`);
-    else warn(`${name} — no instalada (dai init en el repo, o dai install global)`);
-  }
+  const cwd = process.cwd();
+  const ASSISTANTS = [
+    { kind: "claude",  label: "Claude",  local: join(cwd, ".claude", "skills"),  global: CLAUDE_SKILLS_DIR,  home: "~/.claude/skills" },
+    { kind: "copilot", label: "Copilot", local: join(cwd, ".github", "skills"),  global: COPILOT_SKILLS_DIR, home: "~/.copilot/skills" },
+    { kind: "cursor",  label: "Cursor",  local: join(cwd, ".cursor", "skills"),  global: CURSOR_SKILLS_DIR,  home: "~/.cursor/skills" },
+  ];
+  const present = (a) => skillNames.some((n) => existsSync(join(a.local, n)) || existsSync(join(a.global, n)));
+  const active = ASSISTANTS.filter(present);
 
-  const cursorLocalDir = join(process.cwd(), ".cursor", "skills");
-  info("skills Cursor (repo local / global ~/.cursor/skills):");
-  for (const name of skillNames) {
-    const local = existsSync(join(cursorLocalDir, name)), global = existsSync(join(CURSOR_SKILLS_DIR, name));
-    if (local && global) ok(`${name}  (local + global)`);
-    else if (local) ok(`${name}  (local, este repo)`);
-    else if (global) ok(`${name}  (global)`);
-    else warn(`${name} — no instalada en Cursor (dai init --for cursor|all, o dai install --for cursor|all)`);
+  if (active.length === 0) {
+    warn("no encontré skills de dai para ningún asistente.");
+    process.stdout.write("    En un repo:  dai init --for claude|copilot|cursor|all\n");
+    process.stdout.write("    O global:    dai install --for all\n");
   }
-  const localRule = join(process.cwd(), ".cursor", "rules", "dai-constitution.mdc");
-  const globalRule = join(homedir(), ".cursor", "rules", "dai-constitution.mdc");
-  if (existsSync(localRule) && existsSync(globalRule)) ok("constitución Cursor (local + global)");
-  else if (existsSync(localRule)) ok("constitución Cursor (local)");
-  else if (existsSync(globalRule)) ok("constitución Cursor (global)");
-  else warn("falta constitución Cursor (dai-constitution.mdc)");
+  for (const a of active) {
+    info(`skills ${a.label} (repo local / global ${a.home}):`);
+    for (const name of skillNames) {
+      const local = existsSync(join(a.local, name)), global = existsSync(join(a.global, name));
+      if (local && global) ok(`${name}  (local + global)`);
+      else if (local) ok(`${name}  (local, este repo)`);
+      else if (global) ok(`${name}  (global)`);
+      else warn(`${name} — falta para ${a.label} (dai init --for ${a.kind}, o dai install --for ${a.kind})`);
+    }
+  }
+  if (active.some((a) => a.kind === "copilot")) {
+    const ci = join(cwd, ".github", "copilot-instructions.md");
+    existsSync(ci) ? ok("constitución Copilot (.github/copilot-instructions.md)") : warn("falta la constitución de Copilot (dai init --for copilot)");
+    // Los .prompt.md viejos duplican cada /comando con una copia sin templates.
+    const pdir = join(cwd, ".github", "prompts");
+    const stale = existsSync(pdir) ? stalePromptFiles(skillNames).filter((f) => existsSync(join(pdir, f))) : [];
+    if (stale.length) warn(`${stale.length} .prompt.md viejo(s) en .github/prompts/ — duplican las skills. Corré \`dai init --for copilot\` para limpiarlos.`);
+  }
+  if (active.some((a) => a.kind === "cursor")) {
+    const localRule = join(cwd, ".cursor", "rules", "dai-constitution.mdc");
+    const globalRule = join(homedir(), ".cursor", "rules", "dai-constitution.mdc");
+    if (existsSync(localRule) && existsSync(globalRule)) ok("constitución Cursor (local + global)");
+    else if (existsSync(localRule)) ok("constitución Cursor (local)");
+    else if (existsSync(globalRule)) ok("constitución Cursor (global)");
+    else warn("falta constitución Cursor (dai-constitution.mdc)");
+  }
 
   info("adaptador de PM:");
   const pm = process.env.DAI_PM || "md";
@@ -985,9 +1046,24 @@ function cmdDoctor() {
   if (pm === "jira") {
     if (!process.env.DAI_JIRA_BASE_URL) warn("falta DAI_JIRA_BASE_URL en el .env");
     if (!process.env.DAI_JIRA_EMAIL) warn("falta DAI_JIRA_EMAIL en el .env");
-    if (!process.env.DAI_JIRA_TOKEN) warn("falta DAI_JIRA_TOKEN en el .env"); else ok("token de Jira presente");
-    process.env.DAI_JIRA_PROJECT ? ok(`proyecto=${process.env.DAI_JIRA_PROJECT} (para dai publish)`)
-      : warn("DAI_JIRA_PROJECT vacío — solo hace falta para `dai publish` (crear issues)");
+    // Ojo: solo miramos que el token ESTÉ, no que sirva — uno vencido pasa este chequeo
+    // y recién falla al publicar. Verificarlo de verdad es pegarle a la red.
+    if (!process.env.DAI_JIRA_TOKEN) warn("falta DAI_JIRA_TOKEN en el .env"); else ok("token de Jira presente (no verificado: eso lo dice `dai publish`)");
+    if (!process.env.DAI_JIRA_PROJECT) warn("DAI_JIRA_PROJECT vacío — solo hace falta para `dai publish` (crear issues)");
+    else {
+      try { ok(`proyecto=${assertProjectKey(process.env.DAI_JIRA_PROJECT)} (para dai publish)`); }
+      catch (e) { warn(String(e.message)); }
+    }
+    // Campos propios del proyecto: que el archivo parsee ANTES de necesitarlo.
+    const fpath = process.env.DAI_JIRA_FIELDS_FILE || join(".dai", "jira-fields.json");
+    if (!existsSync(fpath)) info(`sin campos propios declarados (${fpath} no existe — normal si tu Jira no los exige)`);
+    else {
+      try {
+        const spec = parseFieldsFile(readFileSync(fpath, "utf8"), fpath);
+        const types = Object.keys(spec);
+        ok(`campos propios: ${fpath} — issuetypes: ${types.length ? types.join(", ") : "(ninguno)"}`);
+      } catch (e) { warn(String(e.message)); }
+    }
   }
   if (pm === "clickup") {
     if (!process.env.DAI_CLICKUP_TOKEN) warn("falta DAI_CLICKUP_TOKEN en el .env"); else ok("token de ClickUp presente");
@@ -1016,7 +1092,7 @@ switch (cmd) {
   case "check":   cmdCheck().catch((e) => fail(String(e.message))); break;
   case "stamp":   cmdStamp().catch((e) => fail(String(e.message))); break;
   case "forge":   cmdForge(pos[0], pos[1], opts).catch((e) => fail(String(e.message))); break;
-  case "publish": cmdPublish(pos[0]).catch((e) => fail(String(e.message))); break;
+  case "publish": cmdPublish(pos[0], opts).catch((e) => fail(String(e.message))); break;
   case "pr":      cmdPr(opts).catch((e) => fail(String(e.message))); break;
   case "done":    cmdDone(opts); break;
   case "archive": cmdArchive(pos[0], opts); break;
@@ -1039,6 +1115,8 @@ switch (cmd) {
       "  ac-hash <us.md>              calcula el ac_hash (ADR-0001)\n" +
       "  ls [--json]                  lista lo que implementa el repo (ADR-0005)\n" +
       "  publish <us.md>              crea la US en el tracker (Jira/ClickUp/md) y devuelve el key\n" +
+      "      [--parent KEY]           la cuelga de su épica · [--issuetype T] p. ej. Epic\n" +
+      "      [--field alias=valor]    campos propios que exige tu Jira (.dai/jira-fields.json); repetible\n" +
       "  link-us <KEY> [--us <md>]    crea branch + implements.yaml; sin --us trae la US del tracker (ADR-0004)\n" +
       "  link-us <KEY> --resync       re-estampa el ac_hash contra la US viva (tras un ⚠️ de check)\n" +
       "  check                        compara vs la US viva → atrasado (ADR-0003)\n" +

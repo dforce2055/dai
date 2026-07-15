@@ -7,8 +7,29 @@
 // hasher encuentre "## Criterios de aceptación"); al ESCRIBIR el stamp, componemos ADF.
 
 import { parseUS } from "./us.mjs";
+import { daiFetch } from "./http.mjs";
 
 const trim = (b) => String(b || "").replace(/\/+$/, "");
+
+// La clave del PROYECTO (PROJ), no la de un ticket (PROJ-42). Confundirlas es el
+// error de config más común: `dai init` deja DAI_JIRA_PROJECT vacío y quien lo completa
+// suele pegar la épica que tiene a mano. Jira responde un 400 que no lo explica.
+export function assertProjectKey(key) {
+  if (!key) throw new Error("falta DAI_JIRA_PROJECT en el .env (la clave del proyecto donde crear el issue).");
+  const k = String(key).trim();
+  const m = k.match(/^([A-Za-z][A-Za-z0-9_]*)-\d+$/);
+  if (m) {
+    throw new Error(
+      `DAI_JIRA_PROJECT='${k}' es la clave de un ticket, no la del proyecto.\n` +
+      `  Usá solo la parte de adelante:  DAI_JIRA_PROJECT=${m[1]}\n` +
+      `  Si lo que querías era colgar la US de esa épica:  dai publish <us.md> --parent ${k}`,
+    );
+  }
+  if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(k)) {
+    throw new Error(`DAI_JIRA_PROJECT='${k}' no parece una clave de proyecto (letras y números, empezando por letra — p. ej. PROJ).`);
+  }
+  return k;
+}
 
 export function jiraIssueUrl(base, id) {
   return `${trim(base)}/rest/api/3/issue/${encodeURIComponent(id)}?fields=summary,description`;
@@ -85,37 +106,56 @@ export function renderCoverageAdf(id, r) {
   return { type: "doc", version: 1, content };
 }
 
+// Un 400 al crear casi siempre es un campo obligatorio del proyecto que no mandamos.
+// El cuerpo de Jira nombra el customfield_NNNNN pero no dice qué hacer: lo decimos acá.
+function createHint(status) {
+  if (status !== 400) return "";
+  return "\n\n  Si el error nombra un 'customfield_NNNNN', tu proyecto exige un campo propio.\n" +
+         "  Declaralo en .dai/jira-fields.json y volvé a publicar — no hace falta improvisar\n" +
+         "  una llamada a mano:\n" +
+         '    { "Story": { "clasificacion": { "field": "customfield_NNNNN",\n' +
+         '                                    "options": ["Mejora", "Corrección"] } } }\n' +
+         "    dai publish <us.md> --field clasificacion=Corrección";
+}
+
 export function jiraAdapter(env) {
   const base = env.DAI_JIRA_BASE_URL;
   if (!base) throw new Error("falta DAI_JIRA_BASE_URL en el .env (backend jira).");
   return {
     kind: "jira",
     async fetchUS(id) {
-      const res = await fetch(jiraIssueUrl(base, id), { headers: jiraAuthHeaders(env) });
+      const res = await daiFetch(jiraIssueUrl(base, id), { headers: jiraAuthHeaders(env) });
       if (res.status === 404) return null;
       if (!res.ok) throw new Error(`jira ${res.status}: ${await res.text()}`);
       return { id, ...parseUS(jiraIssueToText(await res.json())) };
     },
     async stamp(id, record) {
-      const res = await fetch(jiraCommentUrl(base, id), {
+      const res = await daiFetch(jiraCommentUrl(base, id), {
         method: "POST", headers: jiraAuthHeaders(env),
         body: JSON.stringify({ body: renderCoverageAdf(id, record) }),
       });
       if (!res.ok) throw new Error(`jira ${res.status}: ${await res.text()}`);
       return `${trim(base)}/browse/${id}`;
     },
-    async createUS({ title, descriptionMarkdown }) {
-      const project = env.DAI_JIRA_PROJECT;
-      const issuetype = env.DAI_JIRA_ISSUETYPE || "Story";
-      if (!project) throw new Error("falta DAI_JIRA_PROJECT en el .env (la clave del proyecto donde crear el issue).");
-      const res = await fetch(`${trim(base)}/rest/api/3/issue`, {
+    // `fields` son los campos propios del proyecto ya resueltos (ver jira-fields.mjs);
+    // `parent` cuelga la US de su épica. Ambos son opcionales: un Jira sin campos
+    // obligatorios sigue publicando igual que antes.
+    async createUS({ title, descriptionMarkdown, parent, issuetype, project, fields }) {
+      const key = assertProjectKey(project || env.DAI_JIRA_PROJECT);
+      const type = issuetype || env.DAI_JIRA_ISSUETYPE || "Story";
+      const payload = {
+        project: { key },
+        issuetype: { name: type },
+        summary: title,
+        description: markdownToAdf(descriptionMarkdown),
+        ...(fields || {}),
+      };
+      if (parent) payload.parent = { key: String(parent).trim() };
+      const res = await daiFetch(`${trim(base)}/rest/api/3/issue`, {
         method: "POST", headers: jiraAuthHeaders(env),
-        body: JSON.stringify({ fields: {
-          project: { key: project }, issuetype: { name: issuetype },
-          summary: title, description: markdownToAdf(descriptionMarkdown),
-        } }),
+        body: JSON.stringify({ fields: payload }),
       });
-      if (!res.ok) throw new Error(`jira ${res.status}: ${await res.text()}`);
+      if (!res.ok) throw new Error(`jira ${res.status}: ${await res.text()}${createHint(res.status)}`);
       const j = await res.json();
       return { id: j.key, url: `${trim(base)}/browse/${j.key}` };
     },

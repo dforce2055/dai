@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseFrontmatter, validateSkill, skillToPrompt, skillToCursor, constitution, constitutionCursorRule, envFor, mergeEnv, upsertBlock, reconcileGitignore } from "../lib/bootstrap.mjs";
+import { parseFrontmatter, validateSkill, stalePromptFiles, skillToCursor, constitution, constitutionCursorRule, envFor, mergeEnv, upsertBlock, reconcileGitignore } from "../lib/bootstrap.mjs";
 
 test("validateSkill exige name y description en el frontmatter (ADR-0013)", () => {
   assert.equal(validateSkill("---\nname: x\ndescription: y\n---\n\nbody"), null);
@@ -41,12 +41,12 @@ test("parseFrontmatter sin frontmatter → body crudo", () => {
   assert.match(p.body, /Solo cuerpo/);
 });
 
-test("skillToPrompt cambia el frontmatter a formato Copilot y conserva el cuerpo", () => {
-  const out = skillToPrompt(SKILL);
-  assert.match(out, /^---\nmode: agent\n/);
-  assert.match(out, /description: "Interroga a un PO/);
-  assert.match(out, /El cuerpo con la lógica de la skill\./);
-  assert.doesNotMatch(out, /^name:/m); // el frontmatter de dai no viaja
+// Copilot dejó de necesitar conversión: lee el SKILL.md tal cual (ADR-0014). Lo que
+// queda es limpiar los .prompt.md que dai generaba antes, para que no dupliquen cada
+// /comando con una copia vieja y sin templates.
+test("stalePromptFiles nombra los .prompt.md que dai generaba antes", () => {
+  assert.deepEqual(stalePromptFiles(["grill-epic", "tdd"]), ["grill-epic.prompt.md", "tdd.prompt.md"]);
+  assert.deepEqual(stalePromptFiles([]), []);
 });
 
 test("skillToCursor conserva name/body y serializa description", () => {

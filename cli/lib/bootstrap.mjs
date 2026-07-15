@@ -26,18 +26,10 @@ export function validateSkill(md) {
   return null;
 }
 
-// Transforma un SKILL.md (Claude) en un prompt file de Copilot (.prompt.md).
-// Cambia el frontmatter; el cuerpo (la lógica) es el mismo.
-export function skillToPrompt(md) {
-  const { description, body } = parseFrontmatter(md);
-  const fm = [
-    "---",
-    "mode: agent",
-    description ? `description: ${JSON.stringify(description)}` : null,
-    "---",
-  ].filter((x) => x !== null).join("\n");
-  return `${fm}\n\n${body}\n`;
-}
+// Los archivos de Copilot que dai generaba ANTES de que Copilot adoptara Agent Skills
+// (ADR-0014). `dai init` los borra al reencontrarlos, para que no queden duplicando
+// cada `/comando` con una copia vieja y sin templates.
+export const stalePromptFiles = (skills) => skills.map((n) => `${n}.prompt.md`);
 
 // Transforma un SKILL.md (Claude) en un SKILL.md de Cursor.
 // Conserva name/description/body y ajusta solo el frontmatter.
@@ -60,7 +52,17 @@ export function envFor(pm) {
     return head + "DAI_PM=clickup\nDAI_CLICKUP_TOKEN=\nDAI_CLICKUP_LIST_ID=\nDAI_TRACKER_URL_TEMPLATE=https://app.clickup.com/t/{id}\n";
   }
   if (pm === "jira") {
-    return head + "DAI_PM=jira\nDAI_JIRA_BASE_URL=\nDAI_JIRA_EMAIL=\nDAI_JIRA_TOKEN=\nDAI_JIRA_PROJECT=\nDAI_JIRA_ISSUETYPE=Story\nDAI_TRACKER_URL_TEMPLATE=\n";
+    return head +
+      "DAI_PM=jira\n" +
+      "DAI_JIRA_BASE_URL=\n" +
+      "DAI_JIRA_EMAIL=\n" +
+      "DAI_JIRA_TOKEN=\n" +
+      "# La clave del PROYECTO (p. ej. PROJ), no la de un ticket (PROJ-123).\n" +
+      "DAI_JIRA_PROJECT=\n" +
+      "DAI_JIRA_ISSUETYPE=Story\n" +
+      "# Campos propios que tu Jira exige al crear. Si el archivo no existe, se ignora.\n" +
+      "DAI_JIRA_FIELDS_FILE=.dai/jira-fields.json\n" +
+      "DAI_TRACKER_URL_TEMPLATE=\n";
   }
   return head + "DAI_PM=md\nDAI_MD_US_DIR=.dai/us\n";
 }
@@ -124,7 +126,7 @@ export function reconcileGitignore(text, want) {
 // copilot-instructions.md (Copilot). Mismo núcleo, distinto encabezado.
 export function constitution(kind) {
   const head = kind === "copilot"
-    ? "# Instrucciones de Copilot para este repo\n\nEste repo sigue la metodología **dai**. Aplica estas reglas en todo lo que generes.\n\n> **Superficie:** los prompts de dai (`.github/prompts/`) se invocan solo en VS Code /\n> JetBrains, o como custom agents en el Copilot CLI — no en la app standalone ni en\n> github.com. El CLI `dai` corre en cualquier terminal."
+    ? "# Instrucciones de Copilot para este repo\n\nEste repo sigue la metodología **dai**. Aplica estas reglas en todo lo que generes.\n\n> **Superficie:** las skills de dai (`.github/skills/`) se invocan con `/nombre-skill`, o\n> cuando el agente las detecta por su descripción. Funcionan en el Copilot CLI, en la app,\n> y en modo agente de VS Code / JetBrains (ADR-0014). El CLI `dai` corre en cualquier\n> terminal."
     : kind === "cursor"
       ? "# Constitución del proyecto (dai)\n\nEste repo sigue la metodología **dai**. Estas reglas gobiernan todo el trabajo.\n\n> **Superficie:** las skills de dai (`.cursor/skills/`) se invocan con `/nombre-skill`\n> o cuando el agente las detecta por descripción. El CLI `dai` corre en cualquier terminal."
     : "# Constitución del proyecto (dai)\n\nEste repo sigue la metodología **dai**. Estas reglas gobiernan todo el trabajo.";
@@ -145,6 +147,8 @@ export function constitution(kind) {
 - **Verifica el comportamiento, no solo que compile:** que pase el chequeo estático o el build no prueba que funcione; ejercita el flujo real antes de darlo por hecho.
 - **La IA confirma antes de construir:** el asistente declara que entendió esta constitución y la va a obedecer antes de generar código.
 - **Secretos:** en \`.env\` (nunca commiteados). git por **SSH**, APIs por **token scopeado**.
+- **No bajes la seguridad para avanzar:** si una llamada falla por el certificado, declara la CA (\`NODE_EXTRA_CA_CERTS\`). **Nunca** \`NODE_TLS_REJECT_UNAUTHORIZED=0\`, \`verify=False\`, \`-k\` ni equivalentes: apagan la verificación de toda la conexión, y por ahí viajan los tokens.
+- **Si el CLI no llega, para y dilo:** cuando \`dai\` no cubre un caso, repórtalo — no improvises una llamada a la API por fuera. El atajo publica igual, pero rompe el link QUÉ↔CÓMO en silencio y nadie se entera hasta que la trazabilidad ya está mal.
 - **Docs vivas:** una constitución o arquitectura desactualizada es un defecto, no documentación.
 - Separa el QUÉ (funcional) del CÓMO (técnico); no mezcles.
 

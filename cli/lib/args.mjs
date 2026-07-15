@@ -28,6 +28,17 @@ export function parseAssistants(str) {
   return want;
 }
 
+// Un flag REPETIDO acumula en lista en vez de pisarse (`--field a=1 --field b=2`).
+// Antes ganaba el último en silencio, que para --field sería perder datos sin avisar.
+const push = (opts, key, val) => {
+  if (!(key in opts)) { opts[key] = val; return; }
+  if (Array.isArray(opts[key])) opts[key].push(val);
+  else opts[key] = [opts[key], val];
+};
+
+// Normaliza un flag que puede venir 0, 1 o N veces → siempre lista.
+export const asList = (v) => (v === undefined ? [] : Array.isArray(v) ? v : [v]);
+
 export function parseFlags(argv) {
   const opts = {};
   const pos = [];
@@ -36,8 +47,8 @@ export function parseFlags(argv) {
     if (a.startsWith("--")) {
       const key = camel(a.slice(2));
       const next = argv[i + 1];
-      if (next !== undefined && !next.startsWith("--")) { opts[key] = next; i++; }
-      else opts[key] = true;                 // flag booleano
+      if (next !== undefined && !next.startsWith("--")) { push(opts, key, next); i++; }
+      else push(opts, key, true);            // flag booleano
     } else {
       pos.push(a);
     }
