@@ -49,7 +49,7 @@ deja las skills disponibles:
 
 ```bash
 npm i -g @dforce2055/dai        # el CLI
-dai skills install              # skills de IA → Claude y Cursor (global por defecto)
+dai skills install              # skills de IA → Claude, Copilot y Cursor (global por defecto)
 ```
 
 Y después, en el chat del asistente, según lo que tengas:
@@ -65,6 +65,20 @@ Y después, en el chat del asistente, según lo que tengas:
 > requerimientos: los sacan a preguntas), y la **publican en el tracker** que configuraste
 > (`DAI_PM` en el `.env`): por el **MCP** de Jira/ClickUp si está conectado, o con
 > **`dai publish <us.md>`** si no (crea el issue vía token). Tú respondes y decides.
+
+¿Sin MCP, o querés publicar a mano? `dai publish` sube el `.md` al tracker y te devuelve el key:
+
+```bash
+dai publish historia.md                                # crea la US → devuelve el key
+dai publish historia.md --parent PROJ-42               # colgándola de su épica
+dai publish historia.md --field clasificacion=Mejora   # con un campo propio que tu Jira exige
+dai publish epica.md    --issuetype Epic               # publicar una épica (no una US)
+```
+
+> **Jira corporativo:** si tu proyecto exige campos propios (`customfield_…`), declaralos una
+> vez en `.dai/jira-fields.json` (molde en `.dai/templates/`) y pasalos con `--field`. Si una
+> historia tiene que colgar de una épica, `--parent PROJ-42`. dai valida antes de la red y, si
+> Jira igual rechaza, el error te dice **qué** falta ([ADR-0015](docs/adr/0015-jira-corporativo.md)).
 
 ### 🔵 Como dev — tengo una US y voy a implementarla
 
@@ -97,6 +111,17 @@ dai pr --assignee <compañero>   # crea la PR precargada y se la asigna a un com
 ```bash
 dai stamp                       # al mergear: estampa la cobertura en el tracker
 ```
+
+> **Para que `dai pr` cree la PR/MR** necesitás el CLI del forge instalado y autenticado, una
+> sola vez por máquina:
+> - **GitHub** → [`gh`](https://cli.github.com) · `gh auth login`
+> - **GitLab** → [`glab`](https://gitlab.com/gitlab-org/cli) · `glab auth login --hostname <tu-gitlab>`
+>   — en un GitLab self-hosted/corporativo el `--hostname` es **obligatorio**, y el token va con
+>   scope `api`. (En Windows, tras instalar `glab` con `winget`, abrí una terminal nueva para que
+>   tome el PATH.)
+>
+> Sin el CLI del forge, `dai pr` **igual pushea tu branch** y te dice qué instalar — después
+> creás la PR/MR a mano desde la web. dai nunca te deja a medias sin decir por qué.
 
 ## Cómo usarlo — el flujo, paso a paso
 
@@ -157,16 +182,16 @@ flowchart TD
 | Comando | Qué hace |
 |---|---|
 | `dai init [<repo>]` | scaffolder interactivo del repo. Flags: `--for claude\|copilot\|both\|cursor\|all` (asistente, default `all`) · `--pm md\|jira\|clickup` (tracker) · `--openspec` |
-| `dai skills install [--global \| --local <repo>] [--force] [--dry-run] [--for claude\|cursor\|all]` | instala/actualiza las skills de dai en Claude y/o Cursor (`--for all` por defecto). `--force` re-copia. Alias: **`dai install`**. Ej: `dai skills install --local . --for cursor --force` |
+| `dai skills install [--global \| --local <repo>] [--force] [--dry-run] [--for claude\|copilot\|cursor\|all]` | instala/actualiza las skills de dai en Claude, Copilot y/o Cursor (`--for all` por defecto; Copilot global → `~/.copilot/skills`, local → `.github/skills/`). `--force` re-copia. Alias: **`dai install`**. Ej: `dai skills install --local . --for cursor --force` |
 | `dai skills install --from <git-url\|path>[#ref] [--for …]` | instala **skills externas** (por-stack: .NET, Java, …) desde un repo/dir, **convertidas para los 3 asistentes**. Self-service, one-off, sin registro; `dai sync` no las toca. Colisión con una skill de dai → salta ([ADR-0013](docs/adr/0013-skills-externas-install-from.md)). Ej: `dai skills install --from github.com/mi-org/net-skills` |
 | `dai sync [--dry-run] [--for <asistentes>]` | **refresca** skills, constitución, templates y PR template a la versión del CLI — **aditivo** (no pisa tu `CLAUDE.md`), no toca el `.env` ni OpenSpec. Detecta los asistentes del repo o pasás `--for`. `--dry-run` muestra qué cambiaría ([ADR-0010](docs/adr/0010-versionado-y-upgrade.md)) |
 | `dai upgrade [--check] [--dry-run]` · alias `dai update` | **actualiza el CLI global** a la última publicada (`npm i -g …@latest`) — self-update. **No toca el repo**: reporta el drift del scaffold pero deja el `dai sync` al mantenedor. `--check` solo informa · `--dry-run` muestra el comando ([ADR-0012](docs/adr/0012-upgrade-self-update-del-cli.md)) |
-| `dai publish <us.md>` | crea la US en el tracker (Jira/ClickUp/md) desde un `.md` y devuelve el key. Es el fallback del MCP para publicar sin el asistente |
+| `dai publish <us.md> [--parent KEY] [--issuetype T] [--field alias=valor]` | crea la US en el tracker (Jira/ClickUp/md) desde un `.md` y devuelve el key — el fallback del MCP para publicar sin el asistente. `--parent PROJ-42` la cuelga de su épica · `--issuetype Epic` publica una épica (fallback CLI de `grill-epic`) · `--field clasificacion=Mejora` (repetible) manda los campos propios que exige tu Jira, declarados en `.dai/jira-fields.json` ([ADR-0015](docs/adr/0015-jira-corporativo.md)) |
 | `dai link-us <ID> [--us <md>]` | crea branch + `implements.yaml`; sin `--us` trae la US del tracker |
 | `dai link-us <ID> --resync` | re-estampa el `ac_hash` contra la US viva (tras un ⚠️ de check) |
 | `dai check` | compara tu código vs la US viva → ✅ al día / ⚠️ atrasado (exit code = gate de PR) |
 | `dai ls [--json]` | lista las US que implementa el repo + su link al tracker |
-| `dai pr [--assignee u] [--base b] [--draft] [--yes]` | crea TU PR/MR precargada: pregunta la branch base (default `main`), muestra el texto y confirma antes de publicar |
+| `dai pr [--assignee u] [--base b] [--draft] [--yes]` · alias **`dai mr`** | crea TU PR/MR precargada: pregunta la branch base (default `main`), muestra el texto y confirma antes de publicar. Detecta el forge (GitHub→PR con `gh` · GitLab→MR con `glab`); `mr` es el mismo comando, más natural en GitLab |
 | `dai stamp` | estampa la cobertura inversa en el tracker (branch + commit-ancla) |
 | `dai done [--base main] [--force]` | cierra la US: vuelve a la base, `fetch --prune` + `pull`, y borra la branch local **si está mergeada** (chequeo estricto; `--force` la borra igual). Redes: no estar en la base, sin cambios sueltos, sin commits sin pushear |
 | `dai archive [<change>] [--skip-specs]` | **funde los delta specs del change en las specs canónicas** (`openspec/specs/`) y lo archiva. Lo corre el **aprobador** de la PR (gate de aprobación, [ADR-0011](docs/adr/0011-archive-gate-de-aprobacion.md)); detecta el change activo o le pasás el nombre. Envuelve `openspec archive` |
@@ -214,14 +239,14 @@ ver [`.env.example`](.env.example). Auth (SSH + tokens): [ADR-0007](docs/adr/000
 | Valor | Genera | Elígelo si… |
 |---|---|---|
 | `--for claude` | `.claude/skills/` + `CLAUDE.md` | tu equipo usa **Claude** (Code / Desktop) |
-| `--for copilot` | `.github/prompts/*.prompt.md` + `.github/copilot-instructions.md` | tu equipo usa **GitHub Copilot** (en VS Code / JetBrains) |
+| `--for copilot` | `.github/skills/` + `.github/copilot-instructions.md` | tu equipo usa **GitHub Copilot** (app, CLI, VS Code / JetBrains o cloud agent) |
 | `--for cursor` | `.cursor/skills/` + `.cursor/rules/dai-constitution.mdc` | tu equipo usa **Cursor Agent** |
 | `--for both` | Claude + Copilot | equipo mixto sin Cursor |
 | `--for all` *(default)* | Claude + Copilot + Cursor | quieres dejar el repo listo para cualquier asistente |
 
 - **Combinables:** pasá un subconjunto separado por coma — `--for claude,cursor` o
-  `--for copilot`. `all` = los tres · `both` = Claude+Copilot. (Igual en `dai install`,
-  aunque ahí Copilot no aplica: no tiene skills instalables.)
+  `--for copilot`. `all` = los tres · `both` = Claude+Copilot. (Igual en `dai install`:
+  Copilot lee `SKILL.md` nativo, así que sus skills se instalan como las de Claude/Cursor.)
 - Es **aditivo, no destructivo**: los conjuntos conviven sin pisarse (viven en
   carpetas distintas). La **misma** skill se transforma al formato de cada asistente.
 - Si ejecutas `dai init` sin flag, te lo pregunta de forma interactiva.
@@ -241,7 +266,7 @@ mi-repo/
 │   └── doc-to-backlog · grill-intent · grill-epic · grill-user-story · link-us · tdd · dai-review
 ├── .github/
 │   ├── copilot-instructions.md     · La constitución, auto-inyectada en cada chat de Copilot
-│   ├── prompts/*.prompt.md         · Las mismas skills, generadas en formato Copilot
+│   ├── skills/                     · Las mismas skills, en formato Copilot nativo (SKILL.md)
 │   └── pull_request_template.md    · Molde de PR/MR atado al link
 ├── .cursor/
 │   ├── skills/                     · Las mismas skills, en formato Cursor

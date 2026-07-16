@@ -26,6 +26,7 @@ test("tlsHint manda a NODE_EXTRA_CA_CERTS y desaconseja el atajo peligroso", () 
   const h = tlsHint("jira.acme.com", "SELF_SIGNED_CERT_IN_CHAIN");
   assert.match(h, /jira\.acme\.com/);
   assert.match(h, /NODE_EXTRA_CA_CERTS/);
+  assert.match(h, /--use-system-ca/);
   assert.match(h, /proxy corporativo/);
   assert.match(h, /NO uses NODE_TLS_REJECT_UNAUTHORIZED=0/);
 });

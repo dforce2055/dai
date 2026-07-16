@@ -3,6 +3,74 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
+## [0.8.1] — 2026-07-16
+
+**Primera prueba real en Windows con analistas y devs de una empresa (Sancor): el ciclo
+completo contra un Jira corporativo anduvo, y de paso destapó lo que faltaba pulir para
+que un equipo Windows + Copilot + GitLab no se topara con muros.**
+
+### Arreglado
+- **`dai sync` crasheaba en repos Copilot** con `ReferenceError: skillToPrompt is not
+  defined`. El pase a Agent Skills nativas (0.8.0, [ADR-0014](docs/adr/0014-copilot-agent-skills.md))
+  borró `skillToPrompt` y migró `dai init` a `.github/skills/`, pero dejó dos llamadas
+  colgadas en el path viejo `.github/prompts/`: `dai sync` y `dai skills install --from`
+  (rama Copilot). Ahora ambos copian la skill nativa (`.github/skills/<name>`, con
+  `templates/`) igual que `init`, y `sync` **migra** el repo: limpia los `.prompt.md`
+  viejos de dai. `dai sync` también detecta Copilot por `.github/skills` (antes solo por
+  `.github/prompts`, así que ni veía los repos nuevos). Cubierto por un test de
+  integración de `dai sync --for copilot` — el hueco que dejó pasar la regresión.
+- **`dai upgrade` (y `dai init --openspec`) fallaban en Windows** con un genérico *"no
+  pude consultar el registry (¿sin red?)"* aunque npm anduviera perfecto. En Windows `npm`
+  y `openspec` son shims `.cmd`, y desde Node 18.20 / 20.12 / 21.7 (fix de CVE-2024-27980)
+  `execFileSync` **se niega a lanzar un `.cmd` sin `shell:true`** — tira `EINVAL`, que dai
+  confundía con falta de red. Ahora esos binarios se corren con `shell` en Windows.
+- **`dai pr` fallaba el push la primera vez contra un remoto HTTPS corporativo.** El push
+  corría con stdin ignorado, así que Git Credential Manager no podía pedir la credencial y
+  el push moría en seco — mientras el error real de git quedaba oculto tras un genérico
+  *"Command failed"*. Ahora el push hereda stdin (con `GIT_TERMINAL_PROMPT=1`) para que el
+  login se pueda completar, **muestra el stderr real de git**, y si aún falla sugiere
+  pushear a mano una vez para cachear la credencial.
+
+### Agregado
+- **`dai mr` como alias de `dai pr`.** En un shop de GitLab uno tipea "mr" (merge request);
+  ahora funciona. Es el mismo comando (detecta el forge y usa `gh`/`glab`), solo más natural.
+
+### Cambiado
+- **El diagnóstico de un 400 de `dai publish` ahora coincide con lo que Jira dijo.** Antes
+  mandaba SIEMPRE a declarar un campo propio (`customfield_NNNNN` en `.dai/jira-fields.json`),
+  aunque el 400 fuera *"Por favor indicar épica…"* — confuso, porque el fix real es
+  `--parent`. Ahora la ayuda se elige según el cuerpo del error: regla de épica padre →
+  `--parent`, campo obligatorio → `jira-fields.json`, genérico → nombra las dos causas sin
+  empujar una sola.
+- **`dai pr` explica por qué no pudo crear la PR/MR** en vez de un *"¿instalado y
+  autenticado?"*. Si `gh`/`glab` no está instalado (`ENOENT`) lo dice y enlaza la
+  instalación + `… auth login` (con `--hostname` para GitLab self-hosted); si falla por
+  otra cosa, **imprime el stderr real del forge** (auth vencida, host sin configurar, flag
+  desconocido). Era el caso ciego del equipo con GitLab corporativo.
+- **El diagnóstico de TLS ofrece primero el camino más simple**: `NODE_OPTIONS=--use-system-ca`
+  (Node ≥ 22.15), que usa el trust store del sistema donde el navegador ya confía en la CA
+  de la empresa — validado contra el proxy real. `NODE_EXTRA_CA_CERTS` queda como
+  alternativa para cualquier versión de Node. (Sigue prohibido `NODE_TLS_REJECT_UNAUTHORIZED=0`.)
+
+### Docs
+- **El prerequisito de `dai pr`: `gh`/`glab` instalado y autenticado.** Un callout en la
+  sección del dev con el setup one-time del CLI del forge (`gh auth login` /
+  `glab auth login --hostname <tu-gitlab>`, con la nota del PATH en Windows tras instalar con
+  winget). Era el paso que faltaba documentar — sin el CLI, `dai pr` pushea igual y avisa.
+- **README consistente con Copilot nativo.** La tabla de superficies ya decía que Copilot
+  carga skills en app / CLI / IDE / cloud (solo el chat de github.com queda afuera), pero el
+  resto del README seguía en el modelo viejo: la tabla de `--for`, el árbol del repo y el
+  snippet de `dai skills install` hablaban de `.github/prompts/*.prompt.md` y de que "Copilot
+  no tiene skills instalables". Corregido a `.github/skills/` nativo — validado con un dev
+  corriendo dai en la app de GitHub Copilot desktop.
+
+### Interno
+- **161 tests** (+3): integración de `dai sync --for copilot` (regresión + migración del
+  layout viejo).
+- **Conocido, sin arreglar:** en Windows, tras un `dai publish` con red, puede aparecer al
+  salir `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), src\win\async.c` — un
+  crash de *teardown* de libuv, posterior a toda la salida útil (cosmético). Se investiga.
+
 ## [0.8.0] — 2026-07-15
 
 **El primer analista funcional real usó dai contra un Jira corporativo, y encontró el
