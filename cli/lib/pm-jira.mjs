@@ -106,16 +106,32 @@ export function renderCoverageAdf(id, r) {
   return { type: "doc", version: 1, content };
 }
 
-// Un 400 al crear casi siempre es un campo obligatorio del proyecto que no mandamos.
-// El cuerpo de Jira nombra el customfield_NNNNN pero no dice qué hacer: lo decimos acá.
-function createHint(status) {
+// Un 400 al crear puede ser (a) un campo propio obligatorio que no mandamos, (b) una regla
+// del proyecto —p. ej. exigir una épica padre— o (c) otra cosa. Jira dice cuál en el cuerpo,
+// pero no dice qué hacer: elegimos la ayuda según lo que dice el error, no una fija. Antes
+// mandábamos SIEMPRE a declarar un campo, aunque el 400 fuera "falta la épica" (confuso).
+export function createHint(status, body = "") {
   if (status !== 400) return "";
-  return "\n\n  Si el error nombra un 'customfield_NNNNN', tu proyecto exige un campo propio.\n" +
-         "  Declaralo en .dai/jira-fields.json y volvé a publicar — no hace falta improvisar\n" +
-         "  una llamada a mano:\n" +
-         '    { "Story": { "clasificacion": { "field": "customfield_NNNNN",\n' +
-         '                                    "options": ["Mejora", "Corrección"] } } }\n' +
-         "    dai publish <us.md> --field clasificacion=Corrección";
+  const b = String(body);
+  // Regla de workflow: la historia tiene que colgar de una épica (no es un campo propio).
+  if (/[ée]pica|epic|parent/i.test(b)) {
+    return "\n\n  Tu proyecto pide que esta historia cuelgue de una épica. Pasá la key de la\n" +
+           "  épica padre con --parent (es la épica, no el proyecto):\n" +
+           "    dai publish <us.md> --parent PROJ-123 --field clasificacion=<valor>";
+  }
+  // Campo propio obligatorio que no mandamos (el customfield_NNNNN del error).
+  if (/customfield_/i.test(b)) {
+    return "\n\n  Tu proyecto exige un campo propio (el 'customfield_NNNNN' del error).\n" +
+           "  Declaralo en .dai/jira-fields.json y volvé a publicar — no hace falta improvisar\n" +
+           "  una llamada a mano:\n" +
+           '    { "Story": { "clasificacion": { "field": "customfield_NNNNN",\n' +
+           '                                    "options": ["Mejora", "Corrección"] } } }\n' +
+           "    dai publish <us.md> --field clasificacion=Corrección";
+  }
+  // 400 genérico: no adivinamos. Nombramos las dos causas típicas sin empujar una.
+  return "\n\n  Jira rechazó la creación (400) — el mensaje de arriba dice por qué. Las dos causas\n" +
+         "  típicas: un campo propio obligatorio (declaralo en .dai/jira-fields.json) o una regla\n" +
+         "  del proyecto como exigir una épica padre (--parent PROJ-123).";
 }
 
 export function jiraAdapter(env) {
@@ -155,7 +171,10 @@ export function jiraAdapter(env) {
         method: "POST", headers: jiraAuthHeaders(env),
         body: JSON.stringify({ fields: payload }),
       });
-      if (!res.ok) throw new Error(`jira ${res.status}: ${await res.text()}${createHint(res.status)}`);
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`jira ${res.status}: ${body}${createHint(res.status, body)}`);
+      }
       const j = await res.json();
       return { id: j.key, url: `${trim(base)}/browse/${j.key}` };
     },

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { jiraIssueUrl, jiraCommentUrl, jiraAuthHeaders, jiraIssueToText, jiraAdapter, adfToMarkdown, markdownToAdf, assertProjectKey } from "../lib/pm-jira.mjs";
+import { jiraIssueUrl, jiraCommentUrl, jiraAuthHeaders, jiraIssueToText, jiraAdapter, adfToMarkdown, markdownToAdf, assertProjectKey, createHint } from "../lib/pm-jira.mjs";
 import { parseUS } from "../lib/us.mjs";
 import { acHash } from "../lib/ac-hash.mjs";
 import { withMockFetch, mockResponse } from "./helpers.mjs";
@@ -190,6 +190,23 @@ test("[red] jira createUS: un 400 sugiere declarar el campo, no improvisar la ll
       );
     },
   );
+});
+
+test("createHint elige la ayuda según el error de Jira, no una fija", () => {
+  // (a) falta la épica padre → manda a --parent, NO a declarar un campo.
+  const epica = createHint(400, '{"errorMessages":["Debés indicar la épica padre para este tipo de historia."]}');
+  assert.match(epica, /--parent/);
+  assert.doesNotMatch(epica, /jira-fields\.json/);
+  // (b) campo propio obligatorio → manda a jira-fields.json.
+  const campo = createHint(400, '{"errors":{"customfield_10042":"Tipo de trabajo es obligatorio."}}');
+  assert.match(campo, /customfield/);
+  assert.match(campo, /jira-fields\.json/);
+  // (c) 400 genérico → nombra las dos causas sin empujar una sola.
+  const generico = createHint(400, '{"errorMessages":["algo raro"]}');
+  assert.match(generico, /jira-fields\.json/);
+  assert.match(generico, /--parent/);
+  // No 400 → sin hint.
+  assert.equal(createHint(401, "no autorizado"), "");
 });
 
 test("[red] jira createUS: DAI_JIRA_PROJECT con una issue key falla ANTES de la red", async () => {

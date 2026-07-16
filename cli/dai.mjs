@@ -58,9 +58,14 @@ function git(args, opts = {}) {
   // quedan en e.stderr para quien quiera inspeccionarlos.
   return execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], ...opts }).trim();
 }
-// En Windows los binarios instalados por npm (npm, openspec) son shims `.cmd` que
-// execFileSync no resuelve solo. git/gh/glab son `.exe` y se resuelven normal.
-const npmBin = (name) => (process.platform === "win32" ? `${name}.cmd` : name);
+// En Windows los binarios instalados por npm (npm, openspec) son shims `.cmd`. Desde
+// Node 18.20 / 20.12 / 21.7 (fix de CVE-2024-27980) execFileSync se NIEGA a lanzar un
+// `.cmd` salvo con shell:true — si no, tira EINVAL, que dai confundía con "sin red".
+// Por eso van con shell en Windows. git/gh/glab son `.exe`: se resuelven normal, sin shell.
+function runNpmTool(name, args, opts = {}) {
+  const win = process.platform === "win32";
+  return execFileSync(win ? `${name}.cmd` : name, args, { shell: win, ...opts });
+}
 function trackerUrl(id) {
   const tpl = process.env.DAI_TRACKER_URL_TEMPLATE;
   return tpl ? tpl.replace("{id}", id) : id;
@@ -423,8 +428,16 @@ async function cmdPr(opts) {
   writeFileSync(bodyFile, body);
   try {
     info(`Publicando la branch ${branch}…`);
-    git(["push", "-u", "origin", branch]);
-  } catch (e) { fail(`no pude pushear la branch: ${String(e.message).split("\n")[0]}`, 1); }
+    // stdin heredado + GIT_TERMINAL_PROMPT=1: la PRIMERA vez contra un remoto HTTPS
+    // corporativo, git/credential-manager necesita poder pedir la credencial. Con stdin
+    // ignorado (el default de git()) el login no completaba y el push fallaba en seco.
+    git(["push", "-u", "origin", branch], { stdio: ["inherit", "pipe", "pipe"], env: { ...process.env, GIT_TERMINAL_PROMPT: "1" } });
+  } catch (e) {
+    const err = String(e.stderr || e.message || "").trim();
+    if (err) process.stderr.write("  " + err.split("\n").join("\n  ") + "\n");
+    process.stdout.write(`  Si es la primera vez contra este remoto, autenticá pusheando a mano una vez:\n    git push -u origin ${branch}\n  y volvé a correr:  dai pr\n`);
+    fail(`no pude pushear la branch '${branch}'.`, 1);
+  }
 
   const cmd = tool === "gh"
     ? ["pr", "create", "--title", title, "--body-file", bodyFile, "--base", base,
@@ -439,12 +452,20 @@ async function cmdPr(opts) {
     try { rmSync(bodyFile); } catch { /* noop */ }
   } catch (e) {
     const msg = String(e.stderr || e.message || "");
-    if (/no history in common|no commits between|not found.*base|base.*not found/i.test(msg)) {
+    const manual = `  Comando listo para correr a mano:\n    ${tool} ${cmd.map((c) => /\s/.test(c) ? `'${c}'` : c).join(" ")}\n`;
+    if (e.code === "ENOENT") {
+      // El binario del forge no está instalado (el caso más común detrás de "no salió la MR").
+      const doc = tool === "glab" ? "https://gitlab.com/gitlab-org/cli/-/releases" : "https://cli.github.com";
+      warn(`'${tool}' no está instalado. El body quedó en ${bodyFile}.`);
+      process.stdout.write(`  Instalá ${tool} (${doc}) y autenticá con \`${tool} auth login\`${tool === "glab" ? " --hostname " + (parseRemote(remote)?.host || "tu-gitlab") : ""}, o creá la PR a mano.\n${manual}`);
+    } else if (/no history in common|no commits between|not found.*base|base.*not found/i.test(msg)) {
       warn(`la branch no comparte historia con '${base}' en el remoto (o '${base}' no existe allá).`);
       process.stdout.write(`  Suele pasar cuando el repo local y el remoto son distintos. Empuja la base primero:\n    git push origin ${base}\n  y vuelve a correr:  dai pr\n`);
     } else {
-      warn(`no pude crear la PR con ${tool} (¿instalado y autenticado?). El body quedó en ${bodyFile}.`);
-      process.stdout.write(`  Comando listo para correr a mano:\n    ${tool} ${cmd.map((c) => /\s/.test(c) ? `'${c}'` : c).join(" ")}\n`);
+      warn(`no pude crear la PR con ${tool}. El body quedó en ${bodyFile}.`);
+      // El stderr real de gh/glab (auth vencida, host no configurado, flag desconocido…).
+      if (msg.trim()) process.stdout.write(`  ${tool} dijo:\n  ${msg.trim().split("\n").join("\n  ")}\n`);
+      process.stdout.write(manual);
     }
   }
 }
@@ -595,8 +616,9 @@ function cmdInstallFrom(opts) {
       rmSync(t, { recursive: true, force: true }); cpSync(srcDir, t, { recursive: true }); writeFileSync(join(t, "SKILL.md"), skillToCursor(md));
     }
     if (want.copilot) {
-      const pdir = join(repo, ".github", "prompts"); mkdirSync(pdir, { recursive: true });
-      writeFileSync(join(pdir, `${name}.prompt.md`), skillToPrompt(md));
+      // Copilot lee SKILL.md nativo (Agent Skills, ADR-0014): copia cruda, con templates/.
+      const t = join(repo, ".github", "skills", name);
+      rmSync(t, { recursive: true, force: true }); mkdirSync(dirname(t), { recursive: true }); cpSync(srcDir, t, { recursive: true });
     }
     ok(name); installed++;
   }
@@ -763,7 +785,7 @@ async function cmdInit(repo, opts) {
   // así que sí lo inicializamos nosotros — mapeando --for a sus tools. (Antes se
   // dejaba a medias porque se intentaba correr su modo interactivo anidado.)
   process.stdout.write("\n");
-  const openspecPresent = () => { try { execFileSync(npmBin("openspec"), ["--version"], { stdio: "ignore" }); return true; } catch { return false; } };
+  const openspecPresent = () => { try { runNpmTool("openspec", ["--version"], { stdio: "ignore" }); return true; } catch { return false; } };
   const osTools = [want.claude && "claude", want.copilot && "github-copilot", want.cursor && "cursor"]
     .filter(Boolean).join(",") || "claude,github-copilot,cursor";
   const osHint = "para sumarlo después:  npm i -g @fission-ai/openspec@latest  &&  openspec init --tools " + osTools;
@@ -774,13 +796,13 @@ async function cmdInit(repo, opts) {
   } else if (installOpenspec) {
     let cliOk = openspecPresent();
     if (!cliOk) {
-      try { info("OpenSpec:     instalando el CLI (npm i -g @fission-ai/openspec)…"); execFileSync(npmBin("npm"), ["install", "-g", "@fission-ai/openspec@latest"], { stdio: "inherit" }); cliOk = openspecPresent(); }
+      try { info("OpenSpec:     instalando el CLI (npm i -g @fission-ai/openspec)…"); runNpmTool("npm", ["install", "-g", "@fission-ai/openspec@latest"], { stdio: "inherit" }); cliOk = openspecPresent(); }
       catch { cliOk = false; }
     }
     if (cliOk) {
       try {
         info(`OpenSpec:     inicializando en el repo (--tools ${osTools})…`);
-        execFileSync(npmBin("openspec"), ["init", "--tools", osTools, "--force"], { stdio: "inherit", cwd: repo === "." ? process.cwd() : repo });
+        runNpmTool("openspec", ["init", "--tools", osTools, "--force"], { stdio: "inherit", cwd: repo === "." ? process.cwd() : repo });
         ok("OpenSpec:     instalado e inicializado — genera design/tasks con /opsx:*");
       } catch {
         warn("OpenSpec:     el CLI está pero falló `openspec init`. Ejecuta a mano en el repo:");
@@ -836,7 +858,7 @@ function cmdArchive(changeArg, opts) {
   const args = ["archive", change, "--yes"];
   if (opts.skipSpecs) args.push("--skip-specs");
   try {
-    execFileSync(npmBin("openspec"), args, { stdio: "inherit", cwd: repo });
+    runNpmTool("openspec", args, { stdio: "inherit", cwd: repo });
   } catch (e) {
     fail(`openspec archive falló (¿tasks incompletas? ¿change inexistente?): ${String(e.message).split("\n")[0]}`, 1);
   }
@@ -861,11 +883,13 @@ function cmdSync(repo, opts) {
   } else {
     want = {
       claude: existsSync(join(repo, ".claude", "skills")),
-      copilot: existsSync(join(repo, ".github", "prompts")),
+      // .github/skills es el layout nativo (ADR-0014); .github/prompts es el viejo, que
+      // seguimos detectando para migrar repos que quedaron en el formato anterior.
+      copilot: existsSync(join(repo, ".github", "skills")) || existsSync(join(repo, ".github", "prompts")),
       cursor: existsSync(join(repo, ".cursor", "skills")),
     };
     if (!want.claude && !want.copilot && !want.cursor)
-      fail("no detecté asistentes instalados (.claude/.cursor/.github/prompts). Pasá --for.", 2);
+      fail("no detecté asistentes instalados (.claude/skills · .github/skills · .cursor/skills). Pasá --for.", 2);
   }
 
   const cliV = readFileSync(join(ROOT, "VERSION"), "utf8").trim();
@@ -900,11 +924,16 @@ function cmdSync(repo, opts) {
     const cPath = join(repo, "CLAUDE.md"), cCur = existsSync(cPath) ? readFileSync(cPath, "utf8") : "";
     writeFileSync(cPath, upsertBlock(cCur, constitution("claude")));
   });
-  if (want.copilot) step(`Copilot:      .github/prompts/ (${skills.length}) + copilot-instructions.md`, () => {
-    const pdir = join(repo, ".github", "prompts"); mkdirSync(pdir, { recursive: true });
-    for (const name of skills) writeFileSync(join(pdir, `${name}.prompt.md`), skillToPrompt(readFileSync(join(skillsSrc, name, "SKILL.md"), "utf8")));
+  if (want.copilot) step(`Copilot:      .github/skills/ (${skills.length}) + copilot-instructions.md`, () => {
+    // Copilot lee SKILL.md nativo (ADR-0014): copia cruda, con templates/ — igual que `dai init`.
+    const dir = join(repo, ".github", "skills"); mkdirSync(dir, { recursive: true });
+    for (const name of skills) cpSync(join(skillsSrc, name), join(dir, name), { recursive: true });
     const ciPath = join(repo, ".github", "copilot-instructions.md"), ciCur = existsSync(ciPath) ? readFileSync(ciPath, "utf8") : "";
     writeFileSync(ciPath, upsertBlock(ciCur, constitution("copilot")));
+    // Limpia los .prompt.md viejos de dai (ahora son skills nativas) para no duplicar cada /comando.
+    const pdir = join(repo, ".github", "prompts");
+    const stale = existsSync(pdir) ? stalePromptFiles(skills).filter((f) => existsSync(join(pdir, f))) : [];
+    for (const f of stale) rmSync(join(pdir, f), { force: true });
   });
   if (want.cursor) step(`Cursor:       .cursor/skills/ (${skills.length}) + .cursor/rules/dai-constitution.mdc`, () => {
     const dir = join(repo, ".cursor", "skills"); mkdirSync(dir, { recursive: true });
@@ -963,7 +992,7 @@ function cmdUpgrade(opts) {
 
   let latestV;
   try {
-    latestV = execFileSync(npmBin("npm"), ["view", name, "version"], { encoding: "utf8" }).trim();
+    latestV = runNpmTool("npm", ["view", name, "version"], { encoding: "utf8" }).trim();
   } catch {
     fail(`no pude consultar el registry (¿sin red?). Actualizá a mano: ${manual}`, 1);
   }
@@ -979,7 +1008,7 @@ function cmdUpgrade(opts) {
 
   info(`actualizando v${plan.from} → v${plan.to} …`);
   try {
-    execFileSync(npmBin("npm"), ["install", "-g", `${name}@latest`], { stdio: "inherit" });
+    runNpmTool("npm", ["install", "-g", `${name}@latest`], { stdio: "inherit" });
   } catch {
     fail(`el install falló. Probá a mano: ${manual}`, 1);
   }
@@ -1093,7 +1122,8 @@ switch (cmd) {
   case "stamp":   cmdStamp().catch((e) => fail(String(e.message))); break;
   case "forge":   cmdForge(pos[0], pos[1], opts).catch((e) => fail(String(e.message))); break;
   case "publish": cmdPublish(pos[0], opts).catch((e) => fail(String(e.message))); break;
-  case "pr":      cmdPr(opts).catch((e) => fail(String(e.message))); break;
+  case "pr":
+  case "mr":      cmdPr(opts).catch((e) => fail(String(e.message))); break;   // `mr` = alias para GitLab (merge request)
   case "done":    cmdDone(opts); break;
   case "archive": cmdArchive(pos[0], opts); break;
   case "install": cmdInstall(opts).catch((e) => fail(String(e.message))); break;   // alias de `dai skills install`
@@ -1123,7 +1153,7 @@ switch (cmd) {
       "  stamp                        estampa la cobertura en el tracker (ADR-0005)\n" +
       "  done [--base main] [--force] cierra la US: vuelve a la base, actualiza y borra la branch local (si está mergeada)\n" +
       "  archive [<change>] [--skip-specs]   funde los delta specs del change en las specs canónicas y lo archiva (lo corre el aprobador en la PR)\n" +
-      "  pr [--assignee u] [--base b] [--draft] [--yes]   crea TU PR/MR precargada (muestra + confirma)\n" +
+      "  pr (alias mr) [--assignee u] [--base b] [--draft] [--yes]   crea TU PR/MR precargada (muestra + confirma)\n" +
       "  forge comment <ref> --body-file <f> · forge pr <ref>   comentar/leer una PR ajena (github/gitlab)\n\n" +
       "Instalación:\n" +
       "  skills install [--global | --local <repo>] [--force] [--dry-run] [--for <asistentes>]   instala las skills de dai (alias: `install`)\n" +
