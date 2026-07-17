@@ -16,3 +16,7 @@ node_modules/
 # reportes de cobertura · borradores locales
 coverage/
 scratch/
+
+# VitePress: el sitio de docs se GENERA, no se commitea (build efímero → Pages)
+.vitepress/dist/
+.vitepress/cache/
