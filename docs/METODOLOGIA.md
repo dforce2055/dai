@@ -57,9 +57,9 @@ identidad el día que se crea el ticket/change.
 ### 2.2 Formato linkeable garantizado
 
 El QUÉ se produce con una forma mínima **testeable**: `id · spec_version · autor ·
-criterios de aceptación en Gherkin`. Es exactamente lo que aseguran las skills
-`grill-intent` → `grill-user-story` (ver `formato-us.md`). Sin esa forma, no hay
-a qué linkear.
+criterios de aceptación en Gherkin`. Es exactamente lo que asegura la skill
+`grill-user-story` (y después el Gate 0 de `grill-intent` desafía el problema; ver
+`formato-us.md`). Sin esa forma, no hay a qué linkear.
 
 ### 2.3 El link se autora una sola vez, del lado del CÓMO
 
@@ -180,9 +180,9 @@ El artefacto no desaparece; se aligera la ceremonia alrededor.
 
 ```
    ①  Nace la idea            → ticket vago en el PM (o intención suelta en N1)
-   ②  Gate 0: ¿problema OK?   → /grill-intent  → veredicto: a-spec / reframe / descartar
-   ③  Se pule el QUÉ          → /grill-user-story → US testeable (formato-us.md),
+   ②  Se pule el QUÉ          → /grill-user-story → US testeable (formato-us.md),
                                  publicada en Jira/ClickUp (o .md si no hay MCP)
+   ③  Gate 0: ¿problema OK?   → /grill-intent  → veredicto: a-spec / reframe / descartar
    ④  Se abre el CÓMO         → /link-us ABC-###  → branch + implements.yaml ligados al ID
    ⑤  Se arma el change       → opsx:explore → opsx:propose (proposal/design/tasks + specs)
    ⑥  Se implementa           → opsx:apply → el agente aplica las tareas con TDD (red→green→refactor)

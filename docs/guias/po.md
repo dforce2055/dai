@@ -18,13 +18,17 @@
 
 ## Tu día a día
 
-1. **Nace una idea** → creas el ticket en el gestor (nace con ID, aunque sea vago).
-2. **Gate 0** → ejecutas `/grill-intent`. La IA te desafía el *problema*: ¿es el
-   correcto? ¿quién lo sufre? ¿qué pasa si no lo hacemos? Un veredicto válido es
-   *"no lo construyas"* — eso es el gate haciendo su trabajo (Art. 4).
-3. **Pulir el QUÉ** → ejecutas `/grill-user-story`. La IA te **interroga** hasta que
+1. **Nace una idea — o llega un documento** → creas el ticket en el gestor (nace con ID,
+   aunque sea vago). Si en cambio arrancas de un **documento de análisis** (PDF, Word),
+   `/doc-to-backlog` lo convierte en un **backlog candidato** de épicas + US para que
+   priorices y valides. Y si algo es **demasiado grande** para una sola US,
+   `/grill-epic` lo parte en varias.
+2. **Pulir el QUÉ** → ejecutas `/grill-user-story`. La IA te **interroga** hasta que
    la US es testeable (INVEST + Gherkin) y la publica en el gestor. La IA no
    inventa requerimientos: te los saca a preguntas. Tú respondes y decides.
+3. **Gate 0** → ejecutas `/grill-intent` sobre la US ya formada. La IA te desafía el
+   *problema*: ¿es el correcto? ¿quién lo sufre? ¿qué pasa si no lo hacemos? Un veredicto
+   válido es *"no lo construyas"* — eso es el gate haciendo su trabajo (Art. 4).
 4. **Verificas el [DoR](../../templates/definition-of-ready.md)** → antes de que entre al sprint, la US cumple el
    [`definition-of-ready.md`](../../templates/definition-of-ready.md).
 5. **Demo** → aceptas o rechazas contra los mismos criterios que ya eran tests.
@@ -44,7 +48,9 @@ el CI (Art. 10).
 
 ## Tus herramientas
 
-- `/grill-intent`
-- `/grill-user-story`
+- `/doc-to-backlog` — un documento (PDF/Word) → backlog candidato de épicas + US
+- `/grill-epic` — algo grande → una épica partida en varias US
+- `/grill-user-story` — una US funcional y testeable
+- `/grill-intent` — Gate 0: desafía el problema de la US antes del spec
 - el gestor de proyectos
 - [`definition-of-ready.md`](../../templates/definition-of-ready.md)
