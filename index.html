@@ -5,16 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>dai — Desarrollo Asistido por IA con trazabilidad</title>
 <meta name="description" content="Un método y un CLI para que la IA programe con trazabilidad y sin vibe coding. Separa el QUÉ del CÓMO, linkéalos una vez, y que la máquina avise sola cuando se desincronizan. Se adapta a cualquier tamaño de equipo." />
-<!-- Favicon SVG inline (sin CDN, nítido en cualquier resolución) -->
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236366f1'/%3E%3Cstop offset='1' stop-color='%230ea5e9'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Ctext x='32' y='48' font-family='ui-sans-serif,system-ui,Arial' font-size='44' font-weight='800' fill='white' text-anchor='middle'%3Ed%3C/text%3E%3C/svg%3E" />
-<meta name="theme-color" content="#6366f1" />
+<!-- Favicon: el mismo Sol de Mayo del sitio de docs. -->
+<link rel="icon" href="favicon.svg" />
+<meta name="theme-color" content="#2f88ce" />
 <style>
   /* Autocontenido: fuentes del sistema + diagramas en CSS. Sin CDN → anda offline. */
   :root{
     --bg:#0b1120; --card:#131c2e; --ink:#eef2f8; --mut:#94a3b8; --line:#263247;
-    --brand:#6366f1; --brand-dark:#4f46e5;
-    --func:#f59e0b; --func-soft:#3a2f12; --func-ink:#fbbf24;   /* el QUÉ */
-    --tech:#0ea5e9; --tech-soft:#10273b; --tech-ink:#7dd3fc;   /* el CÓMO */
+    --brand:#2f88ce; --brand-dark:#1f6aa8;                     /* celeste (bandera) */
+    --func:#e0a82e; --func-soft:#3a2f12; --func-ink:#fbbf24;   /* el QUÉ · oro (Sol de Mayo) */
+    --tech:#0ea5e9; --tech-soft:#10273b; --tech-ink:#7dd3fc;   /* el CÓMO · celeste */
     --ci:#10b981;   --ci-soft:#0f2c22;   --ci-ink:#6ee7b7;     /* la máquina */
     --danger:#ef4444;
     --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
@@ -51,7 +51,8 @@
   nav{position:sticky;top:0;z-index:10;backdrop-filter:blur(10px);
     background:color-mix(in srgb,var(--bg) 82%,transparent);border-bottom:1px solid var(--line)}
   nav .wrap{display:flex;align-items:center;gap:16px;height:56px}
-  nav .logo{font-weight:800;letter-spacing:-.03em}
+  nav .logo{font-weight:800;letter-spacing:-.03em;display:inline-flex;align-items:center;gap:9px}
+  nav .logo img{width:26px;height:26px}
   nav .logo b{color:var(--brand)}
   nav .sp{flex:1}
   nav a.nl{color:var(--mut);font-size:.9rem}
@@ -63,7 +64,7 @@
   /* ---------- hero ---------- */
   .hero{padding:80px 0 64px;text-align:center}
   .hero h1{font-size:clamp(2.2rem,7vw,3.6rem);margin:0 0 16px;font-weight:900}
-  .hero h1 .g{background:linear-gradient(120deg,var(--brand),var(--tech));
+  .hero h1 .g{background:linear-gradient(120deg,var(--func),var(--tech));
     -webkit-background-clip:text;background-clip:text;color:transparent}
   .hero p{color:var(--mut);font-size:1.2rem;max-width:60ch;margin:0 auto 28px}
   .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
@@ -187,13 +188,14 @@
 
 <nav>
   <div class="wrap">
-    <span class="logo"><b>dai</b> · Desarrollo Asistido por IA</span>
+    <span class="logo"><img src="logo.svg" alt="" /><b>dai</b> · Desarrollo Asistido por IA</span>
     <span class="sp"></span>
     <a class="nl" href="#problema">Problema</a>
     <a class="nl" href="#flujo">El flujo</a>
     <a class="nl" href="#traza">Trazabilidad</a>
     <a class="nl" href="#empezar">Empezar</a>
     <a class="nl" href="onboarding.html">Onboarding</a>
+    <a class="nl" href="docs/">Docs</a>
     <button class="toggle" id="tg" aria-label="Cambiar tema">◐</button>
   </div>
 </nav>
