@@ -15,7 +15,7 @@
 | 1 Refinamiento | `grill-intent` → `grill-user-story` | `intent.md` + la **US** (`ABC-482`) |
 | 2 Planning | `opsx:propose` | `proposal.md` + `design.md` + `tasks.md` + `specs/` |
 | 3 Rama | `link-us` | branch + `implements.yaml` |
-| 4 TDD | `tdd` | test (RED) → código (GREEN) |
+| 4 Implementación | `opsx:apply` (con TDD) | test (RED) → código (GREEN), por el agente |
 | 5 Smoke | skill de smoke | escenario end-to-end verde |
 | 6 Code review | review propio del dev → `dai pr` → partner (con `/dai-review`) | PR (código + spec) + aprobación |
 | 7 Merge | `dai stamp` | cobertura estampada en el tracker |
@@ -175,9 +175,10 @@ autor: D. Force (dev)
 
 ---
 
-## Paso 4 — TDD: un test a la vez (RED → GREEN)
+## Paso 4 — Implementación: el agente construye con TDD (`/opsx:apply`)
 
-Vertical slice del AC-2 (el guard del carrito vacío). **Primero el test (RED):**
+`/opsx:apply` implementa las tareas del change, un test a la vez. Vertical slice del AC-2
+(el guard del carrito vacío). **Primero el test (RED):**
 
 ```typescript
 test("un carrito vacío no se puede finalizar", async () => {
@@ -205,8 +206,9 @@ export async function finalizarCompra(id: CarritoId) {
 // ▶ VERDE. Repetir el ciclo para AC-1 y AC-3.
 ```
 
-> El test verifica por la **interfaz pública** (`finalizarCompra`, `ordenesDe`), no
-> espía lo interno. Sobrevive a un refactor (Art. 7 + skill `tdd`).
+> El test (que escribió el agente) verifica por la **interfaz pública**
+> (`finalizarCompra`, `ordenesDe`), no espía lo interno. Sobrevive a un refactor
+> (Art. 7 + skill `tdd`). El dev revisa cada slice: es responsable del código.
 
 ---
 

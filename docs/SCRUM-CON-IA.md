@@ -80,15 +80,15 @@
 | **Herramienta** | `link-us` |
 | **Detalle →** | [`detalle/03-ramas.md`](detalle/03-ramas.md) |
 
-#### 4. Implementación con TDD
+#### 4. Implementación (`/opsx:apply`, con TDD)
 
 | | |
 |---|---|
 | **Clásico** | El dev codea. Idealmente con tests. |
 | **Dolor** | Se codea primero y se testea "si queda tiempo" (nunca queda). Vibe coding. |
-| **Con IA** | La skill `tdd` fuerza test→código en *vertical slices* (un test → una implementación → repetir). La IA escribe el test como spec ejecutable **antes** del código, verificando por la interfaz pública. Anti vibe-coding real. |
-| **Humano (HITL)** | El dev decide qué comportamientos importa testear y revisa cada slice. |
-| **Herramienta** | `tdd` |
+| **Con IA** | El **agente implementa** con `/opsx:apply`: aplica las tareas de `opsx:propose` en *vertical slices* (un test → el código mínimo → repetir), escribiendo el test como spec ejecutable **antes** del código y verificando por la interfaz pública (la disciplina TDD la encapsula la skill `tdd`). Anti vibe-coding real. |
+| **Humano (HITL)** | El dev decide qué comportamientos importa testear, valida cada slice y **es responsable del código** (no la IA) — lo revisa en el paso 6. |
+| **Herramienta** | `opsx:apply` (con la disciplina de `tdd`) |
 | **Detalle →** | [`detalle/04-tdd.md`](detalle/04-tdd.md) |
 
 #### 5. Smoke test de la US
@@ -170,7 +170,7 @@
 | 1 Refinamiento | ●●● | La US testeable es la base de todo. |
 | 2 Planning | ●● | El design y las tareas se derivan de la US. |
 | 3 Rama | ●●● | El link correcto por construcción. |
-| 4 TDD | ●●● | El corazón del anti vibe-coding. |
+| 4 Implementación | ●●● | El agente construye con TDD; el corazón del anti vibe-coding. |
 | 5 Smoke | ●● | Cierre verificable de la US. |
 | 6 Code review | ●● | Primer pase automático, humano decide. |
 | 7 Merge + trazabilidad | ●●● | La matriz se deriva sola. |

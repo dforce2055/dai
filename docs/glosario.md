@@ -46,7 +46,7 @@
 | **PR / MR (Pull / Merge Request)** | La unidad revisable del CÓMO. En dai lleva **dos activos**, y el review cubre ambos: (1) la **implementación** (el código) y (2) el **spec trazable** (el `implements.yaml` con el link a la US y el `@version` verificado). Sin el segundo, el CI bloquea el PR. Template en `../templates/pull-request.md`. |
 | **Change** | La unidad de trabajo de OpenSpec (proposal + design + tasks + specs). |
 | **ADR (Architecture Decision Record)** | El registro de una decisión estructural: contexto, decisión, consecuencias. Chico e **inmutable** — si algo cambia, se escribe uno nuevo que supersede al viejo. Template en `../templates/adr.md`; los de dai, en [`adr/`](adr/). |
-| **TDD (Test-Driven Development)** | Escribir el test **antes** que el código: RED (test que falla) → GREEN (código mínimo) → REFACTOR. En dai cada AC se vuelve un test (skill `tdd`); es el antídoto del vibe coding. |
+| **TDD (Test-Driven Development)** | Escribir el test **antes** que el código: RED (test que falla) → GREEN (código mínimo) → REFACTOR. En dai lo aplica el **agente** dentro de `/opsx:apply` (disciplina de la skill `tdd`): cada AC se vuelve un test. El dev valida y es responsable. Es el antídoto del vibe coding. |
 | **Vertical slice** | Un test → una implementación → repetir. Lo opuesto a "todos los tests, después todo el código". |
 | **Smoke** | Escenario end-to-end que verifica que el flujo grueso no se rompió. |
 

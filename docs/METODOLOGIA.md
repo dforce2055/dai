@@ -122,8 +122,10 @@ federación.**
 
 El CÓMO se construye con **test primero**, en *vertical slices* (un test → una
 implementación → repetir), verificando por la **interfaz pública**, no espiando lo
-interno. Un buen test lee como una spec y sobrevive a un refactor. Ver
-`skills/tdd/`.
+interno. Un buen test lee como una spec y sobrevive a un refactor. **Quien lo ejecuta
+es el agente**, dentro de `/opsx:apply` (la disciplina la encapsula la skill `tdd`); el
+dev decide qué comportamientos importa testear y es responsable de revisar el resultado
+([Art. 7](MANIFIESTO.md#art-7)). Ver `skills/tdd/`.
 
 ---
 
@@ -183,8 +185,8 @@ El artefacto no desaparece; se aligera la ceremonia alrededor.
                                  publicada en Jira/ClickUp (o .md si no hay MCP)
    ④  Se abre el CÓMO         → /link-us ABC-###  → branch + implements.yaml ligados al ID
    ⑤  Se arma el change       → opsx:explore → opsx:propose (proposal/design/tasks + specs)
-   ⑥  Se implementa           → TDD (red → green → refactor), vertical slices
-   ⑦  Se promueve             → opsx:apply → opsx:archive; el CI estampa cobertura en el PM
+   ⑥  Se implementa           → opsx:apply → el agente aplica las tareas con TDD (red→green→refactor)
+   ⑦  Se promueve             → opsx:archive; el CI estampa cobertura en el PM
    ⑧  Se despliega            → el CD reporta a qué ambiente (dev/test/pre/prod) fue la versión
 ```
 
