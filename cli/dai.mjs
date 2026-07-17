@@ -271,7 +271,12 @@ async function cmdForgeReview(pr, opts) {
     git(["fetch", "origin", base, remote.branch], { stdio: ["inherit", "pipe", "pipe"] });
     diff = git(["diff", `origin/${base}...origin/${remote.branch}`]);
   } catch (e) {
-    fail(`no pude traer el diff de ${base}...${remote.branch}: ${String(e.stderr || e.message).trim()}`, 1);
+    const err = String(e.stderr || e.message).trim();
+    if (/couldn't find remote ref|no such ref/i.test(err)) {
+      fail(`la branch '${remote.branch}' ya no está en origin (¿la PR se mergeó y se borró la branch?). ` +
+        `Un review inline necesita el diff vivo; sobre una PR cerrada no hay dónde anclar.`, 1);
+    }
+    fail(`no pude traer el diff de ${base}...${remote.branch}: ${err}`, 1);
   }
 
   // 1. Validar contra el diff. 2. Filtrar. Nada se cae en silencio: todo se reporta.
