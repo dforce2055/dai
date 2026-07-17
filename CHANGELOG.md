@@ -366,6 +366,8 @@ ClickUp y Jira Cloud.
 - Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
   `files` de npm sin tests ni secretos.
 
+[0.8.2]: https://github.com/dforce2055/dai/releases/tag/v0.8.2
+[0.8.1]: https://github.com/dforce2055/dai/releases/tag/v0.8.1
 [0.8.0]: https://github.com/dforce2055/dai/releases/tag/v0.8.0
 [0.7.0]: https://github.com/dforce2055/dai/releases/tag/v0.7.0
 [0.6.0]: https://github.com/dforce2055/dai/releases/tag/v0.6.0
