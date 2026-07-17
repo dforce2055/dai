@@ -76,9 +76,11 @@ export default {
       { text: "Inicio", link: "/" },
       { text: "El método", link: "/MANIFIESTO" },
       { text: "Los 10 pasos", link: "/detalle/" },
+      { text: "Guías", link: "/guias/" },
       {
         text: "Tutoriales",
         items: [
+          { text: "Todos los tutoriales", link: "/tutoriales/" },
           { text: "Configurar git", link: "/tutoriales/configurar-git" },
           { text: "Claves SSH", link: "/tutoriales/claves-ssh" },
           { text: "Instalar gh / glab", link: "/tutoriales/instalar-glab" },
@@ -101,6 +103,7 @@ export default {
       },
       {
         text: "Tutoriales",
+        link: "/tutoriales/",
         items: [
           { text: "Configurar git", link: "/tutoriales/configurar-git" },
           { text: "Claves SSH", link: "/tutoriales/claves-ssh" },
@@ -119,7 +122,7 @@ export default {
         ],
       },
       { text: "Los 10 pasos", collapsed: false, items: seccion("detalle", { salvo: ["README.md"] }) },
-      { text: "Guías por rol", items: seccion("guias") },
+      { text: "Guías por rol", link: "/guias/", items: seccion("guias", { salvo: ["index.md"] }) },
       { text: "Decisiones (ADR)", collapsed: true, items: seccion("adr", { salvo: ["README.md"] }) },
     ],
 
