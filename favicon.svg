@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <defs><radialGradient id="favc" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0.35" stop-color="#F4B41A"/><stop offset="1" stop-color="#D98E04"/>
+    </radialGradient></defs>
+    <g fill="url(#favc)"><path d="M50.00 4.00 L52.00 29.00 L48.00 29.00 Z"/><path d="M67.60 7.50 L59.88 31.36 L56.19 29.83 Z"/><path d="M82.53 17.47 L66.26 36.56 L63.44 33.74 Z"/><path d="M92.50 32.40 L70.17 43.81 L68.64 40.12 Z"/><path d="M96.00 50.00 L71.00 52.00 L71.00 48.00 Z"/><path d="M92.50 67.60 L68.64 59.88 L70.17 56.19 Z"/><path d="M82.53 82.53 L63.44 66.26 L66.26 63.44 Z"/><path d="M67.60 92.50 L56.19 70.17 L59.88 68.64 Z"/><path d="M50.00 96.00 L48.00 71.00 L52.00 71.00 Z"/><path d="M32.40 92.50 L40.12 68.64 L43.81 70.17 Z"/><path d="M17.47 82.53 L33.74 63.44 L36.56 66.26 Z"/><path d="M7.50 67.60 L29.83 56.19 L31.36 59.88 Z"/><path d="M4.00 50.00 L29.00 48.00 L29.00 52.00 Z"/><path d="M7.50 32.40 L31.36 40.12 L29.83 43.81 Z"/><path d="M17.47 17.47 L36.56 33.74 L33.74 36.56 Z"/><path d="M32.40 7.50 L43.81 29.83 L40.12 31.36 Z"/></g>
+    
+    <circle cx="50" cy="50" r="19" fill="none" stroke="#74ACDF" stroke-width="2.3"/>
+    <circle cx="50" cy="50" r="15" fill="#14305C"/><path d="M43.5 44.9 L39.5 50 L43.5 55.1
+      M56.5 44.9 L60.5 50 L56.5 55.1
+      M51.8 44.4 L48.2 55.6"
+      fill="none" stroke="#EAF4FB" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
