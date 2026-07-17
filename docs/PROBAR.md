@@ -1,8 +1,8 @@
 # Probar dai
 
-No hace falta publicar en npm para probarlo. Se prueba local. Recomendado: hacer la
-**Fase 0** (backend `md`, sin credenciales) para validar el flujo, y después la
-**Fase 1** (ClickUp real).
+La forma más rápida de conocer dai: instala el CLI y corre el ciclo completo en tu
+máquina. Empieza **sin credenciales** (backend `md`) para ver el flujo entero en un par de
+minutos, y después pruébalo **contra tu tracker real** (ClickUp o Jira).
 
 > Esto es la guía para **usar** dai por primera vez. Para verlo funcionando sobre una
 > US real (narrado), mira [`EJEMPLO-END-TO-END.md`](EJEMPLO-END-TO-END.md).
@@ -10,16 +10,14 @@ No hace falta publicar en npm para probarlo. Se prueba local. Recomendado: hacer
 ## Instalar el CLI
 
 ```bash
-npm i -g @dforce2055/dai        # desde npm
-# — o, si clonaste el repo —
-git clone https://github.com/dforce2055/dai && cd dai && npm link
-
+npm i -g @dforce2055/dai
 dai --version
 ```
 
-## Fase 0 — sin credenciales (backend `md`)
+## Paso 1 — sin credenciales (backend `md`)
 
-Valida el loop completo `link-us → check → stamp` sin depender de red ni tokens.
+Recorre el loop completo `link-us → check → stamp` sin red ni tokens: todo local. Perfecto
+para ver cómo funciona antes de conectar nada.
 
 ```bash
 # 1. Repo de prueba + bootstrap (dai init deja el .env; elige "md" cuando pregunte)
@@ -48,9 +46,9 @@ dai check                        # ⚠️ ATRASADO (exit 1)  → sugiere: dai li
 dai stamp                        # con md, deja .dai/us/<slug>.coverage.md
 ```
 
-Si esto anda, el flujo está bien. Pasa al tracker real.
+Con esto ya viste el ciclo entero. Ahora conéctalo a tu tracker real.
 
-## Fase 1 — ClickUp real
+## Paso 2 — contra tu tracker real (ClickUp)
 
 **Preparar ClickUp:**
 

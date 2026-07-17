@@ -9,7 +9,7 @@ los antipatrones a evitar.
 | [01](01-refinamiento.md) | Refinamiento (idea → US testeable) | ●●● |
 | [02](02-planning.md) | Planning (derivar el CÓMO) | ●● |
 | [03](03-ramas.md) | Rama ligada al QUÉ | ●●● |
-| [04](04-tdd.md) | TDD (test primero) | ●●● |
+| [04](04-tdd.md) | Implementación (`/opsx:apply`, con TDD) | ●●● |
 | [05](05-smoke.md) | Smoke end-to-end | ●● |
 | [06](06-code-review.md) | Code review (IA + partner) | ●● |
 | [07](07-merge-trazabilidad.md) | Merge + trazabilidad | ●●● |

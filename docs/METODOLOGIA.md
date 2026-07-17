@@ -2,7 +2,7 @@
 
 > **Fuente de verdad única.** Este documento es el maestro. Los dos HTML
 > (`desarrollo-asistido-por-ia.html` federado y `-equipos-compactos.html`) son
-> **vistas de presentación** derivadas de acá — si algo contradice a este `.md`,
+> **vistas de presentación** derivadas de aquí — si algo contradice a este `.md`,
 > gana este `.md`. Versionado por git para que no driftee.
 
 Una sola metodología para dos escalas opuestas:
@@ -57,9 +57,9 @@ identidad el día que se crea el ticket/change.
 ### 2.2 Formato linkeable garantizado
 
 El QUÉ se produce con una forma mínima **testeable**: `id · spec_version · autor ·
-criterios de aceptación en Gherkin`. Es exactamente lo que aseguran las skills
-`grill-intent` → `grill-user-story` (ver `formato-us.md`). Sin esa forma, no hay
-a qué linkear.
+criterios de aceptación en Gherkin`. Es exactamente lo que asegura la skill
+`grill-user-story` (y después el Gate 0 de `grill-intent` desafía el problema; ver
+`formato-us.md`). Sin esa forma, no hay a qué linkear.
 
 ### 2.3 El link se autora una sola vez, del lado del CÓMO
 
@@ -122,8 +122,10 @@ federación.**
 
 El CÓMO se construye con **test primero**, en *vertical slices* (un test → una
 implementación → repetir), verificando por la **interfaz pública**, no espiando lo
-interno. Un buen test lee como una spec y sobrevive a un refactor. Ver
-`skills/tdd/`.
+interno. Un buen test lee como una spec y sobrevive a un refactor. **Quien lo ejecuta
+es el agente**, dentro de `/opsx:apply` (la disciplina la encapsula la skill `tdd`); el
+dev decide qué comportamientos importa testear y es responsable de revisar el resultado
+([Art. 7](MANIFIESTO.md#art-7)). Ver `skills/tdd/`.
 
 ---
 
@@ -134,7 +136,7 @@ duele, no antes.**
 
 | | **N1 · Solo / 1 repo** | **N2 · Equipo compacto** | **N3 · Federado** |
 |---|---|---|---|
-| Caso típico | equipo chico arrancando, un dev | equipo chico | organización grande |
+| Caso típico | equipo chico empezando, un dev | equipo chico | organización grande |
 | El QUÉ vive en | `proposal.md` de OpenSpec | ClickUp (US) → el change la referencia | Jira (`ABC-###`, hub) |
 | El link vive en | la carpeta del change (co-localizado) | `implements.yaml` en el repo | `implements.yaml` versionado |
 | Inversa la genera | un comando local | comando / CI liviano | CI estampa cobertura + CD reporta ambiente |
@@ -178,13 +180,13 @@ El artefacto no desaparece; se aligera la ceremonia alrededor.
 
 ```
    ①  Nace la idea            → ticket vago en el PM (o intención suelta en N1)
-   ②  Gate 0: ¿problema OK?   → /grill-intent  → veredicto: a-spec / reframe / descartar
-   ③  Se pule el QUÉ          → /grill-user-story → US testeable (formato-us.md),
+   ②  Se pule el QUÉ          → /grill-user-story → US testeable (formato-us.md),
                                  publicada en Jira/ClickUp (o .md si no hay MCP)
+   ③  Gate 0: ¿problema OK?   → /grill-intent  → veredicto: a-spec / reframe / descartar
    ④  Se abre el CÓMO         → /link-us ABC-###  → branch + implements.yaml ligados al ID
    ⑤  Se arma el change       → opsx:explore → opsx:propose (proposal/design/tasks + specs)
-   ⑥  Se implementa           → TDD (red → green → refactor), vertical slices
-   ⑦  Se promueve             → opsx:apply → opsx:archive; el CI estampa cobertura en el PM
+   ⑥  Se implementa           → opsx:apply → el agente aplica las tareas con TDD (red→green→refactor)
+   ⑦  Se promueve             → opsx:archive; el CI estampa cobertura en el PM
    ⑧  Se despliega            → el CD reporta a qué ambiente (dev/test/pre/prod) fue la versión
 ```
 
@@ -203,11 +205,14 @@ El artefacto no desaparece; se aligera la ceremonia alrededor.
 
 | Skill | Lado | Qué hace |
 |---|---|---|
-| `grill-intent` | QUÉ | Gate 0: desafía el *problema* antes de escribir spec. Veredicto: a-spec / reframe / descartar. |
+| `doc-to-backlog` | QUÉ | Un documento (PDF/Word) → backlog candidato de épicas + US para priorizar. |
+| `grill-epic` | QUÉ | Algo grande → una épica partida en varias US. |
 | `grill-user-story` | QUÉ | Interroga hasta producir una US testeable (INVEST + Gherkin). Publica en Jira/ClickUp o deja `.md`. |
+| `grill-intent` | QUÉ | Gate 0: con la US ya formada, desafía el *problema* antes de escribir spec. Veredicto: a-spec / reframe / descartar. |
 | `link-us` | CÓMO | Crea branch + `implements.yaml` desde el ID del PM. El link, correcto por construcción. |
-| `tdd` | CÓMO | Red-green-refactor en vertical slices, tests por interfaz pública. |
-| `opsx:*` | CÓMO | OpenSpec: explore → propose → apply → archive. Lo provee OpenSpec. |
+| `opsx:*` | CÓMO | OpenSpec: explore → propose → apply (el agente implementa con TDD) → archive. Lo provee OpenSpec. |
+| `tdd` | CÓMO | La disciplina red-green-refactor (vertical slices, tests por interfaz pública) que aplica `opsx:apply`. |
+| `dai-review` | CÓMO | Review inline de una PR/MR ajena: resumen + un comentario por línea, con gate humano de OK antes de postear. |
 
 El **adaptador de PM** es un seam único: las skills del QUÉ publican en Jira **o**
 ClickUp **o** dejan un `.md` según qué MCP/token haya. Es la **misma** skill con

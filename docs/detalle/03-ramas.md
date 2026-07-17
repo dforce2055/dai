@@ -4,7 +4,7 @@
 
 ## En qué consiste en detalle
 
-El dev arranca la implementación **atándola al QUÉ**: la branch y el `implements.yaml`
+El dev empieza la implementación **atándola al QUÉ**: la branch y el `implements.yaml`
 salen del mismo ID del tracker, así el link no puede quedar mal tipeado.
 
 ## Herramientas
@@ -21,7 +21,7 @@ dai link-us ABC-482 --us us.md
 
 ## Qué firma el humano
 
-El dev **elige qué US agarra**. El resto es mecánico y determinista (el CLI), no
+El dev **elige qué US toma**. El resto es mecánico y determinista (el CLI), no
 criterio humano — por eso el key **no se tipea a mano** ([Art. 8](../MANIFIESTO.md#art-8), Art. 9).
 
 ## Antipatrones

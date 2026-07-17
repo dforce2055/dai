@@ -49,9 +49,9 @@
 |---|---|
 | **Clásico** | El PO parte épicas en Historias de Usuario y les pone criterios de aceptación. |
 | **Dolor** | US vagas, no testeables ("el usuario quiere un botón"). El malentendido se descubre tarde, ya implementado. |
-| **Con IA** | `grill-intent` (Gate 0: ¿es el problema correcto? veredicto a-spec / reframe / descartar) y luego `grill-user-story` **interrogan** al PO hasta que la US es testeable por construcción (INVEST + Gherkin). La IA no *escribe* la US: la *saca a preguntas*. La US nace con ID estable y criterios hasheables. |
+| **Con IA** | `grill-user-story` **interroga** al PO hasta que la US es testeable por construcción (INVEST + Gherkin); y después el Gate 0 de `grill-intent` desafía el *problema* detrás (veredicto: a-spec / reframe / descartar). La IA no *escribe* la US: la *saca a preguntas*. La US nace con ID estable y criterios hasheables. |
 | **Humano (HITL)** | El PO responde y decide. La IA no inventa requerimientos: los pule. |
-| **Herramienta** | `grill-intent`, `grill-user-story`, `formato-us.md` |
+| **Herramienta** | `grill-user-story`, `grill-intent`, `formato-us.md` |
 | **Detalle →** | [`detalle/01-refinamiento.md`](detalle/01-refinamiento.md) |
 
 #### 2. Sprint Planning: comprometer US y derivar tareas
@@ -76,19 +76,19 @@
 | **Clásico** | El dev crea una rama para trabajar la US. |
 | **Dolor** | Nombres inconsistentes, ramas que no se sabe a qué US pertenecen → trazabilidad rota desde el commit uno. |
 | **Con IA** | `link-us ABC-###` crea la rama **desde el ID de la US, sin tipearlo a mano**, y genera el `implements.yaml`. La rama *es* el link: correcto por construcción. |
-| **Humano (HITL)** | El dev elige qué US agarra. |
+| **Humano (HITL)** | El dev elige qué US toma. |
 | **Herramienta** | `link-us` |
 | **Detalle →** | [`detalle/03-ramas.md`](detalle/03-ramas.md) |
 
-#### 4. Implementación con TDD
+#### 4. Implementación (`/opsx:apply`, con TDD)
 
 | | |
 |---|---|
 | **Clásico** | El dev codea. Idealmente con tests. |
 | **Dolor** | Se codea primero y se testea "si queda tiempo" (nunca queda). Vibe coding. |
-| **Con IA** | La skill `tdd` fuerza test→código en *vertical slices* (un test → una implementación → repetir). La IA escribe el test como spec ejecutable **antes** del código, verificando por la interfaz pública. Anti vibe-coding real. |
-| **Humano (HITL)** | El dev decide qué comportamientos importa testear y revisa cada slice. |
-| **Herramienta** | `tdd` |
+| **Con IA** | El **agente implementa** con `/opsx:apply`: aplica las tareas de `opsx:propose` en *vertical slices* (un test → el código mínimo → repetir), escribiendo el test como spec ejecutable **antes** del código y verificando por la interfaz pública (la disciplina TDD la encapsula la skill `tdd`). Anti vibe-coding real. |
+| **Humano (HITL)** | El dev decide qué comportamientos importa testear, valida cada slice y **es responsable del código** (no la IA) — lo revisa en el paso 6. |
+| **Herramienta** | `opsx:apply` (con la disciplina de `tdd`) |
 | **Detalle →** | [`detalle/04-tdd.md`](detalle/04-tdd.md) |
 
 #### 5. Smoke test de la US
@@ -108,9 +108,9 @@
 |---|---|
 | **Clásico** | Un compañero revisa el PR/MR antes de mergear. |
 | **Dolor** | Depende de que el partner tenga tiempo y ganas; reviews superficiales que dejan pasar lo importante. |
-| **Con IA** | La IA hace el **primer pase** (correctitud + estándares del repo) antes del humano. El partner revisa lo que importa, no el ruido. |
+| **Con IA** | La IA hace el **primer pase**: un **review inline** (corre `dai check` + valida el DoD, y deja un resumen + **un comentario por línea**, low/medium/high). Muestra el preview y **espera el OK del partner antes de postear**; el partner revisa lo que importa, no el ruido. |
 | **Humano (HITL)** | El partner aprueba o rechaza. La IA sugiere; la persona decide y firma. |
-| **Herramienta** | `dai-review` |
+| **Herramienta** | `dai-review` (`dai forge review`) |
 | **Detalle →** | [`detalle/06-code-review.md`](detalle/06-code-review.md) |
 
 #### 7. Merge + trazabilidad automática
@@ -170,7 +170,7 @@
 | 1 Refinamiento | ●●● | La US testeable es la base de todo. |
 | 2 Planning | ●● | El design y las tareas se derivan de la US. |
 | 3 Rama | ●●● | El link correcto por construcción. |
-| 4 TDD | ●●● | El corazón del anti vibe-coding. |
+| 4 Implementación | ●●● | El agente construye con TDD; el corazón del anti vibe-coding. |
 | 5 Smoke | ●● | Cierre verificable de la US. |
 | 6 Code review | ●● | Primer pase automático, humano decide. |
 | 7 Merge + trazabilidad | ●●● | La matriz se deriva sola. |

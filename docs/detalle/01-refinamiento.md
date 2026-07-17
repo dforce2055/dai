@@ -7,17 +7,18 @@
 El PO llega con una idea (a veces un ticket de una línea). Antes de escribir specs,
 la IA hace dos cosas, en orden:
 
-1. **Gate 0** (`grill-intent`) — desafía el *problema*, no la solución. Veredicto:
-   `a-spec` (seguir), `reframe` (el problema real es otro) o `descartar` (no vale la
-   pena ahora). Un "no lo construyas" es un éxito del gate, no una falla.
-2. **Pulido** (`grill-user-story`) — interroga hasta que la US es **testeable por
+1. **Pulido** (`grill-user-story`) — interroga hasta que la US es **testeable por
    construcción** (INVEST + Gherkin) y la publica en el tracker.
+2. **Gate 0** (`grill-intent`) — con la US ya formada, desafía el *problema* detrás
+   (no la solución). Veredicto: `a-spec` (seguir), `reframe` (el problema real es otro)
+   o `descartar` (no vale la pena ahora). Un "no lo construyas" es un éxito del gate,
+   no una falla.
 
 ## Herramientas
 
-- `/grill-intent` → `openspec/intents/<fecha-slug>/intent.md`
 - `/grill-user-story` → US en formato [`formato-us.md`](../../templates/formato-us.md),
   publicada en Jira/ClickUp (o `.md` de fallback).
+- `/grill-intent` → `openspec/intents/<fecha-slug>/intent.md`
 - Gate de entrada: [`definition-of-ready.md`](../../templates/definition-of-ready.md).
 
 ## Qué firma el humano

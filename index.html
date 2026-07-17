@@ -308,12 +308,12 @@
         <h3>Define el QUÉ</h3>
         <p>El analista describe la idea. Una skill de IA lo <b>interroga</b> hasta que la
            User Story es testeable, y la publica en el tracker. La IA no inventa: pregunta.</p>
-        <span class="tool">/grill-intent → /grill-user-story → ClickUp / Jira</span>
+        <span class="tool">/grill-user-story → /grill-intent (Gate 0) → ClickUp / Jira</span>
       </div></div>
 
       <div class="step c"><div class="num">2</div><div class="body">
         <h3>Abre el CÓMO, atado al QUÉ</h3>
-        <p>El dev arranca la implementación. dai trae la US del tracker, crea la branch y
+        <p>El dev empieza la implementación. dai trae la US del tracker, crea la branch y
            siembra el link — <b>correcto por construcción</b>, sin tipear el ID a mano.</p>
         <span class="tool">dai link-us &lt;ID&gt;  →  branch + implements.yaml</span>
       </div></div>
@@ -326,10 +326,11 @@
       </div></div>
 
       <div class="step c"><div class="num">4</div><div class="body">
-        <h3>Implementa con tests primero</h3>
-        <p>TDD en rebanadas verticales: un test, el código mínimo, repetir. La IA escribe el
-           test como spec ejecutable. Anti vibe-coding de verdad.</p>
-        <span class="tool">/tdd  ·  red → green → refactor</span>
+        <h3>El agente implementa con tests primero</h3>
+        <p>Con <code>/opsx:apply</code>, el agente aplica las tareas en rebanadas verticales:
+           un test, el código mínimo, repetir. Escribe el test como spec ejecutable; el dev
+           valida y es responsable. Anti vibe-coding de verdad.</p>
+        <span class="tool">/opsx:apply  ·  con TDD (red → green → refactor)</span>
       </div></div>
 
       <div class="step m"><div class="num">5</div><div class="body">
@@ -423,7 +424,7 @@
         <div class="d">Scaffolder interactivo: eliges asistente (Claude/Copilot), tracker
           (md/ClickUp/Jira) y si sumas OpenSpec. Deja el repo listo.</div></li>
       <li><code>dai link-us &lt;ID&gt;</code>
-        <div class="d">Trae la US del tracker, crea la branch y el link. Implementas con TDD.</div></li>
+        <div class="d">Trae la US del tracker, crea la branch y el link. El agente implementa con <code>/opsx:apply</code> (con TDD).</div></li>
       <li><code>dai check</code>  →  <code>dai pr</code>  →  <code>dai stamp</code>
         <div class="d">Verificas que sigues al día, creas la PR precargada, y al mergear
           estampas la cobertura. El círculo cerrado.</div></li>
@@ -465,7 +466,7 @@
     var els=document.querySelectorAll(
       'section h2, section .lede, .card, .step, .lvl, .split, .demo, .install, ol.start li, .cta');
     if(reduce || !('IntersectionObserver' in window)){ return; } // sin animar: todo visible
-    r.classList.add('anim');                                     // recién acá ocultamos (fallback sin JS = visible)
+    r.classList.add('anim');                                     // recién aquí ocultamos (fallback sin JS = visible)
     els.forEach(function(el){
       el.classList.add('reveal');
       // stagger: retraso según la posición del elemento entre sus hermanos

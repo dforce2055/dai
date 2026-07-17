@@ -79,6 +79,9 @@ export default {
       {
         text: "Tutoriales",
         items: [
+          { text: "Configurar git", link: "/tutoriales/configurar-git" },
+          { text: "Claves SSH", link: "/tutoriales/claves-ssh" },
+          { text: "Instalar gh / glab", link: "/tutoriales/instalar-glab" },
           { text: "Token de Jira", link: "/tutoriales/token-jira" },
           { text: "Token de ClickUp", link: "/tutoriales/token-clickup" },
         ],
@@ -99,6 +102,9 @@ export default {
       {
         text: "Tutoriales",
         items: [
+          { text: "Configurar git", link: "/tutoriales/configurar-git" },
+          { text: "Claves SSH", link: "/tutoriales/claves-ssh" },
+          { text: "Instalar gh / glab", link: "/tutoriales/instalar-glab" },
           { text: "Token de Jira", link: "/tutoriales/token-jira" },
           { text: "Token de ClickUp", link: "/tutoriales/token-clickup" },
         ],
