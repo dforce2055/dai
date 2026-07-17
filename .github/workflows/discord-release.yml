@@ -1,9 +1,15 @@
 name: Discord release notice
 
 # Avisa al canal de Discord cuando se publica un release en GitHub (Paso 10 de la skill
-# release-dai). El webhook es un SECRETO: vive en Settings → Secrets → DISCORD_WEBHOOK_URL,
-# NUNCA en el repo (dai es público + npm). Este archivo no viaja en el paquete (.github/
-# no está en package.json "files"), así que no le impone notificaciones a nadie que use dai.
+# release-dai). El webhook vive en una VARIABLE (Settings → Secrets and variables →
+# Actions → Variables → DISCORD_WEBHOOK_URL), para poder verla y editarla desde la UI.
+# NUNCA en el repo (dai es público + npm): este archivo solo referencia ${{ vars.* }}.
+# Este workflow no viaja en el paquete (.github/ no está en package.json "files"), así
+# que no le impone notificaciones a nadie que use dai.
+#
+# ⚠️ Una variable NO se enmascara sola en los logs (un secret sí). Por eso el primer paso
+# hace `::add-mask::`: aunque un futuro `set -x`/`-v`/`echo` la imprima, GitHub la tapa.
+# Los logs de un repo público son públicos — este blindaje no es opcional.
 
 on:
   release:
@@ -15,7 +21,7 @@ jobs:
     steps:
       - name: Postear en Discord
         env:
-          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          WEBHOOK: ${{ vars.DISCORD_WEBHOOK_URL }}
           TAG: ${{ github.event.release.tag_name }}
           NAME: ${{ github.event.release.name }}
           URL: ${{ github.event.release.html_url }}
@@ -23,9 +29,12 @@ jobs:
           PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
           if [ -z "$WEBHOOK" ]; then
-            echo "::warning::DISCORD_WEBHOOK_URL no está configurado — no se notifica."
+            echo "::warning::DISCORD_WEBHOOK_URL no está configurada (Actions → Variables) — no se notifica."
             exit 0
           fi
+          # La variable es texto plano y no se enmascara sola: la tapamos en los logs ya mismo,
+          # antes de cualquier uso, por si un futuro cambio la imprime (repo público = logs públicos).
+          echo "::add-mask::$WEBHOOK"
           # Discord corta los embeds ~4096 chars; recortamos el cuerpo del release por las dudas.
           DESC=$(printf '%s' "$BODY" | head -c 1500)
           VERSION="${TAG#v}"
