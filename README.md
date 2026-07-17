@@ -351,9 +351,17 @@ Detalle en [ADR-0006](docs/adr/0006-distribucion-y-licencia.md).
 
 ## Agradecimientos
 
-dai se apoya en ideas y aprendizajes de la comunidad. En particular, gracias a
-**[Matt Pocock](https://github.com/mattpocock)** por su aporte con las *skills* y por su
-[canal de YouTube](https://www.youtube.com/@mattpocockuk) explicándolas — su trabajo nos ayudó
-a construir esta herramienta.
+dai se apoya en ideas y herramientas de la comunidad.
+
+Un agradecimiento especial a **[OpenSpec](https://github.com/Fission-AI/OpenSpec)** (de
+[Fission AI](https://github.com/Fission-AI), `@fission-ai/openspec`): es la herramienta
+sobre la que se construye todo el **CÓMO** de dai — explorar la solución, proponer el diseño
+y las tareas, e implementar el change (`opsx:explore → propose → apply → archive`). dai no
+la bundlea ni la reemplaza; se apoya en ella para convertir el QUÉ en un plan técnico
+trazable. Sin OpenSpec, la mitad del método no existiría.
+
+Y gracias a **[Matt Pocock](https://github.com/mattpocock)** por su aporte con las *skills*
+y por su [canal de YouTube](https://www.youtube.com/@mattpocockuk) explicándolas — su
+trabajo nos ayudó a construir esta herramienta.
 
 Seguridad: [`SECURITY.md`](SECURITY.md) · Conducta: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
