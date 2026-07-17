@@ -1,0 +1,56 @@
+name: Deploy site (landing + docs) to Pages
+
+# Publica el sitio de dai en GitHub Pages: la landing artesanal (index.html) en la raíz
+# y el sitio de docs (VitePress) bajo /docs/. Ensambla las dos piezas en un solo artefacto.
+#
+# NO se activa hasta que Settings → Pages → Source = "GitHub Actions" (hoy es "deploy from
+# branch"). Mientras Source siga en branch, este workflow corre pero no cambia el sitio vivo.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Un solo deploy a la vez; no cancelar uno en curso.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Instalar dependencias del sitio (vitepress es devDependency)
+        run: npm ci
+      - name: Build del sitio de docs (VitePress → .vitepress/dist)
+        run: npm run docs:build
+      - name: Ensamblar el artefacto (landing en la raíz + docs bajo /docs/)
+        run: |
+          mkdir -p _site/docs
+          # La landing artesanal y sus assets de marca, a la raíz del sitio.
+          cp index.html onboarding.html favicon.svg logo.svg _site/
+          # El sitio de docs (ya buildeado con base /dai/docs/), bajo /docs/.
+          cp -r .vitepress/dist/. _site/docs/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
