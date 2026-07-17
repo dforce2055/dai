@@ -65,8 +65,9 @@ Si esto anda, el flujo está bien. Pasa al tracker real.
 cat > .env <<'EOF'
 DAI_PM=clickup
 DAI_CLICKUP_TOKEN=pk_XXXXXXXX
-DAI_TRACKER_URL_TEMPLATE=https://app.clickup.com/t/{id}
 EOF
+# El link a la tarea lo deduce dai solo. Solo si tu tracker vive en otra URL:
+#   DAI_TRACKER_URL_TEMPLATE=https://mi-tracker/t/{id}
 dai doctor                       # confirma DAI_PM=clickup y el token
 
 dai link-us 86cxyz               # trae la US de ClickUp → branch + implements.yaml

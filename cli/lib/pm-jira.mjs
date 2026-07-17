@@ -143,7 +143,7 @@ export function jiraAdapter(env) {
       const res = await daiFetch(jiraIssueUrl(base, id), { headers: jiraAuthHeaders(env) });
       if (res.status === 404) return null;
       if (!res.ok) throw new Error(`jira ${res.status}: ${await res.text()}`);
-      return { id, ...parseUS(jiraIssueToText(await res.json())) };
+      return { id, ...parseUS(jiraIssueToText(await res.json())), url: `${trim(base)}/browse/${id}` };
     },
     async stamp(id, record) {
       const res = await daiFetch(jiraCommentUrl(base, id), {

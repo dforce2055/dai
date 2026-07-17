@@ -92,10 +92,15 @@ export function skillToCursor(md) {
 }
 
 // Contenido del .env según el backend de PM elegido (tokens vacíos, a completar).
+//
+// Sin DAI_TRACKER_URL_TEMPLATE a propósito: con jira/clickup, dai deduce el link solo
+// (lib/tracker-url.mjs). Scaffoldearlo era peor que no ponerlo — el template GANA sobre
+// la URL canónica que devuelve el tracker, así que el `/t/{id}` que escribíamos acá
+// tapaba la de ClickUp con team_id. Queda como override manual para trackers raros.
 export function envFor(pm) {
   const head = "# Config de dai — completá lo que falte. NUNCA commitees tokens (.env está gitignored).\n";
   if (pm === "clickup") {
-    return head + "DAI_PM=clickup\nDAI_CLICKUP_TOKEN=\nDAI_CLICKUP_LIST_ID=\nDAI_TRACKER_URL_TEMPLATE=https://app.clickup.com/t/{id}\n";
+    return head + "DAI_PM=clickup\nDAI_CLICKUP_TOKEN=\nDAI_CLICKUP_LIST_ID=\n";
   }
   if (pm === "jira") {
     return head +
@@ -107,8 +112,7 @@ export function envFor(pm) {
       "DAI_JIRA_PROJECT=\n" +
       "DAI_JIRA_ISSUETYPE=Story\n" +
       "# Campos propios que tu Jira exige al crear. Si el archivo no existe, se ignora.\n" +
-      "DAI_JIRA_FIELDS_FILE=.dai/jira-fields.json\n" +
-      "DAI_TRACKER_URL_TEMPLATE=\n";
+      "DAI_JIRA_FIELDS_FILE=.dai/jira-fields.json\n";
   }
   return head + "DAI_PM=md\nDAI_MD_US_DIR=.dai/us\n";
 }

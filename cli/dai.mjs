@@ -25,6 +25,7 @@ import { loadEnv } from "./lib/env.mjs";
 import { getAdapter, coverageStatus, statusLabel } from "./lib/pm-adapter.mjs";
 import { branchUrl, commitUrl, parseRemote, detectForge } from "./lib/forge-url.mjs";
 import { parsePrRef, getPR, postComment } from "./lib/forge-api.mjs";
+import { trackerUrl } from "./lib/tracker-url.mjs";
 import { composePrBody, prTitle, forgeTool } from "./lib/pr.mjs";
 import { dirsEqual } from "./lib/fsutil.mjs";
 import { parseFlags, parseAssistants, isAssistantToken, asList } from "./lib/args.mjs";
@@ -66,10 +67,9 @@ function runNpmTool(name, args, opts = {}) {
   const win = process.platform === "win32";
   return execFileSync(win ? `${name}.cmd` : name, args, { shell: win, ...opts });
 }
-function trackerUrl(id) {
-  const tpl = process.env.DAI_TRACKER_URL_TEMPLATE;
-  return tpl ? tpl.replace("{id}", id) : id;
-}
+// La URL de la US: template > canónica del tracker > derivada del backend > null.
+// Nunca el id pelado: ver el porqué en lib/tracker-url.mjs.
+const usUrlFor = (id, liveUrl = null) => trackerUrl(id, { env: process.env, liveUrl });
 
 // ── ac-hash ─────────────────────────────────────────────────────────────────
 function cmdAcHash(arg) {
@@ -88,7 +88,7 @@ function cmdLs(opts) {
     for (const im of f.implements || []) {
       if (isPlaceholderId(im.id)) continue;   // saltea plantillas sin completar
       rows.push({ change: f.change, repo: f.repo, id: im.id, version: im.version,
-                  ac_hash: im.ac_hash, link: trackerUrl(im.id) });
+                  ac_hash: im.ac_hash, link: usUrlFor(im.id) });
     }
   }
   if (opts.json) { process.stdout.write(JSON.stringify(rows, null, 2) + "\n"); return; }
@@ -394,8 +394,14 @@ async function cmdPr(opts) {
   // Commits de la branch (para precargar "Cambios realizados").
   let commits = [];
   try { commits = git(["log", `${base}..HEAD`, "--pretty=%s"]).split("\n").filter(Boolean); } catch { /* base local ausente */ }
+  // La canónica del tracker (live.url) gana sobre la derivada; el template gana sobre todo.
+  const usUrl = usUrlFor(id, live?.url);
+  if (!usUrl) {
+    warn(`no sé la URL de ${id} en el tracker: la PR va a quedar sin link a la US.`);
+    warn(`configurá DAI_TRACKER_URL_TEMPLATE en el .env (p. ej. https://tu-tracker/browse/{id}).`);
+  }
   const body = composePrBody(readFileSync(tplPath, "utf8"), {
-    id, version, ac_hash, status, usUrl: trackerUrl(id), usTitle: live?.title, commits,
+    id, version, ac_hash, status, usUrl, usTitle: live?.title, commits,
     branch, branchUrl: branchUrl(remote, branch), commit, commitUrl: commitUrl(remote, commit),
   });
   const title = prTitle(opts, id, live?.title);
