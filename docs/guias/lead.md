@@ -23,7 +23,7 @@
 
 ## Tus decisiones clave
 
-### 1. ¿En qué nivel arranca el equipo?
+### 1. ¿En qué nivel empieza el equipo?
 - **1 dev / 1 repo →** N1 (OpenSpec solo, cero herramientas externas).
 - **Equipo compacto →** N2 (US en el gestor + `implements.yaml`).
 - **Muchos repos + equipos separados →** N3 (Jira hub, CI estampa, matriz de ambientes).

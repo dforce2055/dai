@@ -7,7 +7,7 @@
 15 minutos: qué hice, qué voy a hacer, qué me traba. Es **sincronización**, no
 reporte de estado. Se hace **a mano, sin IA, a propósito**.
 
-## Por qué no metemos IA acá
+## Por qué no metemos IA aquí
 
 La IA *podría* auto-generar el "qué se hizo" desde git + el tracker. **No lo hacemos**:
 el daily es donde el equipo se **apropia** del proceso, lo entiende y se coordina de

@@ -3,7 +3,7 @@
 > **Qué es esto.** La *constitución* de la metodología: los principios inmutables
 > contra los que se mide toda decisión. Cuando `grill-intent` desafía un problema,
 > lo hace contra estos artículos. Cuando dudas si algo "va con el método", la
-> respuesta está acá. Es corto a propósito — un manifiesto que no se puede citar de
+> respuesta está aquí. Es corto a propósito — un manifiesto que no se puede citar de
 > memoria no gobierna nada.
 >
 > **Cómo se usa.** Es el input de constitución que las skills asumen (junto con
@@ -56,7 +56,7 @@ El *daily* y la *retro* se hacen a mano, a propósito. Son donde el equipo se
 apropia del proceso y lo entiende. La IA puede darles datos; no los reemplaza.
 
 <a id="art-7"></a>**Art. 7 — No vibe coding.**
-No se improvisa código sobre una idea vaga. Toda implementación arranca de una US
+No se improvisa código sobre una idea vaga. Toda implementación parte de una US
 bien definida, pasa por un design, y se construye con tests. La disciplina no es
 opcional: es lo que separa este método de "pedirle cosas a un chat".
 

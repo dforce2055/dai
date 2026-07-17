@@ -12,10 +12,10 @@
 
 | Paso | Skill / evento | Artefacto que produce |
 |---|---|---|
-| 1 Refinamiento | `grill-intent` → `grill-user-story` | `intent.md` + la **US** (`ABC-482`) |
+| 1 Refinamiento | `grill-user-story` → `grill-intent` (Gate 0) | la **US** (`ABC-482`) + `intent.md` |
 | 2 Planning | `opsx:propose` | `proposal.md` + `design.md` + `tasks.md` + `specs/` |
 | 3 Rama | `link-us` | branch + `implements.yaml` |
-| 4 TDD | `tdd` | test (RED) → código (GREEN) |
+| 4 Implementación | `opsx:apply` (con TDD) | test (RED) → código (GREEN), por el agente |
 | 5 Smoke | skill de smoke | escenario end-to-end verde |
 | 6 Code review | review propio del dev → `dai pr` → partner (con `/dai-review`) | PR (código + spec) + aprobación |
 | 7 Merge | `dai stamp` | cobertura estampada en el tracker |
@@ -37,34 +37,9 @@ ABC-482 · "Arreglar lo del carrito que a veces deja comprar de más"
 
 Impresentable para implementar. Acá entra la IA.
 
-### 1b · Gate 0 — `grill-intent` desafía el problema
+### 1b · `grill-user-story` produce la US
 
-La skill no acepta el ticket: interroga el *problema* detrás (contra el
-[`MANIFIESTO.md`](MANIFIESTO.md)).
-
-```
-IA:  ¿Qué duele HOY, concretamente? "Comprar de más" es un síntoma.
-PO:  Un cliente finalizó la compra de un producto que ya no tenía stock, y quedó
-     una orden que no podemos cumplir. También pasa que finalizan con el carrito
-     vacío y se genera una orden fantasma.
-IA:  ¿Quién siente el dolor? "El sistema" no es un usuario.
-PO:  El comprador (recibe un error después de comprar) y depósito, que recibe
-     órdenes que no puede despachar.
-IA:  ¿Y si no lo hacemos? (costo de no actuar)
-PO:  Órdenes que se cancelan a mano, clientes enojados. Pasó bastante el último mes.
-IA:  La solución implícita es "validar el carrito al finalizar". ¿Es el salto correcto,
-     o el problema real es que el stock que muestra el carrito no es confiable?
-PO:  No, validar al finalizar es lo correcto: el stock ya existe, falta chequearlo
-     en el momento de la compra.
-
-Veredicto: a-spec  ✅  (problema real, usuario concreto, costo claro, sin solution-lock)
-```
-
-→ produce `openspec/intents/20260703-checkout-invalido/intent.md` con ese veredicto.
-
-### 1c · `grill-user-story` produce la US
-
-Con el problema validado, la skill interroga hasta que la US es **testeable por
+Acá entra la IA: `grill-user-story` interroga al PO hasta que la US es **testeable por
 construcción** ([`formato-us.md`](../templates/formato-us.md)) y la publica en el gestor:
 
 ```markdown
@@ -112,6 +87,33 @@ para **recibir los productos que elijo sin sorpresas**.
 
 > Nota que la US **no dice** tablas, endpoints ni framework — solo el QUÉ. Y cada
 > AC es un test en potencia ([Art. 3](./MANIFIESTO.md#art-3) del manifiesto).
+
+### 1c · Gate 0 — `grill-intent` desafía el problema
+
+Con la US ya formada, **antes** de invertir en el spec, el Gate 0 cuestiona el *problema*
+detrás (contra el [`MANIFIESTO.md`](MANIFIESTO.md)):
+
+```
+IA:  ¿Qué duele HOY, concretamente? "Comprar de más" es un síntoma.
+PO:  Un cliente finalizó la compra de un producto que ya no tenía stock, y quedó
+     una orden que no podemos cumplir. También pasa que finalizan con el carrito
+     vacío y se genera una orden fantasma.
+IA:  ¿Quién siente el dolor? "El sistema" no es un usuario.
+PO:  El comprador (recibe un error después de comprar) y depósito, que recibe
+     órdenes que no puede despachar.
+IA:  ¿Y si no lo hacemos? (costo de no actuar)
+PO:  Órdenes que se cancelan a mano, clientes enojados. Pasó bastante el último mes.
+IA:  La solución implícita es "validar el carrito al finalizar". ¿Es el salto correcto,
+     o el problema real es que el stock que muestra el carrito no es confiable?
+PO:  No, validar al finalizar es lo correcto: el stock ya existe, falta chequearlo
+     en el momento de la compra.
+
+Veredicto: a-spec  ✅  (problema real, usuario concreto, costo claro, sin solution-lock)
+```
+
+→ produce `openspec/intents/20260703-checkout-invalido/intent.md` con ese veredicto. Si
+hubiera dado *reframe* o *don't build*, la US volvería al PO **antes** de gastar un solo
+artefacto de spec — ese es el punto del Gate 0.
 
 ---
 
@@ -175,9 +177,10 @@ autor: D. Force (dev)
 
 ---
 
-## Paso 4 — TDD: un test a la vez (RED → GREEN)
+## Paso 4 — Implementación: el agente construye con TDD (`/opsx:apply`)
 
-Vertical slice del AC-2 (el guard del carrito vacío). **Primero el test (RED):**
+`/opsx:apply` implementa las tareas del change, un test a la vez. Vertical slice del AC-2
+(el guard del carrito vacío). **Primero el test (RED):**
 
 ```typescript
 test("un carrito vacío no se puede finalizar", async () => {
@@ -205,8 +208,9 @@ export async function finalizarCompra(id: CarritoId) {
 // ▶ VERDE. Repetir el ciclo para AC-1 y AC-3.
 ```
 
-> El test verifica por la **interfaz pública** (`finalizarCompra`, `ordenesDe`), no
-> espía lo interno. Sobrevive a un refactor (Art. 7 + skill `tdd`).
+> El test (que escribió el agente) verifica por la **interfaz pública**
+> (`finalizarCompra`, `ordenesDe`), no espía lo interno. Sobrevive a un refactor
+> (Art. 7 + skill `tdd`). El dev revisa cada slice: es responsable del código.
 
 ---
 
@@ -239,21 +243,26 @@ $ dai pr --assignee mgomez
 ✓ PR #123 creada → …/pull/123   (base: main · US: ABC-482 @ v1 · dai check ✅)
 ```
 
-El **partner** revisa la PR. Se apoya en la skill `/dai-review` para un primer pase con
-comentario estándar, y **firma** aprobación o rechazo:
+El **partner** revisa la PR. Se apoya en la skill `/dai-review` para un primer pase: deja
+un **review inline** (resumen + un comentario anclado por línea, low/medium/high). La skill
+le muestra el preview y **espera su OK antes de postear**; después el partner **firma**
+aprobación o rechazo:
 
 ```
-🤖 /dai-review (primer pase, ayuda al partner)
-  · AC-2 cubierto y verificado (no se crea orden con carrito vacío). ✓
-  · Sugerencia: CarritoVacioError y SinStockError deberían extender un DomainError
-    común, como el resto del módulo.
-  · Sin problemas de correctitud.
+🤖 /dai-review — resumen
+  US: ABC-482 @ v1 · dai check: ✅ al día · DoD: 5/5
+  1 comentario en línea: 1 🔵 Low.
 
-👤 M. Gómez (partner): de acuerdo con el DomainError. Aprobado tras el ajuste.
+🔵 Low — src/checkout/errors.ts:12
+  CarritoVacioError y SinStockError podrían extender un DomainError común,
+  como el resto del módulo.
+
+👤 M. Gómez (partner): reviso el preview, lo posteo, y apruebo tras el ajuste.
 ```
 
 > El dev revisa su propio código; un partner distinto revisa la PR y **firma** (Art. 5).
-> La skill `/dai-review` le saca el ruido al partner, pero la aprobación la firma la persona.
+> El review sale con el nombre y el token del partner (nunca `APPROVE` automático): la
+> skill asiste, la persona firma.
 
 ---
 
@@ -282,7 +291,7 @@ ABC-482 · implementado por  (lo estampó dai stamp)
 ## Paso 8 — Daily *(humano, a propósito)*
 
 > *"Ayer cerré ABC-482, la validación del checkout con el guard de carrito. Hoy
-> agarro ABC-490. Sin trabas."* — La IA no genera esto; el equipo se sincroniza (Art. 6).
+> tomo ABC-490. Sin trabas."* — La IA no genera esto; el equipo se sincroniza (Art. 6).
 
 ## Paso 9 — Review / Demo
 

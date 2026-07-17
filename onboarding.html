@@ -5,15 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>dai — Onboarding del dev</title>
 <meta name="description" content="De clonar el repo a tu primera User Story trazada. Instala el CLI, deja que las skills viajen con el repo, y corre el mismo ciclo para cada historia — con dai." />
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236366f1'/%3E%3Cstop offset='1' stop-color='%230ea5e9'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Ctext x='32' y='48' font-family='ui-sans-serif,system-ui,Arial' font-size='44' font-weight='800' fill='white' text-anchor='middle'%3Ed%3C/text%3E%3C/svg%3E" />
-<meta name="theme-color" content="#6366f1" />
+<!-- Favicon: el mismo Sol de Mayo del sitio de docs (igual que index.html). -->
+<link rel="icon" href="favicon.svg" />
+<meta name="theme-color" content="#2f88ce" />
 <style>
   /* Autocontenido: mismo sistema de diseño que index.html (tokens, fuentes, animaciones). */
   :root{
     --bg:#0b1120; --card:#131c2e; --ink:#eef2f8; --mut:#94a3b8; --line:#263247;
-    --brand:#6366f1; --brand-dark:#4f46e5;
-    --func:#f59e0b; --func-soft:#3a2f12; --func-ink:#fbbf24;   /* el QUÉ */
-    --tech:#0ea5e9; --tech-soft:#10273b; --tech-ink:#7dd3fc;   /* el CÓMO */
+    --brand:#2f88ce; --brand-dark:#1f6aa8;                     /* celeste (bandera) */
+    --func:#e0a82e; --func-soft:#3a2f12; --func-ink:#fbbf24;   /* el QUÉ · oro (Sol de Mayo) */
+    --tech:#0ea5e9; --tech-soft:#10273b; --tech-ink:#7dd3fc;   /* el CÓMO · celeste */
     --ci:#10b981;   --ci-soft:#0f2c22;   --ci-ink:#6ee7b7;     /* la máquina */
     --danger:#ef4444;
     --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
@@ -63,7 +64,7 @@
   /* ---------- page header ---------- */
   .phead{padding:64px 0 8px}
   .phead h1{font-size:clamp(2rem,6vw,3rem);margin:0 0 16px;font-weight:900}
-  .phead h1 .g{background:linear-gradient(120deg,var(--brand),var(--tech));
+  .phead h1 .g{background:linear-gradient(120deg,var(--func),var(--tech));
     -webkit-background-clip:text;background-clip:text;color:transparent}
   .phead p{color:var(--mut);font-size:1.15rem;max-width:60ch;margin:0 0 22px}
   .meta{display:flex;gap:8px;flex-wrap:wrap}
@@ -208,7 +209,7 @@
 
       <div class="step b"><div class="num">4</div><div class="body">
         <h3>Reinicia tu asistente</h3>
-        <p>Para que carguen las skills (<code>/grill-*</code>, <code>/tdd</code>, <code>/link-us</code>, <code>/dai-review</code>) y los comandos <code>/opsx:*</code>. Se cargan al arrancar.</p>
+        <p>Para que carguen las skills (<code>/grill-*</code>, <code>/tdd</code>, <code>/link-us</code>, <code>/dai-review</code>) y los comandos <code>/opsx:*</code>. Se cargan al iniciar.</p>
       </div></div>
 
       <div class="step b"><div class="num">5</div><div class="body">
@@ -245,10 +246,10 @@
       </div></div>
 
       <div class="step c"><div class="num">3</div><div class="body">
-        <h3>Implementa con tests primero</h3>
-        <p>TDD en rebanadas verticales: un test, el código mínimo, repetir. La IA escribe el
-           test como spec ejecutable.</p>
-        <span class="tool">/opsx:apply  ·  /tdd</span>
+        <h3>El agente implementa con tests primero</h3>
+        <p>Con <code>/opsx:apply</code>, el agente aplica las tareas en rebanadas verticales:
+           un test, el código mínimo, repetir. Escribe el test como spec ejecutable; tú validas.</p>
+        <span class="tool">/opsx:apply  ·  con TDD</span>
       </div></div>
 
       <div class="step m"><div class="num">4</div><div class="body">
@@ -286,7 +287,7 @@
   <div class="wrap">
     <p class="eyebrow">Parte C</p>
     <h2>Si algo falla</h2>
-    <p class="lede">Los tres tropiezos más comunes al arrancar, y cómo salir de ellos.</p>
+    <p class="lede">Los tres tropiezos más comunes al empezar, y cómo salir de ellos.</p>
     <div class="grid g3">
       <div class="card">
         <h3><code>dai link-us</code> tira un error de ByteString</h3>
@@ -295,7 +296,7 @@
       </div>
       <div class="card">
         <h3>No aparecen las skills ni <code>/opsx:*</code></h3>
-        <p><b>Reinicia el asistente / IDE.</b> Las skills y los comandos se cargan al arrancar.</p>
+        <p><b>Reinicia el asistente / IDE.</b> Las skills y los comandos se cargan al iniciar.</p>
       </div>
       <div class="card">
         <h3><code>dai doctor</code> en rojo</h3>

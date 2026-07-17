@@ -18,12 +18,14 @@
 
 ## Tu día a día
 
-1. **Agarras una US** que cumple el [DoR](../../templates/definition-of-ready.md) → `/link-us ABC-###`. Crea la rama y el
+1. **Tomas una US** que cumple el [DoR](../../templates/definition-of-ready.md) → `/link-us ABC-###`. Crea la rama y el
    `implements.yaml` **desde el ID, sin que tipees el key a mano** (Art. 8, Art. 9).
 2. **Armas el CÓMO** → `opsx:explore` → `opsx:propose`. OpenSpec genera
    `design.md`/`tasks.md`; tú validas y ajustas. Las tareas nacen del cómo.
-3. **Implementas con TDD** → `/tdd`. Un test a la vez, vertical slices: RED → GREEN
-   → refactor. Verificas por la **interfaz pública**, no espías lo interno (Art. 7).
+3. **El agente implementa el CÓMO** → `/opsx:apply`. Aplica las tareas escribiendo
+   test-primero (TDD, vertical slices: RED → GREEN → refactor), por la **interfaz
+   pública** (Art. 7). Tú decides qué comportamientos importa testear; el agente los
+   construye.
 4. **Smoke** → ejecutas el escenario end-to-end del flujo.
 5. **Revisas la implementación de la IA** (code review propio) → minucioso y con criterio:
    correctitud, casos borde, seguridad, calidad. **Eres responsable del código, no la IA**
@@ -33,7 +35,8 @@
    arma la PR **precargada** (US + estado del check + links; los **dos activos**: código +
    spec trazable) y la asignas a un partner.
 7. **Review de un partner** → un compañero revisa tu PR y **firma** aprobación/rechazo
-   (Art. 5). Se apoya en la skill `/dai-review` para un primer pase con comentario estándar.
+   (Art. 5). Se apoya en la skill `/dai-review` para un primer pase: un **review inline**
+   (resumen + un comentario por línea), que le muestra el preview y espera su OK antes de postear.
    *(Tu PR la revisas tú en el paso 5; la de un compañero, lo ayudas con la skill.)*
 8. **Verificas el DoD** → [`definition-of-done.md`](../../templates/definition-of-done.md) antes de mergear.
 9. **Merge → se estampa la cobertura** con `dai stamp` (lo corres tú tras mergear, o el CI
@@ -45,7 +48,7 @@
 ## La trampa a evitar
 
 **Vibe coding.** Nada de codear sobre una idea vaga o "improvisar y después vemos".
-Si no hay US con criterios testeables, no arranques: falta el [DoR](../../templates/definition-of-ready.md). La disciplina
+Si no hay US con criterios testeables, no empieces: falta el [DoR](../../templates/definition-of-ready.md). La disciplina
 —US clara → design → test → código— es lo que separa esto de pedirle cosas a un chat.
 
 ## Cuando el QUÉ cambia
@@ -59,8 +62,8 @@ te avisa: el link versionado lo hace [Art. 11](../MANIFIESTO.md#art-11).
 - `/link-us`
 - `/opsx:explore`
 - `/opsx:propose`
-- `/opsx:apply`
-- `/tdd`
+- `/opsx:apply` — el agente implementa las tareas (con TDD)
+- `/tdd` — la disciplina TDD que aplica el paso anterior
 - `/dai-review`
 - `dai check` · `dai pr` · `dai stamp` · `dai done` (limpieza, opcional)
 - `definition-of-done.md`

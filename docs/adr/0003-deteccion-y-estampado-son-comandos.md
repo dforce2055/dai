@@ -49,7 +49,7 @@ Pasar de distribuido a automático es mover la invocación, no reescribir nada.
 
 ## Consecuencias
 
-- ✅ **No hace falta ningún CI para empezar.** La metodología arranca con un dev
+- ✅ **No hace falta ningún CI para empezar.** La metodología empieza con un dev
   tipeando `dai check` / `dai stamp`. El [Art. 14](../MANIFIESTO.md#art-14) queda respetado.
 - ✅ **Rampa de adopción continua:** manual → git-hook → CI, siempre el mismo comando.
 - ✅ **Honra el [Art. 10](../MANIFIESTO.md#art-10):** el humano *dispara* la derivación; no *escribe a mano* el

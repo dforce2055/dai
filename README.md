@@ -66,7 +66,7 @@ Y después, en el chat del asistente, según lo que tengas:
 > (`DAI_PM` en el `.env`): por el **MCP** de Jira/ClickUp si está conectado, o con
 > **`dai publish <us.md>`** si no (crea el issue vía token). Tú respondes y decides.
 
-¿Sin MCP, o querés publicar a mano? `dai publish` sube el `.md` al tracker y te devuelve el key:
+¿Sin MCP, o quieres publicar a mano? `dai publish` sube el `.md` al tracker y te devuelve el key:
 
 ```bash
 dai publish historia.md                                # crea la US → devuelve el key
@@ -112,12 +112,12 @@ dai pr --assignee <compañero>   # crea la PR precargada y se la asigna a un com
 dai stamp                       # al mergear: estampa la cobertura en el tracker
 ```
 
-> **Para que `dai pr` cree la PR/MR** necesitás el CLI del forge instalado y autenticado, una
+> **Para que `dai pr` cree la PR/MR** necesitas el CLI del forge instalado y autenticado, una
 > sola vez por máquina:
 > - **GitHub** → [`gh`](https://cli.github.com) · `gh auth login`
 > - **GitLab** → [`glab`](https://gitlab.com/gitlab-org/cli) · `glab auth login --hostname <tu-gitlab>`
 >   — en un GitLab self-hosted/corporativo el `--hostname` es **obligatorio**, y el token va con
->   scope `api`. (En Windows, tras instalar `glab` con `winget`, abrí una terminal nueva para que
+>   scope `api`. (En Windows, tras instalar `glab` con `winget`, abre una terminal nueva para que
 >   tome el PATH.)
 >
 > Sin el CLI del forge, `dai pr` **igual pushea tu branch** y te dice qué instalar — después
@@ -172,7 +172,7 @@ flowchart TD
 > token del tracker en `.env` (Jira además `DAI_JIRA_PROJECT`, ClickUp `DAI_CLICKUP_LIST_ID`).
 >
 > **Paso 7 (OpenSpec):** `dai init` te ofrece instalarlo **e inicializarlo** solo. Si los
-> comandos `/opsx:*` no aparecen en el asistente, reinicia el IDE (se cargan al arrancar).
+> comandos `/opsx:*` no aparecen en el asistente, reinicia el IDE (se cargan al iniciar).
 >
 > **Paso 11 (PR):** necesita un remoto git (`origin`) y `gh`/`glab` autenticado. Sin remoto,
 > dai no crea la PR (te deja el texto listo igual).
@@ -203,7 +203,7 @@ flowchart TD
 > **🆕 Mantené tu repo al día — `dai sync`.** Las skills, la constitución y los templates son un
 > *caché derivable* del CLI. Cuando actualizás `dai` (`dai upgrade`), **`dai doctor` y
 > `dai version` te avisan solos** si tu scaffold quedó atrás — con color y un `⬆️` —, y **`dai sync`**
-> lo refresca: **aditivo** (conserva tu `CLAUDE.md` propio), sin tocar el `.env` ni OpenSpec. Probá sin
+> lo refresca: **aditivo** (conserva tu `CLAUDE.md` propio), sin tocar el `.env` ni OpenSpec. Prueba sin
 > riesgo con `dai sync --dry-run`. El versionado es semver: patch/minor no rompen nada; solo un major
 > pediría migración. ([ADR-0010](docs/adr/0010-versionado-y-upgrade.md))
 
@@ -215,8 +215,8 @@ flowchart TD
 > sigue siendo solo de dai. ([ADR-0013](docs/adr/0013-skills-externas-install-from.md))
 >
 > La fuente puede ser **pública, privada (por SSH) o un path local**: dai no hace auth
-> propia, delega en git — **si podés `git clone` el repo, dai instala desde ahí**. Para
-> privados usá la forma SSH (`git@github.com:tu-org/net-skills.git`), consistente con el
+> propia, delega en git — **si puedes `git clone` el repo, dai instala desde ahí**. Para
+> privados usa la forma SSH (`git@github.com:tu-org/net-skills.git`), consistente con el
 > modelo de auth de dai ([ADR-0007](docs/adr/0007-modelo-de-autenticacion.md)). Público =
 > cero fricción entre equipos/máquinas.
 >
@@ -351,9 +351,17 @@ Detalle en [ADR-0006](docs/adr/0006-distribucion-y-licencia.md).
 
 ## Agradecimientos
 
-dai se apoya en ideas y aprendizajes de la comunidad. En particular, gracias a
-**[Matt Pocock](https://github.com/mattpocock)** por su aporte con las *skills* y por su
-[canal de YouTube](https://www.youtube.com/@mattpocockuk) explicándolas — su trabajo nos ayudó
-a construir esta herramienta.
+dai se apoya en ideas y herramientas de la comunidad.
+
+Un agradecimiento especial a **[OpenSpec](https://github.com/Fission-AI/OpenSpec)** (de
+[Fission AI](https://github.com/Fission-AI), `@fission-ai/openspec`): es la herramienta
+sobre la que se construye todo el **CÓMO** de dai — explorar la solución, proponer el diseño
+y las tareas, e implementar el change (`opsx:explore → propose → apply → archive`). dai no
+la bundlea ni la reemplaza; se apoya en ella para convertir el QUÉ en un plan técnico
+trazable. Sin OpenSpec, la mitad del método no existiría.
+
+Y gracias a **[Matt Pocock](https://github.com/mattpocock)** por su aporte con las *skills*
+y por su [canal de YouTube](https://www.youtube.com/@mattpocockuk) explicándolas — su
+trabajo nos ayudó a construir esta herramienta.
 
 Seguridad: [`SECURITY.md`](SECURITY.md) · Conducta: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)

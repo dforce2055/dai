@@ -20,7 +20,7 @@ más fuerte de eso es el **copyleft**: quien distribuya un `dai` modificado debe
 publicar sus cambios bajo la misma licencia. La GPL convierte "las mejoras vuelven"
 en cláusula, no en deseo.
 
-El downside típico de la GPL **no aplica** acá: `dai` es un **CLI que se ejecuta**,
+El downside típico de la GPL **no aplica** aquí: `dai` es un **CLI que se ejecuta**,
 no una librería que se embebe. Usar `dai` sobre tu código —aunque sea propietario y
 comercial— **no genera ninguna obligación**; el copyleft solo se activa si alguien
 **forkea y redistribuye** una versión modificada. Y *libre ≠ gratis*: se puede
