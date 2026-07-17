@@ -29,15 +29,44 @@ export function composePrBody(template, d) {
   if (d.commits && d.commits.length) {
     b = replaceSection(b, "Cambios realizados", d.commits.map((c) => `- [x] ${c}`).join("\n"));
   }
-  // Bloque de enlaces (lo agrega dai; el humano completa el resto del template).
-  const links = ["", "<!-- Enlaces precargados por `dai pr` -->"];
-  if (d.usUrl) links.push(`- US: ${d.usUrl}`);
+  return upsertLinksBlock(b, d);
+}
+
+// ── Bloque de enlaces ────────────────────────────────────────────────────────
+// Delimitado y regenerable a propósito. Con el comentario suelto de antes, cualquier
+// agente que reescribiera "Enlaces relacionados" se lo llevaba puesto sin dejar rastro
+// (pasó en PRs reales). Con marcadores, el bloque se detecta, se preserva y se
+// regenera — y quien edite el body ve que es de dai y que se pisa solo.
+export const LINKS_START = "<!-- dai:links:start · generado por `dai pr` — no editar a mano -->";
+export const LINKS_END = "<!-- dai:links:end -->";
+
+// Los links que dai sabe. Sin URL no inventa la línea: prefiere no decir nada.
+export function renderLinks(d) {
+  const links = [LINKS_START];
+  if (d.usUrl) links.push(`- US \`${d.id}\`: ${d.usUrl}`);
   if (d.branchUrl) links.push(`- branch \`${d.branch}\`: ${d.branchUrl}`);
   if (d.commitUrl) links.push(`- commit \`${(d.commit || "").slice(0, 8)}\`: ${d.commitUrl}`);
-  return b.replace(/(##\s*Enlaces relacionados\s*\n)(<!--[\s\S]*?-->)?/i,
-    (m, h) => `${h}${links.join("\n")}\n`) === b
-    ? b + "\n" + links.join("\n") + "\n"   // si no había sección Enlaces, apéndela
-    : b.replace(/(##\s*Enlaces relacionados\s*\n)(<!--[\s\S]*?-->)?/i, (m, h) => `${h}${links.join("\n")}\n`);
+  links.push(LINKS_END);
+  return links.join("\n");
+}
+
+// Inserta o reemplaza el bloque de dai. Idempotente: correrlo N veces da lo mismo.
+export function upsertLinksBlock(body, d) {
+  const block = renderLinks(d);
+  // 1. ¿Ya está el bloque delimitado? Se reemplaza entero (regenerar, no duplicar).
+  const delimited = /<!--\s*dai:links:start[\s\S]*?dai:links:end\s*-->/i;
+  if (delimited.test(body)) return body.replace(delimited, block);
+  // 2. ¿Está la sección del template? El bloque va debajo del heading, PRESERVANDO el
+  //    hint HTML si lo hay: es la guía para quien edite (y es invisible al renderizar).
+  //    dai suma, no borra — borrar el texto de otro es justo lo que estamos arreglando.
+  //    (el `\s*` tolera la línea en blanco entre el heading y el hint; como solo matchea
+  //     espacios, no puede saltar a la sección siguiente para buscarse un comentario)
+  const heading = /(^|\n)(##[^\n]*Enlaces relacionados[^\n]*\n)(\s*<!--[\s\S]*?-->[ \t]*\n)?/i;
+  if (heading.test(body)) {
+    return body.replace(heading, (m, pre, h, hint) => `${pre}${h}${hint || ""}\n${block}\n`);
+  }
+  // 3. Ni bloque ni sección: se apéndea con su propio heading.
+  return `${body.replace(/\s*$/, "")}\n\n## Enlaces relacionados\n\n${block}\n`;
 }
 
 // Título del PR: el pasado a mano, o "<ID>: <título de la US>", o solo el ID.

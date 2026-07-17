@@ -7,9 +7,12 @@
 //   clickup — REST v2 (pm-clickup.mjs)
 //
 // Interfaz (fetchUS/stamp pueden ser sync o async — el CLI siempre await-ea):
-//   fetchUS(id)          → { id, title, spec_version, ac_hash } | null
+//   fetchUS(id)          → { id, title, spec_version, ac_hash, url } | null
 //   stamp(id, record)    → destino donde quedó la cobertura
 //   kind                 → nombre del backend
+//
+// `url` es la URL web canónica de la US según el tracker (opcional: null si el backend
+// no la sabe, como md). El CLI la prefiere sobre la derivada — ver tracker-url.mjs.
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";

@@ -47,6 +47,17 @@ test("[red] jira fetchUS pega a la URL v3, con auth, y mapea la US ADF", async (
   );
 });
 
+// jira ya armaba /browse/<id> en stamp, pero fetchUS lo descartaba y dai pedía
+// DAI_TRACKER_URL_TEMPLATE para reconstruir una URL que ya sabía.
+test("[red] jira fetchUS devuelve la URL de browse de la issue", async () => {
+  await withMockFetch(
+    () => mockResponse(200, { key: "ACME-493", fields: { summary: "Finalizar la compra", description: ADF } }),
+    async () => {
+      assert.equal((await jiraAdapter(ENV).fetchUS("ACME-493")).url, "https://j.acme.com/browse/ACME-493");
+    }
+  );
+});
+
 test("[red] jira fetchUS 404 → null", async () => {
   await withMockFetch(() => mockResponse(404, ""), async () => {
     assert.equal(await jiraAdapter(ENV).fetchUS("NOPE-1"), null);

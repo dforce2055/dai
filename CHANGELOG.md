@@ -3,6 +3,46 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
+## [0.8.2] — 2026-07-17
+
+**Dos agujeros que destapó el uso real, y que tienen la misma forma: dai hacía algo
+hacia afuera sin que un humano lo viera, o dejaba que otro le pisara lo que había
+escrito. El [Art. 5](docs/MANIFIESTO.md#art-5) no se cumple solo con no clickear
+Approve.**
+
+### Arreglado
+- **`dai-review` posteaba el comentario sin mostrártelo.** La skill componía el review y
+  lo publicaba de una: el paso 6 decía *"Postear"* y no había gate. Y el comentario sale
+  con **tu token y tu nombre** (`GITHUB_TOKEN`/`GITLAB_TOKEN` son tuyos), así que en la
+  PR de un compañero figura como si lo hubieras escrito vos. El corte estaba puesto en el
+  lugar equivocado: no aprobar sin humano estaba bien, pero publicar un juicio sobre el
+  código de otro, firmado por alguien que no lo leyó, es el mismo problema con otro
+  disfraz. Ahora la skill **muestra el comentario entero y espera un OK explícito** en
+  ese turno; sin "sí", no se postea. Es el tercer corte duro de la skill.
+- **`dai pr` escribía el id de la US disfrazado de link.** Sin `DAI_TRACKER_URL_TEMPLATE`,
+  `trackerUrl(id)` devolvía el **id pelado**; como un string es truthy, `composePrBody` lo
+  escribía igual y la PR quedaba con `- US: 86abc123` en vez de un enlace, sin un solo
+  aviso. Ahora la URL se resuelve por una cadena explícita —template > URL canónica del
+  tracker > derivada del backend > `null`— y **si dai no la sabe, avisa y omite la línea
+  en vez de mentir** (`lib/tracker-url.mjs`).
+- **El bloque de enlaces de `dai pr` no sobrevivía a un edit.** Iba marcado con un
+  comentario suelto, así que cualquier agente que reescribiera *"Enlaces relacionados"*
+  se lo llevaba puesto sin dejar rastro — pasó en PRs reales. Y el propio template lo
+  invitaba: su hint pedía *"US en el tracker, commit ancla, docs, issues"*, o sea justo la
+  sección que `dai pr` acababa de llenar. dai se peleaba consigo mismo y ganaba el que
+  corría último. Ahora el bloque va **delimitado** (`<!-- dai:links:start … end -->`),
+  se **regenera de forma idempotente**, preserva lo que el humano sumó abajo, y el hint
+  del template pide solo lo que dai **no** sabe (docs, issues, PRs relacionadas).
+
+### Cambiado
+- **dai deduce el link al tracker solo.** Con `DAI_PM=jira` o `=clickup` ya no hace falta
+  `DAI_TRACKER_URL_TEMPLATE`: se deriva de la config (`/browse/<KEY>` y
+  `/t/<id>`), y `fetchUS` ahora devuelve la **URL canónica** del tracker — en ClickUp, la
+  que trae el `team_id`, que no se puede deducir del id. La variable queda como
+  **override** para trackers con URL propia. `dai init` dejó de scaffoldearla: era
+  contraproducente, porque el template gana sobre la canónica y le tapaba el `team_id`.
+  Los `.env` que ya la tienen siguen andando igual (el override sigue ganando).
+
 ## [0.8.1] — 2026-07-16
 
 **Primera prueba real en Windows con analistas y devs de una empresa: el ciclo completo
