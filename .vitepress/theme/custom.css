@@ -41,9 +41,10 @@
 }
 
 /* ── Reveal circular del toggle dark/light (View Transitions + WAAPI) ──
-   Desactivamos el cross-fade default del root para que el clip-path circular
-   (animado desde theme/index.js) se vea limpio. El z-index decide qué capa
-   queda arriba según la dirección (a oscuro / a claro). */
+   Desactivamos el cross-fade default del root. La capa NUEVA (el tema al que vas)
+   queda SIEMPRE arriba y se expande desde el botón — en los dos sentidos igual.
+   Nunca hay una capa que se encoge (eso causaba un colapso feo al final del
+   light→dark). La vieja queda abajo, quieta, y la nueva la va tapando. */
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
@@ -51,5 +52,3 @@
 }
 ::view-transition-old(root) { z-index: 1; }
 ::view-transition-new(root) { z-index: 9999; }
-.dark::view-transition-old(root) { z-index: 9999; }
-.dark::view-transition-new(root) { z-index: 1; }

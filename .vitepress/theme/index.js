@@ -63,7 +63,6 @@ export default {
       if (!canViewTransition()) { isDark.value = !isDark.value; return; }
 
       const r = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
-      const clip = [`circle(0px at ${x}px ${y}px)`, `circle(${r}px at ${x}px ${y}px)`];
 
       // Si la transición se aborta (toggles rápidos, estado inválido), `.ready`
       // rechaza: el tema igual cambió dentro del callback, solo no animamos el clip.
@@ -73,12 +72,13 @@ export default {
           await nextTick();
         }).ready;
 
+        // Siempre expandimos la capa NUEVA desde el botón (los dos sentidos igual).
         document.documentElement.animate(
-          { clipPath: isDark.value ? clip.reverse() : clip },
+          { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${r}px at ${x}px ${y}px)`] },
           {
-            duration: 350,
-            easing: "ease-in",
-            pseudoElement: `::view-transition-${isDark.value ? "old" : "new"}(root)`,
+            duration: 450,
+            easing: "ease-in-out",
+            pseudoElement: "::view-transition-new(root)",
           },
         );
       } catch {
