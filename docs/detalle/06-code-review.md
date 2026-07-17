@@ -8,7 +8,7 @@ Dos revisiones distintas:
 
 1. **El dev revisa su propia implementación** — la que produjo la IA, minucioso y con
    criterio (correctitud, casos borde, seguridad, calidad). Es responsable del código, no
-   la IA (anti vibe-coding). Recién con eso en orden, y todo **commiteado**, crea la PR.
+   la IA (anti vibe-coding). Solo con eso en orden, y todo **commiteado**, crea la PR.
 2. **Un partner revisa la PR** y **firma** aprobación/rechazo. Se apoya en la skill
    `dai-review` para un primer pase consciente de la metodología: corre `dai check` (¿la US
    quedó atrasada?), valida el DoD, revisa el código (🔴 errores / 🟡 mejoras / ✅ bien) y

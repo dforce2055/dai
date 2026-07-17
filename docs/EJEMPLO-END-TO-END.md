@@ -286,7 +286,7 @@ ABC-482 · implementado por  (lo estampó dai stamp)
 ## Paso 8 — Daily *(humano, a propósito)*
 
 > *"Ayer cerré ABC-482, la validación del checkout con el guard de carrito. Hoy
-> agarro ABC-490. Sin trabas."* — La IA no genera esto; el equipo se sincroniza (Art. 6).
+> tomo ABC-490. Sin trabas."* — La IA no genera esto; el equipo se sincroniza (Art. 6).
 
 ## Paso 9 — Review / Demo
 

@@ -18,7 +18,7 @@
 
 ## Tu día a día
 
-1. **Agarras una US** que cumple el [DoR](../../templates/definition-of-ready.md) → `/link-us ABC-###`. Crea la rama y el
+1. **Tomas una US** que cumple el [DoR](../../templates/definition-of-ready.md) → `/link-us ABC-###`. Crea la rama y el
    `implements.yaml` **desde el ID, sin que tipees el key a mano** (Art. 8, Art. 9).
 2. **Armas el CÓMO** → `opsx:explore` → `opsx:propose`. OpenSpec genera
    `design.md`/`tasks.md`; tú validas y ajustas. Las tareas nacen del cómo.
@@ -47,7 +47,7 @@
 ## La trampa a evitar
 
 **Vibe coding.** Nada de codear sobre una idea vaga o "improvisar y después vemos".
-Si no hay US con criterios testeables, no arranques: falta el [DoR](../../templates/definition-of-ready.md). La disciplina
+Si no hay US con criterios testeables, no empieces: falta el [DoR](../../templates/definition-of-ready.md). La disciplina
 —US clara → design → test → código— es lo que separa esto de pedirle cosas a un chat.
 
 ## Cuando el QUÉ cambia

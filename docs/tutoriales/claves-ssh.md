@@ -16,7 +16,7 @@ configurada, `dai pr` puede pushear la rama sin pedirte credenciales.
 ls ~/.ssh/id_ed25519.pub
 ```
 
-Si el archivo existe, ya tienes clave: salta al **Paso 4**. Si dice *"No such file"*, seguí
+Si el archivo existe, ya tienes clave: salta al **Paso 4**. Si dice *"No such file"*, sigue
 con el paso 2.
 
 ---
@@ -38,7 +38,7 @@ ssh-keygen -t ed25519 -C "tu-correo@ejemplo.com"
 ## Paso 3 — Carga la clave en el agente SSH
 
 ```bash
-eval "$(ssh-agent -s)"        # arranca el agente
+eval "$(ssh-agent -s)"        # inicia el agente
 ssh-add ~/.ssh/id_ed25519     # carga tu clave (pide la passphrase si pusiste una)
 ```
 

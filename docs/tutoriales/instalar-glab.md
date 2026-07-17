@@ -1,7 +1,7 @@
 # Instalar el CLI del forge (`gh` / `glab`) para `dai pr`
 
 `dai pr` crea la Pull/Merge Request usando el **CLI del forge**: `gh` para GitHub, `glab`
-para GitLab. dai pushea la rama por **SSH** igual (necesitás las [claves SSH](claves-ssh)),
+para GitLab. dai pushea la rama por **SSH** igual (necesitas las [claves SSH](claves-ssh)),
 pero para **crear la PR/MR** hace falta el CLI autenticado.
 
 > **Una vez por máquina.** Instalás el que use tu equipo (o los dos, si trabajás con ambos
@@ -26,7 +26,7 @@ sudo apt install gh             # Debian/Ubuntu (o ver cli.github.com para tu di
 gh auth login
 ```
 
-Elegí **GitHub.com**, protocolo **SSH** (o HTTPS), y seguí los pasos. Verificá:
+Elige **GitHub.com**, protocolo **SSH** (o HTTPS), y sigue los pasos. Verifica:
 
 ```bash
 gh --version
@@ -55,7 +55,7 @@ glab auth login --hostname gitlab.tu-empresa.com
 ```
 
 Te va a pedir un **token con scope `api`** (lo generás en *GitLab → Preferences → Access
-Tokens*). Verificá:
+Tokens*). Verifica:
 
 ```bash
 glab --version
@@ -65,7 +65,7 @@ glab --version
 
 ## Notas
 
-- 🪟 **Windows:** después de instalar con `winget`/`scoop`, **abrí una terminal nueva** para
+- 🪟 **Windows:** después de instalar con `winget`/`scoop`, **abre una terminal nueva** para
   que tome el PATH; si no, `glab`/`gh` "no se encuentra".
 - 🔑 **El CLI usa un token del forge** (no la contraseña, no la clave SSH). Git sigue usando
   SSH; el CLI, token — cada uno lo suyo ([ADR-0007](../adr/0007-modelo-de-autenticacion.md)).

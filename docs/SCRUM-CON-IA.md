@@ -76,7 +76,7 @@
 | **Clásico** | El dev crea una rama para trabajar la US. |
 | **Dolor** | Nombres inconsistentes, ramas que no se sabe a qué US pertenecen → trazabilidad rota desde el commit uno. |
 | **Con IA** | `link-us ABC-###` crea la rama **desde el ID de la US, sin tipearlo a mano**, y genera el `implements.yaml`. La rama *es* el link: correcto por construcción. |
-| **Humano (HITL)** | El dev elige qué US agarra. |
+| **Humano (HITL)** | El dev elige qué US toma. |
 | **Herramienta** | `link-us` |
 | **Detalle →** | [`detalle/03-ramas.md`](detalle/03-ramas.md) |
 

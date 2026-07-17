@@ -2,7 +2,7 @@
 
 > **Fuente de verdad única.** Este documento es el maestro. Los dos HTML
 > (`desarrollo-asistido-por-ia.html` federado y `-equipos-compactos.html`) son
-> **vistas de presentación** derivadas de acá — si algo contradice a este `.md`,
+> **vistas de presentación** derivadas de aquí — si algo contradice a este `.md`,
 > gana este `.md`. Versionado por git para que no driftee.
 
 Una sola metodología para dos escalas opuestas:
@@ -136,7 +136,7 @@ duele, no antes.**
 
 | | **N1 · Solo / 1 repo** | **N2 · Equipo compacto** | **N3 · Federado** |
 |---|---|---|---|
-| Caso típico | equipo chico arrancando, un dev | equipo chico | organización grande |
+| Caso típico | equipo chico empezando, un dev | equipo chico | organización grande |
 | El QUÉ vive en | `proposal.md` de OpenSpec | ClickUp (US) → el change la referencia | Jira (`ABC-###`, hub) |
 | El link vive en | la carpeta del change (co-localizado) | `implements.yaml` en el repo | `implements.yaml` versionado |
 | Inversa la genera | un comando local | comando / CI liviano | CI estampa cobertura + CD reporta ambiente |

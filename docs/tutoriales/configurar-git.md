@@ -21,7 +21,7 @@ git config --global user.email "tu-correo@ejemplo.com"
 
 ---
 
-## Paso 2 — Verificá
+## Paso 2 — Verifica
 
 ```bash
 git config --global user.name       # → Nombre Completo
@@ -33,8 +33,8 @@ git config --global --list          # ve toda la config global
 
 ## Un correo distinto para un repo puntual
 
-Si en un repo específico querés usar otra identidad (ej. trabajo vs. personal), configuralo
-**sin** `--global`, parado dentro de ese repo:
+Si en un repo específico quieres usar otra identidad (ej. trabajo vs. personal), configúralo
+**sin** `--global`, dentro de ese repo:
 
 ```bash
 cd mi-repo
@@ -50,4 +50,4 @@ La config del repo **gana** sobre la global, solo ahí.
 - **Trazabilidad de autoría:** dai ata el QUÉ al CÓMO, y el CÓMO lo firma una persona. Un
   commit con autor mal seteado rompe esa cadena.
 - **El review sale a tu nombre:** cuando `dai-review` postea con tu token, el forge lo
-  atribuye a **vos** — tener bien tu identidad es parte de responder por lo que firmás.
+  atribuye a **ti** — tener bien tu identidad es parte de responder por lo que firmas.

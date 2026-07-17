@@ -19,7 +19,7 @@
 ## Tu día a día
 
 1. **Nace una idea — o llega un documento** → creas el ticket en el gestor (nace con ID,
-   aunque sea vago). Si en cambio arrancas de un **documento de análisis** (PDF, Word),
+   aunque sea vago). Si en cambio partes de un **documento de análisis** (PDF, Word),
    `/doc-to-backlog` lo convierte en un **backlog candidato** de épicas + US para que
    priorices y valides. Y si algo es **demasiado grande** para una sola US,
    `/grill-epic` lo parte en varias.

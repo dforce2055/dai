@@ -89,7 +89,7 @@ error de config más común. El mensaje da los dos caminos: `DAI_JIRA_PROJECT=PR
 - **`dai doctor`** valida la clave de proyecto y que el archivo de campos parsee. Sigue
   **sin** verificar que el token sirva — eso es red, y lo dice `dai publish`. El chequeo
   ahora lo admite en voz alta en vez de dar un ✓ engañoso.
-- **ClickUp queda con el mismo hueco de TLS.** `daiFetch` está listo para adoptarse allá
+- **ClickUp queda con el mismo hueco de TLS.** `daiFetch` está listo para adoptarse allí
   con un import; no lo hicimos ahora por alcance.
 
 ## Alternativas descartadas

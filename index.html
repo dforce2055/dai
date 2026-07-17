@@ -313,7 +313,7 @@
 
       <div class="step c"><div class="num">2</div><div class="body">
         <h3>Abre el CÓMO, atado al QUÉ</h3>
-        <p>El dev arranca la implementación. dai trae la US del tracker, crea la branch y
+        <p>El dev empieza la implementación. dai trae la US del tracker, crea la branch y
            siembra el link — <b>correcto por construcción</b>, sin tipear el ID a mano.</p>
         <span class="tool">dai link-us &lt;ID&gt;  →  branch + implements.yaml</span>
       </div></div>
@@ -466,7 +466,7 @@
     var els=document.querySelectorAll(
       'section h2, section .lede, .card, .step, .lvl, .split, .demo, .install, ol.start li, .cta');
     if(reduce || !('IntersectionObserver' in window)){ return; } // sin animar: todo visible
-    r.classList.add('anim');                                     // recién acá ocultamos (fallback sin JS = visible)
+    r.classList.add('anim');                                     // recién aquí ocultamos (fallback sin JS = visible)
     els.forEach(function(el){
       el.classList.add('reveal');
       // stagger: retraso según la posición del elemento entre sus hermanos

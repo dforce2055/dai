@@ -43,7 +43,7 @@ de dai), **convertidas para los 3 asistentes** (Claude copia · Cursor `skillToC
   `--from`). **Sin registro** → dai no sabe qué repos tienen skills externas, a
   propósito: cero gatekeeping, bajo riesgo del equipo. Las fuentes remotas dependen de
   git/red, y la **auth se delega en git** (público sin más; privado por SSH o credential
-  helper — dai no autentica): *si podés `git clone` la fuente, dai instala desde ahí*.
+  helper — dai no autentica): *si puedes `git clone` la fuente, dai instala desde ahí*.
 
 ## Alternativas consideradas
 

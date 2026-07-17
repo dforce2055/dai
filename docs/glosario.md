@@ -24,7 +24,7 @@
 | **`implements.yaml`** | El archivo, en el change del repo, que contiene ese link. Lo genera `link-us`. Ejemplo lleno + árbol de dónde vive entre los artefactos de OpenSpec: [ADR-0004](adr/0004-ubicacion-y-schema-implements.md). |
 | **Trazabilidad inversa / cobertura** | El mapa "quién implementó este QUÉ". **Se genera, nunca se escribe.** |
 | **Índice / router** | La tabla central que dice qué ID vive en qué repos. Es un router, **no un almacén**: no guarda el detalle. |
-| **Federación (dos niveles)** | Cómo se guarda la trazabilidad a escala: Nivel 1 = índice central chico; Nivel 2 = detalle en cada repo, resuelto on-demand. *(Es un eje distinto de los niveles de ceremonia N1/N2/N3: acá "nivel" es dónde vive el dato, no el tamaño del equipo.)* |
+| **Federación (dos niveles)** | Cómo se guarda la trazabilidad a escala: Nivel 1 = índice central chico; Nivel 2 = detalle en cada repo, resuelto on-demand. *(Es un eje distinto de los niveles de ceremonia N1/N2/N3: aquí "nivel" es dónde vive el dato, no el tamaño del equipo.)* |
 | **Matriz de trazabilidad** | La vista "repo × versión × estado (al día / atrasado)". Derivada, no mantenida a mano. |
 
 ## El versionado
