@@ -29,7 +29,9 @@ export function clickupAdapter(env) {
       const res = await fetch(clickupTaskUrl(id), { headers: clickupAuthHeaders(env) });
       if (res.status === 404) return null;
       if (!res.ok) throw new Error(`clickup ${res.status}: ${await res.text()}`);
-      return { id, ...parseUS(clickupTaskToText(await res.json())) };
+      const j = await res.json();
+      // `url` es la canónica (/t/<team_id>/<id>): la sabe ClickUp, no la deducimos.
+      return { id, ...parseUS(clickupTaskToText(j)), url: j.url || null };
     },
     async stamp(id, record) {
       const res = await fetch(clickupCommentUrl(id), {

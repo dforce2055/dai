@@ -42,7 +42,11 @@
 
 ## Enlaces relacionados
 
-<!-- US en el tracker, commit ancla, docs, issues. -->
+<!--
+  La US, la branch y el commit ancla los precarga `dai pr` en el bloque `dai:links`
+  de abajo: NO los escribas a mano ni reescribas ese bloque (se regenera y te lo pisa).
+  Acá abajo sumá solo lo que dai no sabe: docs, issues, PRs relacionadas, dependencias.
+-->
 
 ---
 

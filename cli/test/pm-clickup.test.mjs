@@ -20,6 +20,25 @@ test("[red] clickup fetchUS pega a la URL, con auth, y mapea la US", async () =>
   );
 });
 
+// La URL canónica trae el team_id (/t/<team>/<id>), que no se puede derivar del id.
+// Antes fetchUS la descartaba y dai armaba el link con un template configurado a mano.
+test("[red] clickup fetchUS devuelve la URL canónica de la tarea", async () => {
+  await withMockFetch(
+    () => mockResponse(200, { id: "abc", name: "Finalizar la compra",
+      url: "https://app.clickup.com/t/90130000000/abc" }),
+    async () => {
+      const us = await clickupAdapter(ENV).fetchUS("abc");
+      assert.equal(us.url, "https://app.clickup.com/t/90130000000/abc");
+    }
+  );
+});
+
+test("[red] clickup fetchUS sin url en la respuesta → url null (no rompe)", async () => {
+  await withMockFetch(() => mockResponse(200, { id: "abc", name: "X" }), async () => {
+    assert.equal((await clickupAdapter(ENV).fetchUS("abc")).url, null);
+  });
+});
+
 test("[red] clickup stamp postea comment_text con la cobertura", async () => {
   await withMockFetch(() => mockResponse(200, {}), async (calls) => {
     await clickupAdapter(ENV).stamp("abc",
