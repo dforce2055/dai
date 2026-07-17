@@ -205,11 +205,14 @@ El artefacto no desaparece; se aligera la ceremonia alrededor.
 
 | Skill | Lado | Qué hace |
 |---|---|---|
-| `grill-intent` | QUÉ | Gate 0: desafía el *problema* antes de escribir spec. Veredicto: a-spec / reframe / descartar. |
+| `doc-to-backlog` | QUÉ | Un documento (PDF/Word) → backlog candidato de épicas + US para priorizar. |
+| `grill-epic` | QUÉ | Algo grande → una épica partida en varias US. |
 | `grill-user-story` | QUÉ | Interroga hasta producir una US testeable (INVEST + Gherkin). Publica en Jira/ClickUp o deja `.md`. |
+| `grill-intent` | QUÉ | Gate 0: con la US ya formada, desafía el *problema* antes de escribir spec. Veredicto: a-spec / reframe / descartar. |
 | `link-us` | CÓMO | Crea branch + `implements.yaml` desde el ID del PM. El link, correcto por construcción. |
-| `tdd` | CÓMO | Red-green-refactor en vertical slices, tests por interfaz pública. |
-| `opsx:*` | CÓMO | OpenSpec: explore → propose → apply → archive. Lo provee OpenSpec. |
+| `opsx:*` | CÓMO | OpenSpec: explore → propose → apply (el agente implementa con TDD) → archive. Lo provee OpenSpec. |
+| `tdd` | CÓMO | La disciplina red-green-refactor (vertical slices, tests por interfaz pública) que aplica `opsx:apply`. |
+| `dai-review` | CÓMO | Review inline de una PR/MR ajena: resumen + un comentario por línea, con gate humano de OK antes de postear. |
 
 El **adaptador de PM** es un seam único: las skills del QUÉ publican en Jira **o**
 ClickUp **o** dejan un `.md` según qué MCP/token haya. Es la **misma** skill con

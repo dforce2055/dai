@@ -35,7 +35,8 @@
    arma la PR **precargada** (US + estado del check + links; los **dos activos**: código +
    spec trazable) y la asignas a un partner.
 7. **Review de un partner** → un compañero revisa tu PR y **firma** aprobación/rechazo
-   (Art. 5). Se apoya en la skill `/dai-review` para un primer pase con comentario estándar.
+   (Art. 5). Se apoya en la skill `/dai-review` para un primer pase: un **review inline**
+   (resumen + un comentario por línea), que le muestra el preview y espera su OK antes de postear.
    *(Tu PR la revisas tú en el paso 5; la de un compañero, lo ayudas con la skill.)*
 8. **Verificas el DoD** → [`definition-of-done.md`](../../templates/definition-of-done.md) antes de mergear.
 9. **Merge → se estampa la cobertura** con `dai stamp` (lo corres tú tras mergear, o el CI

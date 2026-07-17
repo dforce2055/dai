@@ -108,9 +108,9 @@
 |---|---|
 | **Clásico** | Un compañero revisa el PR/MR antes de mergear. |
 | **Dolor** | Depende de que el partner tenga tiempo y ganas; reviews superficiales que dejan pasar lo importante. |
-| **Con IA** | La IA hace el **primer pase** (correctitud + estándares del repo) antes del humano. El partner revisa lo que importa, no el ruido. |
+| **Con IA** | La IA hace el **primer pase**: un **review inline** (corre `dai check` + valida el DoD, y deja un resumen + **un comentario por línea**, low/medium/high). Muestra el preview y **espera el OK del partner antes de postear**; el partner revisa lo que importa, no el ruido. |
 | **Humano (HITL)** | El partner aprueba o rechaza. La IA sugiere; la persona decide y firma. |
-| **Herramienta** | `dai-review` |
+| **Herramienta** | `dai-review` (`dai forge review`) |
 | **Detalle →** | [`detalle/06-code-review.md`](detalle/06-code-review.md) |
 
 #### 7. Merge + trazabilidad automática

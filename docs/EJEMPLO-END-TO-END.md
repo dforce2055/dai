@@ -243,21 +243,26 @@ $ dai pr --assignee mgomez
 ✓ PR #123 creada → …/pull/123   (base: main · US: ABC-482 @ v1 · dai check ✅)
 ```
 
-El **partner** revisa la PR. Se apoya en la skill `/dai-review` para un primer pase con
-comentario estándar, y **firma** aprobación o rechazo:
+El **partner** revisa la PR. Se apoya en la skill `/dai-review` para un primer pase: deja
+un **review inline** (resumen + un comentario anclado por línea, low/medium/high). La skill
+le muestra el preview y **espera su OK antes de postear**; después el partner **firma**
+aprobación o rechazo:
 
 ```
-🤖 /dai-review (primer pase, ayuda al partner)
-  · AC-2 cubierto y verificado (no se crea orden con carrito vacío). ✓
-  · Sugerencia: CarritoVacioError y SinStockError deberían extender un DomainError
-    común, como el resto del módulo.
-  · Sin problemas de correctitud.
+🤖 /dai-review — resumen
+  US: ABC-482 @ v1 · dai check: ✅ al día · DoD: 5/5
+  1 comentario en línea: 1 🔵 Low.
 
-👤 M. Gómez (partner): de acuerdo con el DomainError. Aprobado tras el ajuste.
+🔵 Low — src/checkout/errors.ts:12
+  CarritoVacioError y SinStockError podrían extender un DomainError común,
+  como el resto del módulo.
+
+👤 M. Gómez (partner): reviso el preview, lo posteo, y apruebo tras el ajuste.
 ```
 
 > El dev revisa su propio código; un partner distinto revisa la PR y **firma** (Art. 5).
-> La skill `/dai-review` le saca el ruido al partner, pero la aprobación la firma la persona.
+> El review sale con el nombre y el token del partner (nunca `APPROVE` automático): la
+> skill asiste, la persona firma.
 
 ---
 
