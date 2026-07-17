@@ -3,6 +3,45 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
+## [0.9.0] — 2026-07-17
+
+**El review de dai deja de ser un comentario al final del hilo y pasa a ser un review
+_inline_: un resumen más un comentario anclado a cada `archivo:línea`, clasificado
+low/medium/high — como el de Copilot, pero con la puerta humana y la validación que a
+Copilot le faltan.**
+
+### Agregado
+- **`dai forge review <ref> --from <review.json>`** — review inline en GitHub y GitLab.
+  La skill `dai-review` produce un `review.json` (el criterio); el CLI hace lo mecánico
+  (ADR-0002): **valida que cada `path:line` exista de verdad en el diff** —traído con git,
+  local, por SSH— antes de salir a la red. Inventar líneas es el error más común de un
+  LLM revisando código, y el forge responde `422` sin decir cuál falló; en GitHub, que es
+  atómico, un hallazgo inventado tira los buenos. Lo descartado y lo filtrado **se
+  reportan**, nunca se caen en silencio.
+- **Puerta humana explícita.** Sin `--yes` no se postea nada: se muestra el preview y se
+  corta. `--dry-run` valida sin postear. Modo desatendido para reviews simples
+  (`--yes --min-severity --min-confidence --max-comments`), pero es una **excepción que
+  el humano pide**, no un default. El review sale siempre con `event: COMMENT`, nunca
+  `APPROVE` — dai comenta, la persona firma ([Art. 5](docs/MANIFIESTO.md#art-5)).
+- **Aviso de release en Discord.** Publicar un release de GitHub dispara el workflow
+  `discord-release.yml`, que postea al canal vía el secreto `DISCORD_WEBHOOK_URL`. El
+  secreto vive en GitHub Actions, nunca en el repo; el workflow no viaja en el paquete
+  npm (`.github/` fuera de `files`), así que no le impone notificaciones a nadie que use
+  dai. Ver [ADR-0016](docs/adr/0016-review-inline.md).
+
+### Cambiado
+- **`getPR` expone `headSha`, `baseRef` y `diffRefs`** — hacían falta para anclar un
+  comentario inline (GitHub necesita el sha del head; GitLab exige los tres shas de
+  `diff_refs` en cada comentario). `dai init` agrega `.dai/reviews/` al `.gitignore` del
+  repo (un review a medio editar no se commitea; `.dai/` sigue versionándose).
+
+### Interno
+- **224 tests** (+40): el parser de diff con varios hunks y archivos borrados, el
+  descarte de líneas inventadas por lado, los filtros de severidad/confianza/tope, y la
+  asimetría GitHub (atómico) vs. GitLab (no atómico: reporta los parciales en vez de
+  fingir atomicidad). Probado end-to-end contra una PR real: el comentario quedó inline
+  en el archivo, el review salió `COMMENTED`, y el hallazgo alucinado nunca tocó la red.
+
 ## [0.8.2] — 2026-07-17
 
 **Dos agujeros que destapó el uso real, y que tienen la misma forma: dai hacía algo
@@ -366,6 +405,7 @@ ClickUp y Jira Cloud.
 - Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
   `files` de npm sin tests ni secretos.
 
+[0.9.0]: https://github.com/dforce2055/dai/releases/tag/v0.9.0
 [0.8.2]: https://github.com/dforce2055/dai/releases/tag/v0.8.2
 [0.8.1]: https://github.com/dforce2055/dai/releases/tag/v0.8.1
 [0.8.0]: https://github.com/dforce2055/dai/releases/tag/v0.8.0
