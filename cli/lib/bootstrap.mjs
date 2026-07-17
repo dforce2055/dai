@@ -153,7 +153,10 @@ export function upsertBlock(existing, block, marker = "dai") {
 export function reconcileGitignore(text, want) {
   const norm = (s) => { let t = s.trim(); while (t.startsWith("/")) { t = t.slice(1); } while (t.endsWith("/")) { t = t.slice(0, -1); } return t; };
   const broad = new Set();
-  const ensure = [".env"];
+  // `.dai/` NO va acá: ahí vive config que SÍ se versiona (jira-fields.json). Solo se
+  // ignora `.dai/reviews/`, que son borradores de `dai forge review` — efímeros, con
+  // hallazgos a medio editar, y no tienen por qué viajar en un commit.
+  const ensure = [".env", ".dai/reviews/"];
   if (want.claude) { broad.add("CLAUDE.md"); broad.add(".claude"); ensure.push(".claude/settings.local.json"); }
   if (want.cursor) { broad.add(".cursor"); }
   let changed = false;
