@@ -21,6 +21,7 @@ decisión cambia, se escribe un ADR nuevo que supersede al viejo. Molde en
 | [0013](0013-skills-externas-install-from.md) | `dai skills install --from`: skills externas por-stack, sin registro ni gatekeeping | aceptado |
 | [0014](0014-copilot-agent-skills.md) | Copilot lee `SKILL.md` nativo (Agent Skills): se elimina el adaptador `.prompt.md` — modifica la 0002 | aceptado |
 | [0015](0015-jira-corporativo.md) | `dai publish` en Jira corporativo: campos propios declarados, `--parent`/`--issuetype`, TLS con CA (nunca apagar la verificación) | aceptado |
+| [0016](0016-review-inline.md) | Review inline: `review.json` como contrato y puerta humana, el CLI valida las posiciones contra el diff, `--yes` explícito, nunca `APPROVE` | aceptado |
 
 > Estas son las decisiones que cierran las "Decisiones abiertas" de
 > [`METODOLOGIA.md §7`](../METODOLOGIA.md) y las enmiendas al

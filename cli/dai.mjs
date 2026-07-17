@@ -24,8 +24,9 @@ import { isValidKey, slugify, branchName, extractTitle, renderImplementsYaml } f
 import { loadEnv } from "./lib/env.mjs";
 import { getAdapter, coverageStatus, statusLabel } from "./lib/pm-adapter.mjs";
 import { branchUrl, commitUrl, parseRemote, detectForge } from "./lib/forge-url.mjs";
-import { parsePrRef, getPR, postComment } from "./lib/forge-api.mjs";
+import { parsePrRef, getPR, postComment, postReview } from "./lib/forge-api.mjs";
 import { trackerUrl } from "./lib/tracker-url.mjs";
+import { parseFindings, diffPositions, validateFindings, filterFindings, renderFindingBody, renderReviewSummary } from "./lib/review-findings.mjs";
 import { composePrBody, prTitle, forgeTool } from "./lib/pr.mjs";
 import { dirsEqual } from "./lib/fsutil.mjs";
 import { parseFlags, parseAssistants, isAssistantToken, asList } from "./lib/args.mjs";
@@ -242,9 +243,80 @@ async function cmdForge(sub, ref, opts) {
     if (!body) fail("falta --body-file <archivo> o --body <texto>.", 1);
     const res = await postComment(pr, body, process.env);
     process.stdout.write(`✓ comentario posteado${res.url ? `: ${res.url}` : ""}\n`);
+  } else if (sub === "review") {
+    await cmdForgeReview(pr, opts);
   } else {
-    fail("uso: dai forge <pr|comment> <ref> [--body-file f | --body t]", 1);
+    fail("uso: dai forge <pr|comment|review> <ref> [--body-file f | --body t | --from review.json]", 1);
   }
+}
+
+// dai forge review <ref> --from review.json [--dry-run | --yes]
+//
+// El reparto del ADR-0002 en una función: la skill trajo el CRITERIO (el review.json),
+// el CLI hace lo MECÁNICO — validar que cada hallazgo apunte al diff de verdad, filtrar,
+// y postear. Lo que más valor tiene acá no es postear: es RECHAZAR lo que un LLM inventó
+// antes de que el forge conteste 422 sin decir cuál falló.
+async function cmdForgeReview(pr, opts) {
+  if (!opts.from) fail("falta --from <review.json>. Lo escribe la skill dai-review; revisalo antes de postear.", 1);
+  const review = parseFindings(readFileSync(opts.from, "utf8"));
+
+  // El diff sale de git (local, por SSH), no de la API: es la fuente de verdad de qué
+  // línea es comentable, y no gasta rate limit.
+  const remote = await Promise.resolve(getPR(pr, process.env)).catch(() => null);
+  if (!remote) fail("no pude leer la PR/MR del forge (¿token? ¿ref correcta?).", 1);
+  const base = opts.base || remote.baseRef;
+  if (!base) fail("no pude saber la branch base de la PR. Pasala con --base <branch>.", 1);
+  let diff = "";
+  try {
+    git(["fetch", "origin", base, remote.branch], { stdio: ["inherit", "pipe", "pipe"] });
+    diff = git(["diff", `origin/${base}...origin/${remote.branch}`]);
+  } catch (e) {
+    const err = String(e.stderr || e.message).trim();
+    if (/couldn't find remote ref|no such ref/i.test(err)) {
+      fail(`la branch '${remote.branch}' ya no está en origin (¿la PR se mergeó y se borró la branch?). ` +
+        `Un review inline necesita el diff vivo; sobre una PR cerrada no hay dónde anclar.`, 1);
+    }
+    fail(`no pude traer el diff de ${base}...${remote.branch}: ${err}`, 1);
+  }
+
+  // 1. Validar contra el diff. 2. Filtrar. Nada se cae en silencio: todo se reporta.
+  const { valid, rejected } = validateFindings(review.findings, diffPositions(diff));
+  const { kept, suppressed } = filterFindings(valid, {
+    minSeverity: opts.minSeverity || "low",
+    minConfidence: opts.minConfidence ? Number(opts.minConfidence) : 0,
+    maxComments: opts.maxComments ? Number(opts.maxComments) : Infinity,
+  });
+
+  const body = renderReviewSummary(review, { kept, suppressed, rejected });
+  const comments = kept.map((f) => ({ path: f.path, line: f.line, side: f.side, body: renderFindingBody(f) }));
+
+  // ── Preview (acción hacia afuera: se muestra SIEMPRE, se postea solo con --yes) ──
+  process.stdout.write(`\n  ── Review a postear en ${remote.url || `#${pr.number}`} ──────────\n`);
+  process.stdout.write(`  forge:    ${pr.forge}${pr.forge === "gitlab" ? " (no atómico: son N llamadas)" : " (atómico: 1 llamada)"}\n`);
+  process.stdout.write(`  diff:     ${base}...${remote.branch}\n`);
+  process.stdout.write(`  hallazgos: ${review.findings.length} en el archivo · ${kept.length} a postear · ${suppressed.length} filtrados · ${rejected.length} descartados\n\n`);
+  for (const f of kept) process.stdout.write(`  ✓ ${f.path}:${f.line} [${f.severity}] ${f.body.split("\n")[0].slice(0, 60)}\n`);
+  for (const { finding: f, reason } of suppressed) process.stdout.write(`  ~ ${f.path}:${f.line} [${f.severity}] filtrado — ${reason}\n`);
+  for (const { finding: f, reason } of rejected) process.stdout.write(`  ✗ ${f.path}:${f.line} [${f.severity}] DESCARTADO — ${reason}\n`);
+  process.stdout.write(`\n  ───────────────────────────────────────────────\n${body}\n  ───────────────────────────────────────────────\n`);
+
+  if (rejected.length) {
+    warn(`${rejected.length} hallazgo(s) NO apuntan al diff y no se postean. Corregí el 'path'/'line' en ${opts.from} o borralos.`);
+  }
+  if (opts.dryRun) { info("[dry-run] no se posteó nada."); return; }
+  if (!opts.yes) {
+    info(`Nada posteado. Revisá el preview y, si está bien:  dai forge review ${pr.number} --from ${opts.from} --yes`);
+    return;
+  }
+  if (!kept.length && !review.summary) fail("no hay nada que postear (0 comentarios y resumen vacío).", 1);
+
+  const res = await postReview(pr, { body, comments, headSha: remote.headSha, diffRefs: remote.diffRefs }, process.env);
+  ok(`review posteado${res.url ? `: ${res.url}` : ""} — ${res.posted} comentario(s) en línea.`);
+  if (res.failed.length) {
+    warn(`${res.failed.length} comentario(s) NO entraron (gitlab no es atómico: el resumen y el resto SÍ están posteados):`);
+    for (const f of res.failed) process.stdout.write(`    ✗ ${f.path}:${f.line} — ${f.error}\n`);
+  }
+  info("La aprobación la firma un humano: dai comentó, no aprobó (Art. 5).");
 }
 
 // ── publish: crea la US en el tracker desde un .md (fallback del MCP) ──────────
@@ -1160,7 +1232,10 @@ switch (cmd) {
       "  done [--base main] [--force] cierra la US: vuelve a la base, actualiza y borra la branch local (si está mergeada)\n" +
       "  archive [<change>] [--skip-specs]   funde los delta specs del change en las specs canónicas y lo archiva (lo corre el aprobador en la PR)\n" +
       "  pr (alias mr) [--assignee u] [--base b] [--draft] [--yes]   crea TU PR/MR precargada (muestra + confirma)\n" +
-      "  forge comment <ref> --body-file <f> · forge pr <ref>   comentar/leer una PR ajena (github/gitlab)\n\n" +
+      "  forge comment <ref> --body-file <f> · forge pr <ref>   comentar/leer una PR ajena (github/gitlab)\n" +
+      "  forge review <ref> --from <review.json> [--dry-run|--yes]  review inline: resumen + comentario por línea\n" +
+      "      --min-severity low|medium|high · --min-confidence 0..1 · --max-comments N · --base <branch>\n" +
+      "      Sin --yes no postea nada: muestra el preview y valida que cada hallazgo apunte al diff.\n\n" +
       "Instalación:\n" +
       "  skills install [--global | --local <repo>] [--force] [--dry-run] [--for <asistentes>]   instala las skills de dai (alias: `install`)\n" +
       "  skills install --from <git-url|path>[#ref] [--for <asistentes>]   instala skills EXTERNAS (por-stack), convertidas para los 3 asistentes (ADR-0013)\n" +

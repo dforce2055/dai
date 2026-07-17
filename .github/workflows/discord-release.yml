@@ -1,0 +1,65 @@
+name: Discord release notice
+
+# Avisa al canal de Discord cuando se publica un release en GitHub (Paso 10 de la skill
+# release-dai). El webhook vive en una VARIABLE (Settings → Secrets and variables →
+# Actions → Variables → DISCORD_WEBHOOK_URL), para poder verla y editarla desde la UI.
+# NUNCA en el repo (dai es público + npm): este archivo solo referencia ${{ vars.* }}.
+# Este workflow no viaja en el paquete (.github/ no está en package.json "files"), así
+# que no le impone notificaciones a nadie que use dai.
+#
+# ⚠️ Una variable NO se enmascara sola en los logs (un secret sí). Por eso el primer paso
+# hace `::add-mask::`: aunque un futuro `set -x`/`-v`/`echo` la imprima, GitHub la tapa.
+# Los logs de un repo público son públicos — este blindaje no es opcional.
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Postear en Discord
+        env:
+          WEBHOOK: ${{ vars.DISCORD_WEBHOOK_URL }}
+          TAG: ${{ github.event.release.tag_name }}
+          NAME: ${{ github.event.release.name }}
+          URL: ${{ github.event.release.html_url }}
+          BODY: ${{ github.event.release.body }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then
+            echo "::warning::DISCORD_WEBHOOK_URL no está configurada (Actions → Variables) — no se notifica."
+            exit 0
+          fi
+          # La variable es texto plano y no se enmascara sola: la tapamos en los logs ya mismo,
+          # antes de cualquier uso, por si un futuro cambio la imprime (repo público = logs públicos).
+          echo "::add-mask::$WEBHOOK"
+          # Discord corta los embeds ~4096 chars; recortamos el cuerpo del release por las dudas.
+          DESC=$(printf '%s' "$BODY" | head -c 1500)
+          VERSION="${TAG#v}"
+          # jq -n --arg arma el JSON de forma segura aunque el cuerpo traiga comillas, backticks o saltos.
+          PAYLOAD=$(jq -n \
+            --arg title "📦 ${NAME:-dai $TAG}" \
+            --arg url "$URL" \
+            --arg desc "$DESC" \
+            --arg install "npm i -g @dforce2055/dai@${VERSION}" \
+            --argjson pre "${PRERELEASE:-false}" \
+            '{
+              username: "dai",
+              embeds: [{
+                title: $title,
+                url: $url,
+                description: $desc,
+                color: (if $pre then 16098851 else 5763719 end),
+                fields: [
+                  { name: "Instalar / actualizar", value: ("```\n" + $install + "\n```") }
+                ],
+                footer: { text: "Revisión asistida por dai · la persona firma" }
+              }]
+            }')
+          code=$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
+            -H "Content-Type: application/json" -d "$PAYLOAD" "$WEBHOOK")
+          echo "Discord respondió $code"
+          # 204 = posteado OK. Cualquier otra cosa es un fallo real: que la Action lo marque.
+          [ "$code" = "204" ]
