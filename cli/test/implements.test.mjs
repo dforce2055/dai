@@ -66,7 +66,7 @@ test("isPlaceholderId detecta plantillas sin completar", () => {
   assert.equal(isPlaceholderId("ABC-###"), true);
   assert.equal(isPlaceholderId("<change-id>"), true);
   assert.equal(isPlaceholderId(""), true);
-  assert.equal(isPlaceholderId("86ajcjwzk"), false);
+  assert.equal(isPlaceholderId("86acme731"), false);
   assert.equal(isPlaceholderId("ABC-482"), false);
 });
 
