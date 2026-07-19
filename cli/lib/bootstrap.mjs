@@ -47,13 +47,38 @@ function unquoteScalar(s) {
 // Parsea el frontmatter YAML de un SKILL.md → { name, description, body }.
 // Devuelve los valores YA sin comillas, para que quien los reserialice (skillToCursor)
 // no los cite dos veces.
+// Lee un campo del frontmatter. Soporta escalar de una línea (con/sin comillas) y BLOQUE
+// YAML (`|` literal, `>` plegado, con chomp `-`/`+`): junta las líneas indentadas siguientes
+// hasta la próxima clave (columna 0). El parser de dai es regex, no un YAML completo — esto
+// cubre lo común: descripciones multilínea, que es como se escriben las skills reales.
+function readFmField(fm, key) {
+  const lines = fm.split(/\r?\n/);
+  const keyRe = new RegExp(`^${key}:\\s*(.*)$`);
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(keyRe);
+    if (!m) continue;
+    const inline = m[1].trim();
+    const blk = inline.match(/^([|>])[-+]?\s*$/);       // |, >, |-, |+, >-, >+
+    if (!blk) return unquoteScalar(inline) || null;     // escalar de una línea
+    const buf = [];
+    for (let j = i + 1; j < lines.length; j++) {
+      if (lines[j].trim() === "") { buf.push(""); continue; }
+      if (!/^\s/.test(lines[j])) break;                 // sin indentar → empezó otra clave
+      buf.push(lines[j]);
+    }
+    const indent = ((buf.find((l) => l.trim() !== "") || "").match(/^\s*/) || [""])[0].length;
+    const text = buf.map((l) => l.slice(indent)).join("\n").replace(/\s+$/, "");
+    // `>` plegado: un salto simple → espacio; los dobles (párrafo) se conservan.
+    return (blk[1] === ">" ? text.replace(/([^\n])\n(?!\n)/g, "$1 ") : text) || null;
+  }
+  return null;
+}
+
 export function parseFrontmatter(md) {
   const m = md.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
   if (!m) return { name: null, description: null, body: md.trim() };
   const fm = m[1];
-  const name = unquoteScalar((fm.match(/^name:\s*(.+)$/m) || [])[1]) || null;
-  const description = unquoteScalar((fm.match(/^description:\s*(.+)$/m) || [])[1]) || null;
-  return { name, description, body: m[2].trim() };
+  return { name: readFmField(fm, "name"), description: readFmField(fm, "description"), body: m[2].trim() };
 }
 
 // Valida el contrato MÍNIMO de un SKILL.md para que dai lo ingiera y los asistentes lo
@@ -66,7 +91,11 @@ export function validateSkill(md) {
   if (!name) return "falta 'name' en el frontmatter";
   if (!description) return "falta 'description' en el frontmatter";
   for (const key of ["name", "description"]) {
-    const issue = yamlScalarIssue(rawFrontmatterValue(md, key));
+    const raw = rawFrontmatterValue(md, key);
+    // Un bloque YAML (`|`, `>`, con chomp) es literal → siempre válido; su contenido va en las
+    // líneas indentadas, no en el valor de la clave. No lo pasamos por el scalar-check.
+    if (/^[|>][-+]?\s*$/.test(String(raw ?? "").trim())) continue;
+    const issue = yamlScalarIssue(raw);
     if (issue) return `'${key}' no es YAML válido: ${issue} — citá el valor con comillas dobles`;
   }
   return null;

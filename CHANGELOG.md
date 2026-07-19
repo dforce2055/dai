@@ -17,9 +17,14 @@ una bienvenida con el Sol de Mayo en bloques.**
   `NO_COLOR`.
 - **`dai skills install --from npm:@scope/pkg`** — nueva fuente para skills externas
   ([ADR-0013](docs/adr/0013-skills-externas-install-from.md)): además de git URL y path
-  local, ahora un **paquete npm**. dai hace `npm pack` a un temp respetando el `.npmrc` del
-  repo, así resuelve **registries privados con scope**. Es común distribuir skills como
-  paquete npm; antes había que materializarlo a mano.
+  local, ahora un **paquete npm**. dai hace `npm install` a un temp (respetando el `.npmrc`
+  del repo, así resuelve **registries privados con scope**; `npm pack` no sirve con los
+  registries de grupo de GitLab). Es común distribuir skills como paquete npm; antes había
+  que materializarlo a mano.
+- **Descripciones en bloque YAML (`|` / `>`) en el frontmatter de las skills.** El parser
+  de frontmatter ahora lee bloques literales/plegados multilínea (antes tomaba solo la
+  primera línea `|` y el validador lo rechazaba). Es como se escriben las skills reales:
+  descripciones ricas con "USAR CUANDO / NO USAR CUANDO" que el agente usa para elegirlas.
 
 ### Cambiado
 - **`dai init` escribe en `.env.dai` + `.env.dai.example`, no en `.env`/`.env.example`**
