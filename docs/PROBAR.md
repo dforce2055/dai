@@ -20,7 +20,7 @@ Recorre el loop completo `link-us → check → stamp` sin red ni tokens: todo l
 para ver cómo funciona antes de conectar nada.
 
 ```bash
-# 1. Repo de prueba + bootstrap (dai init deja el .env; elige "md" cuando pregunte)
+# 1. Repo de prueba + bootstrap (dai init deja el .env.dai; elige "md" cuando pregunte)
 mkdir /tmp/dai-test && cd /tmp/dai-test
 git init && git commit --allow-empty -m init
 git remote add origin git@github.com:TU-USUARIO/dai-test.git   # para los links de branch/commit
@@ -60,7 +60,7 @@ Con esto ya viste el ciclo entero. Ahora conéctalo a tu tracker real.
 **Config y flujo:**
 
 ```bash
-cat > .env <<'EOF'
+cat > .env.dai <<'EOF'
 DAI_PM=clickup
 DAI_CLICKUP_TOKEN=pk_XXXXXXXX
 EOF
@@ -77,7 +77,8 @@ dai check                        # ⚠️ ATRASADO (lo detectó solo)
 dai stamp                        # deja un COMENTARIO en la tarea con la cobertura
 ```
 
-> El `.env` está gitignored: el token no se commitea (ADR-0007).
+> El `.env.dai` **no se versiona**: el token no se commitea, y el `.env` del equipo no se
+> toca ([ADR-0017](adr/0017-env-dai.md); modelo de auth en [ADR-0007](adr/0007-modelo-de-autenticacion.md)).
 
 ## Troubleshooting
 

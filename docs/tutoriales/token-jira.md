@@ -66,7 +66,8 @@ tendrías que crear uno nuevo.
 ## Reglas de seguridad (importante)
 
 - 🔒 **Trátalo como una contraseña.** Nunca lo pegues en el código, en un commit, en un chat
-  ni en el `implements.yaml`. Solo va en `.env` (gitignored).
+  ni en el `implements.yaml`. Solo va en `.env.dai`, que **no se versiona** (el `.env` del
+  equipo no se toca; ver [ADR-0017](../adr/0017-env-dai.md)).
 - ♻️ **Rótalo** periódicamente y **revoca** los que no uses (misma pantalla del paso 3, columna
   *Acción → Revocar*).
 - ⏱️ **Vencimiento:** el token deja de funcionar en la fecha que pusiste; anota cuándo renovarlo.

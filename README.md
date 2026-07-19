@@ -63,7 +63,7 @@ Y después, en el chat del asistente, según lo que tengas:
 
 > Las skills **te interrogan** hasta que la historia es testeable (nunca inventan
 > requerimientos: los sacan a preguntas), y la **publican en el tracker** que configuraste
-> (`DAI_PM` en el `.env`): por el **MCP** de Jira/ClickUp si está conectado, o con
+> (`DAI_PM` en el `.env.dai`): por el **MCP** de Jira/ClickUp si está conectado, o con
 > **`dai publish <us.md>`** si no (crea el issue vía token). Tú respondes y decides.
 
 ¿Sin MCP, o quieres publicar a mano? `dai publish` sube el `.md` al tracker y te devuelve el key:
@@ -87,7 +87,7 @@ Una vez, preparas el repo:
 ```bash
 npm i -g @dforce2055/dai
 cd mi-repo && dai init          # bootstrap: skills + tracker + OpenSpec + PR template
-# completa el token del tracker en .env  (o DAI_PM=md para probar sin credenciales)
+# completa el token del tracker en .env.dai  (o DAI_PM=md para probar sin credenciales)
 dai doctor                      # verifica que todo quedó en su lugar
 ```
 
@@ -169,7 +169,7 @@ flowchart TD
 | 14 | **Cerrar la US** | `dai done` → vuelve a la base, actualiza y borra la branch local (si está mergeada) | dev |
 
 > **Paso 3b (publicar):** el MCP crea el issue interactivamente; `dai publish` necesita el
-> token del tracker en `.env` (Jira además `DAI_JIRA_PROJECT`, ClickUp `DAI_CLICKUP_LIST_ID`).
+> token del tracker en `.env.dai` (Jira además `DAI_JIRA_PROJECT`, ClickUp `DAI_CLICKUP_LIST_ID`).
 >
 > **Paso 7 (OpenSpec):** `dai init` te ofrece instalarlo **e inicializarlo** solo. Si los
 > comandos `/opsx:*` no aparecen en el asistente, reinicia el IDE (se cargan al iniciar).
@@ -183,8 +183,8 @@ flowchart TD
 |---|---|
 | `dai init [<repo>]` | scaffolder interactivo del repo. Flags: `--for claude\|copilot\|both\|cursor\|all` (asistente, default `all`) · `--pm md\|jira\|clickup` (tracker) · `--openspec` |
 | `dai skills install [--global \| --local <repo>] [--force] [--dry-run] [--for claude\|copilot\|cursor\|all]` | instala/actualiza las skills de dai en Claude, Copilot y/o Cursor (`--for all` por defecto; Copilot global → `~/.copilot/skills`, local → `.github/skills/`). `--force` re-copia. Alias: **`dai install`**. Ej: `dai skills install --local . --for cursor --force` |
-| `dai skills install --from <git-url\|path>[#ref] [--for …]` | instala **skills externas** (por-stack: .NET, Java, …) desde un repo/dir, **convertidas para los 3 asistentes**. Self-service, one-off, sin registro; `dai sync` no las toca. Colisión con una skill de dai → salta ([ADR-0013](docs/adr/0013-skills-externas-install-from.md)). Ej: `dai skills install --from github.com/mi-org/net-skills` |
-| `dai sync [--dry-run] [--for <asistentes>]` | **refresca** skills, constitución, templates y PR template a la versión del CLI — **aditivo** (no pisa tu `CLAUDE.md`), no toca el `.env` ni OpenSpec. Detecta los asistentes del repo o pasás `--for`. `--dry-run` muestra qué cambiaría ([ADR-0010](docs/adr/0010-versionado-y-upgrade.md)) |
+| `dai skills install --from <git-url\|npm:pkg\|path>[#ref] [--for …]` | instala **skills externas** (por-stack: .NET, Java, …) desde un repo/dir/**paquete npm**, **convertidas para los 3 asistentes**. Self-service, one-off, sin registro; `dai sync` no las toca. Colisión con una skill de dai → salta ([ADR-0013](docs/adr/0013-skills-externas-install-from.md)). Ej: `dai skills install --from github.com/mi-org/net-skills` · `dai skills install --from npm:@mi-org/ui-skills` (usa el `.npmrc` del repo → registries privados OK) |
+| `dai sync [--dry-run] [--for <asistentes>]` | **refresca** skills, constitución, templates y PR template a la versión del CLI — **aditivo** (no pisa tu `CLAUDE.md`), no toca el `.env.dai` ni OpenSpec. Detecta los asistentes del repo o pasás `--for`. `--dry-run` muestra qué cambiaría ([ADR-0010](docs/adr/0010-versionado-y-upgrade.md)) |
 | `dai upgrade [--check] [--dry-run]` · alias `dai update` | **actualiza el CLI global** a la última publicada (`npm i -g …@latest`) — self-update. **No toca el repo**: reporta el drift del scaffold pero deja el `dai sync` al mantenedor. `--check` solo informa · `--dry-run` muestra el comando ([ADR-0012](docs/adr/0012-upgrade-self-update-del-cli.md)) |
 | `dai publish <us.md> [--parent KEY] [--issuetype T] [--field alias=valor]` | crea la US en el tracker (Jira/ClickUp/md) desde un `.md` y devuelve el key — el fallback del MCP para publicar sin el asistente. `--parent PROJ-42` la cuelga de su épica · `--issuetype Epic` publica una épica (fallback CLI de `grill-epic`) · `--field clasificacion=Mejora` (repetible) manda los campos propios que exige tu Jira, declarados en `.dai/jira-fields.json` ([ADR-0015](docs/adr/0015-jira-corporativo.md)) |
 | `dai link-us <ID> [--us <md>]` | crea branch + `implements.yaml`; sin `--us` trae la US del tracker |
@@ -203,16 +203,18 @@ flowchart TD
 > **🆕 Mantené tu repo al día — `dai sync`.** Las skills, la constitución y los templates son un
 > *caché derivable* del CLI. Cuando actualizás `dai` (`dai upgrade`), **`dai doctor` y
 > `dai version` te avisan solos** si tu scaffold quedó atrás — con color y un `⬆️` —, y **`dai sync`**
-> lo refresca: **aditivo** (conserva tu `CLAUDE.md` propio), sin tocar el `.env` ni OpenSpec. Prueba sin
+> lo refresca: **aditivo** (conserva tu `CLAUDE.md` propio), sin tocar el `.env.dai` ni OpenSpec. Prueba sin
 > riesgo con `dai sync --dry-run`. El versionado es semver: patch/minor no rompen nada; solo un major
 > pediría migración. ([ADR-0010](docs/adr/0010-versionado-y-upgrade.md))
 
 > **🧩 Skills de cualquier stack — `dai skills install --from`.** Además de las skills de
-> dai, cada equipo suma las suyas (por-stack: .NET, Java, Rust…) desde su propio repo:
-> `dai skills install --from github.com/tu-org/net-skills`. dai las **convierte para los 3
-> asistentes** (Claude/Cursor/Copilot) e instala. **dai es el distribuidor de skills de
-> cualquier stack, sin opinar sobre su contenido** — self-service, sin registro; `dai sync`
-> sigue siendo solo de dai. ([ADR-0013](docs/adr/0013-skills-externas-install-from.md))
+> dai, cada equipo suma las suyas (por-stack: .NET, Java, Rust…) desde su propio repo o
+> **paquete npm**: `dai skills install --from github.com/tu-org/net-skills` · `dai skills
+> install --from npm:@tu-org/ui-skills` (el paquete npm usa el `.npmrc` del repo, así
+> resuelve registries privados con scope). dai las **convierte para los 3 asistentes**
+> (Claude/Cursor/Copilot) e instala. **dai es el distribuidor de skills de cualquier stack,
+> sin opinar sobre su contenido** — self-service, sin registro; `dai sync` sigue siendo solo
+> de dai. ([ADR-0013](docs/adr/0013-skills-externas-install-from.md))
 >
 > La fuente puede ser **pública, privada (por SSH) o un path local**: dai no hace auth
 > propia, delega en git — **si puedes `git clone` el repo, dai instala desde ahí**. Para
@@ -229,8 +231,9 @@ flowchart TD
 > en [`skills/`](skills/).
 
 Skills (se invocan en el asistente): `/doc-to-backlog` · `/grill-intent` · `/grill-epic` · `/grill-user-story` · `/link-us` ·
-`/tdd` · `/dai-review`. Config del tracker (`md`\|`jira`\|`clickup`) y tokens: en `.env` —
-ver [`.env.example`](.env.example). Auth (SSH + tokens): [ADR-0007](docs/adr/0007-modelo-de-autenticacion.md).
+`/tdd` · `/dai-review`. Config del tracker (`md`\|`jira`\|`clickup`) y tokens: en `.env.dai`
+(no versionado; el `.env` del equipo no se toca — [ADR-0017](docs/adr/0017-env-dai.md)) —
+ver [`.env.dai.example`](.env.dai.example). Auth (SSH + tokens): [ADR-0007](docs/adr/0007-modelo-de-autenticacion.md).
 
 ## El flag `--for` — ¿para qué asistente preparo el repo?
 
@@ -262,7 +265,7 @@ Después de `dai init` (con `--for all`):
 ```
 mi-repo/
 ├── CLAUDE.md                       · Constitución del proyecto (auto-cargada por Claude)
-├── .env                            · configurado con tu tracker (gitignored, completa el token)
+├── .env.dai                        · tu tracker (NO versionado, completa el token) + .env.dai.example (plantilla, sí versionada)
 ├── .claude/skills/                 · Las skills, locales al repo (el equipo las hereda)
 │   └── doc-to-backlog · grill-intent · grill-epic · grill-user-story · link-us · tdd · dai-review
 ├── .github/
@@ -334,7 +337,7 @@ dai/
 ├── skills/         🤖  doc-to-backlog · grill-intent · grill-epic · grill-user-story · link-us · tdd · dai-review
 ├── governance/     🛡️  branch-naming · ci-rules · commit-convention
 ├── index.html      📊  landing autocontenido (la historia); publicable por GitHub Pages
-└── manifest.yaml · VERSION · install.sh (shim) · .env.example
+└── manifest.yaml · VERSION · install.sh (shim) · .env.dai.example
 ```
 
 ## Licencia

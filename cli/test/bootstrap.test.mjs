@@ -117,7 +117,8 @@ test("reconcileGitignore versiona artefactos de dai y deja fuera solo lo persona
   assert.doesNotMatch(text, /^CLAUDE\.md$/m);                 // deja versionar la constitución
   assert.match(text, /node_modules/);                        // no toca lo demás
   assert.match(text, /\.claude\/settings\.local\.json/);     // solo lo personal fuera
-  assert.match(text, /^\.env$/m);
+  assert.match(text, /^\.env\.dai$/m);                        // dai ignora SU archivo de secretos
+  assert.doesNotMatch(text, /^\.env$/m);                      // el .env del equipo NO se toca (ADR-0017)
 });
 
 test("reconcileGitignore es idempotente y no duplica", () => {
@@ -164,6 +165,45 @@ test("validateSkill rechaza el frontmatter que Copilot no puede parsear", () => 
 test("validateSkill acepta la misma descripción, citada", () => {
   const ok = '---\nname: doc-to-backlog\ndescription: "Toma un doc. NO emite US finales: extrae candidatos"\n---\n\nbody';
   assert.equal(validateSkill(ok), null);
+});
+
+// ── Descripciones en BLOQUE YAML (`|` / `>`) — así se escriben las skills reales, con
+// descripciones multilínea "USAR CUANDO / NO USAR CUANDO". El parser de dai (regex) las
+// leía mal (tomaba solo `|`) y el validador las rechazaba. ──
+
+test("parseFrontmatter lee un description en bloque literal (|) multilínea", () => {
+  const md = [
+    "---",
+    "name: ui-select",
+    "description: |",
+    "  Combo con búsqueda del framework.",
+    "  USAR CUANDO: hay muchas opciones.",
+    "  NO USAR CUANDO: pocas opciones fijas.",
+    "---",
+    "",
+    "# Cuerpo de la skill",
+  ].join("\n");
+  const { name, description, body } = parseFrontmatter(md);
+  assert.equal(name, "ui-select");
+  assert.equal(description, "Combo con búsqueda del framework.\nUSAR CUANDO: hay muchas opciones.\nNO USAR CUANDO: pocas opciones fijas.");
+  assert.equal(body, "# Cuerpo de la skill");
+});
+
+test("parseFrontmatter: bloque plegado (>) une líneas con espacio", () => {
+  const md = ["---", "name: x", "description: >", "  una", "  descripción", "  plegada", "---", "", "body"].join("\n");
+  assert.equal(parseFrontmatter(md).description, "una descripción plegada");
+});
+
+test("validateSkill acepta un description en bloque (antes lo rechazaba por el '|')", () => {
+  const md = ["---", "name: ui-table", "description: |", "  Tabla del framework.", "  USAR CUANDO: hay que listar datos: filas y columnas.", "---", "", "body"].join("\n");
+  assert.equal(validateSkill(md), null);
+});
+
+test("skillToCursor emite un description de bloque como escalar válido (round-trip)", () => {
+  const md = ["---", "name: ui-x", "description: |", "  linea uno", "  linea: dos", "---", "", "cuerpo"].join("\n");
+  const rt = parseFrontmatter(skillToCursor(md));    // convertir y re-parsear
+  assert.equal(rt.name, "ui-x");
+  assert.equal(rt.description, "linea uno\nlinea: dos");   // multilínea preservada, válido
 });
 
 test("parseFrontmatter saca las comillas (si no, skillToCursor citaría dos veces)", () => {
