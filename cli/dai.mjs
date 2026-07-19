@@ -682,14 +682,17 @@ function cmdInstallFrom(opts) {
     try {
       // `npm pack` resuelve el registry del `.npmrc` del cwd (así anda con registries
       // privados con scope) y deja el .tgz en tmp; lo extraemos (npm siempre a `package/`).
-      runNpmTool("npm", ["pack", src.location, "--pack-destination", tmp, "--silent"], { stdio: ["ignore", "pipe", "pipe"] });
+      // SIN `--silent`: si npm falla (404, auth, registry mal), queremos el error real,
+      // no un mensaje vacío. Capturamos stderr y lo mostramos.
+      runNpmTool("npm", ["pack", src.location, "--pack-destination", tmp], { stdio: ["ignore", "ignore", "pipe"] });
       const tgz = readdirSync(tmp).find((f) => f.endsWith(".tgz"));
       if (!tgz) throw new Error("npm pack no dejó un .tgz");
       execFileSync("tar", ["-xzf", join(tmp, tgz), "-C", tmp]);
       root = join(tmp, "package");
     } catch (e) {
       rmSync(tmp, { recursive: true, force: true });
-      fail(`no pude bajar el paquete npm '${src.location}': ${String(e.stderr || e.message).split("\n")[0]}`, 1);
+      const detail = String(e.stderr || e.stdout || e.message || "").split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 3).join("\n         ");
+      fail(`no pude bajar el paquete npm '${src.location}':\n         ${detail || "npm pack falló — revisá el spec, el registry y el .npmrc del repo"}`, 1);
     }
   } else {
     root = src.location;
