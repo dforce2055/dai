@@ -45,9 +45,10 @@ El token empieza con `pk_` (ej. `pk_1234567_ABCDEFG…`). Haz clic en **Copy** p
 
 ---
 
-## Paso 4 — Guárdalo en tu `.env`
+## Paso 4 — Guárdalo en tu `.env.dai`
 
-Pega el token en el `.env` del repo (que está gitignored), en la variable que espera dai:
+Pega el token en el `.env.dai` del repo (que **no se versiona**; el `.env` del equipo no se
+toca — [ADR-0017](../adr/0017-env-dai.md)), en la variable que espera dai:
 
 ```bash
 DAI_PM=clickup
@@ -62,11 +63,11 @@ Verifica con `dai doctor` → debería decir **"token de ClickUp presente"**.
 ## Reglas de seguridad (importante)
 
 - 🔒 **Trátalo como una contraseña.** Nunca lo pegues en el código, en un commit, en un chat
-  ni en el `implements.yaml`. Solo va en `.env` (gitignored).
+  ni en el `implements.yaml`. Solo va en `.env.dai` (no versionado).
 - ♻️ **No vence por sí solo** (a diferencia de Jira): queda válido hasta que lo **regeneres**.
   Regenerar crea uno nuevo e **invalida el anterior al instante** — así lo rotas y así cortas
   el acceso de uno filtrado.
 - 👤 **Es personal:** representa a tu usuario, con tus permisos. Cada dev usa el suyo, nunca
   uno compartido.
 - 🧯 **Si se filtra**, entra a la misma pantalla (paso 3) y haz **Regenerate** de inmediato;
-  el viejo deja de funcionar y actualizas el `.env` con el nuevo.
+  el viejo deja de funcionar y actualizas el `.env.dai` con el nuevo.

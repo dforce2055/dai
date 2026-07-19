@@ -233,7 +233,7 @@ de N3 queda **una** decisión sin resolver; el resto se cerró al construir la h
 
 **Ya resueltas** (al construir dai):
 - **Adaptador de PM configurable** → `getAdapter` (backends `md`/`jira`/`clickup`, token del
-  `.env`); modelo de auth en [ADR-0007](adr/0007-modelo-de-autenticacion.md).
+  `.env.dai` no versionado — [ADR-0017](adr/0017-env-dai.md)); modelo de auth en [ADR-0007](adr/0007-modelo-de-autenticacion.md).
 - **Formato de `implements.yaml`** → congelado en [ADR-0004](adr/0004-ubicacion-y-schema-implements.md)
   (schema + ubicación + descubrimiento por glob).
 - **Escritura multi-repo en el tracker** → `dai stamp` deja un **comentario por repo** (no se

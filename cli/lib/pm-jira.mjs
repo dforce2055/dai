@@ -15,7 +15,7 @@ const trim = (b) => String(b || "").replace(/\/+$/, "");
 // error de config más común: `dai init` deja DAI_JIRA_PROJECT vacío y quien lo completa
 // suele pegar la épica que tiene a mano. Jira responde un 400 que no lo explica.
 export function assertProjectKey(key) {
-  if (!key) throw new Error("falta DAI_JIRA_PROJECT en el .env (la clave del proyecto donde crear el issue).");
+  if (!key) throw new Error("falta DAI_JIRA_PROJECT en el .env.dai (la clave del proyecto donde crear el issue).");
   const k = String(key).trim();
   const m = k.match(/^([A-Za-z][A-Za-z0-9_]*)-\d+$/);
   if (m) {
@@ -136,7 +136,7 @@ export function createHint(status, body = "") {
 
 export function jiraAdapter(env) {
   const base = env.DAI_JIRA_BASE_URL;
-  if (!base) throw new Error("falta DAI_JIRA_BASE_URL en el .env (backend jira).");
+  if (!base) throw new Error("falta DAI_JIRA_BASE_URL en el .env.dai (backend jira).");
   return {
     kind: "jira",
     async fetchUS(id) {

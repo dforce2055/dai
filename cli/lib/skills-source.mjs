@@ -15,6 +15,14 @@ export function parseSource(src) {
   const hash = raw.lastIndexOf("#");
   if (hash > 0) { ref = raw.slice(hash + 1) || null; loc = raw.slice(0, hash); }
 
+  // Paquete npm: `npm:@scope/pkg[@version]`. dai hace `npm pack` a un temp, respetando el
+  // `.npmrc` del repo (así resuelve registries privados con scope). La versión va en el
+  // propio spec (`@1.2.3`), no como ref con '#'.
+  if (loc.startsWith("npm:")) {
+    const spec = loc.slice(4).trim();
+    if (!spec) throw new Error("fuente npm vacía (usá npm:@scope/paquete)");
+    return { type: "npm", location: spec, ref: null };
+  }
   // Path local explícito (./ ../ / ~/).
   if (/^(\.\.?\/|\/|~\/)/.test(loc)) return { type: "path", location: loc, ref };
   // git por sintaxis de URL (https, ssh, scp git@host:…).

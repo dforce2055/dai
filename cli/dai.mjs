@@ -21,7 +21,7 @@ import { createInterface } from "node:readline/promises";
 import { acHash } from "./lib/ac-hash.mjs";
 import { discoverImplements, isPlaceholderId } from "./lib/implements.mjs";
 import { isValidKey, slugify, branchName, extractTitle, renderImplementsYaml } from "./lib/link-us.mjs";
-import { loadEnv } from "./lib/env.mjs";
+import { loadDaiEnv } from "./lib/env.mjs";
 import { getAdapter, coverageStatus, statusLabel } from "./lib/pm-adapter.mjs";
 import { branchUrl, commitUrl, parseRemote, detectForge } from "./lib/forge-url.mjs";
 import { parsePrRef, getPR, postComment, postReview } from "./lib/forge-api.mjs";
@@ -48,8 +48,33 @@ const warn = (m) => process.stdout.write(`⚠ ${m}\n`);
 // Color ANSI mínimo — solo si es TTY y no está NO_COLOR (así no ensucia pipes/CI).
 const _color = process.stdout.isTTY && !process.env.NO_COLOR;
 const paint = (code, m) => (_color ? `\x1b[${code}m${m}\x1b[0m` : m);
-const C = { y: (m) => paint("33", m), r: (m) => paint("31", m), cy: (m) => paint("36", m), b: (m) => paint("1", m) };
+const C = { y: (m) => paint("33", m), r: (m) => paint("31", m), cy: (m) => paint("36", m), b: (m) => paint("1", m), dim: (m) => paint("2", m) };
 const ROOT = join(HERE, "..");            // raíz del paquete dai (cli/ está adentro)
+
+// Banner de bienvenida de `dai init`: el Sol de Mayo en bloques (cuerpo y rayos rectos en
+// oro; rayos ondulados en celeste) al lado del título, más el preview de lo que se configura.
+// Todo con caracteres — cero-dep. Degrada a ASCII sin color si no hay TTY o con NO_COLOR.
+const initBanner = () => {
+  const sun = [
+    "     █     ",
+    " ▒ ▄███▄ ▒ ",
+    "██ █████ ██",
+    " ▒ ▀███▀ ▒ ",
+    "     █     ",
+  ];
+  const paintSun = (line) => [...line].map((ch) => (ch === "▒" ? C.cy(ch) : ch === " " ? " " : C.y(ch))).join("");
+  const aside = ["", paint("1;33", "dai") + " · Desarrollo Asistido por IA", C.dim("La IA asiste; la persona firma."), "", ""];
+  let out = "\n";
+  for (let i = 0; i < sun.length; i++) out += "  " + paintSun(sun[i]) + (aside[i] ? "    " + aside[i] : "") + "\n";
+  out += "\n  " + C.b("Esto va a configurar el repo:") + "\n";
+  for (const b of [
+    "Skills del método (grill · link-us · tdd · dai-review) en tu asistente",
+    "La constitución del proyecto — las reglas del trabajo",
+    "OpenSpec para el CÓMO (design / tasks) — opcional",
+    "Plantilla de PR + .env.dai para el tracker",
+  ]) out += "    " + C.cy("▸") + " " + b + "\n";
+  return out;
+};
 const CLAUDE_SKILLS_DIR = process.env.CLAUDE_SKILLS_DIR || join(homedir(), ".claude", "skills");
 const CURSOR_SKILLS_DIR = process.env.CURSOR_SKILLS_DIR || join(homedir(), ".cursor", "skills");
 // Copilot lee las skills personales de ~/.copilot/skills (NO de ~/.claude/skills, que
@@ -119,10 +144,10 @@ async function cmdLinkUs(key, opts) {
     title = opts.title || extractTitle(md);
   } else {
     // Fuente tracker: traer la US del adaptador (mismo hash que usará `dai check`).
-    loadEnv();
+    loadDaiEnv();
     const adapter = getAdapter(process.env);
     const us = await adapter.fetchUS(key);
-    if (!us) fail(`no encontré la US ${key} en el backend ${adapter.kind}. Pasa --us <md> o revisa el .env.`, 2);
+    if (!us) fail(`no encontré la US ${key} en el backend ${adapter.kind}. Pasa --us <md> o revisa el .env.dai.`, 2);
     hash = us.ac_hash;
     if (hash == null) fail(`la US ${key} no tiene una sección 'Criterios de aceptación' con criterios testeables → sin ac_hash, no se puede linkear.\n  Agregá la sección en el tracker, o corré /grill-user-story ${key} para pulir la US (te interroga y la re-publica).`, 2);
     title = opts.title || us.title;
@@ -180,7 +205,7 @@ function gitCommit() { try { return git(["rev-parse", "HEAD"]); } catch { return
 
 // ── check ──────────────────────────────────────────────────────────────────
 async function cmdCheck() {
-  loadEnv();
+  loadDaiEnv();
   const adapter = getAdapter(process.env);
   const found = discoverImplements(process.cwd(), { includeArchived: false });
   let worst = 0, n = 0;
@@ -211,7 +236,7 @@ async function cmdCheck() {
 
 // ── stamp ──────────────────────────────────────────────────────────────────
 async function cmdStamp() {
-  loadEnv();
+  loadDaiEnv();
   const adapter = getAdapter(process.env);
   const remote = gitRemote(), branch = gitBranch(), commit = gitCommit();
   const found = discoverImplements(process.cwd());
@@ -233,7 +258,7 @@ async function cmdStamp() {
 
 // ── forge (review) ───────────────────────────────────────────────────────────
 async function cmdForge(sub, ref, opts) {
-  loadEnv();
+  loadDaiEnv();
   const pr = parsePrRef(ref, gitRemote());
   if (!pr) fail("no pude resolver la PR/MR. Pasa la URL completa o el número (con remoto git).", 1);
   if (sub === "pr") {
@@ -332,7 +357,7 @@ function loadJiraFieldsSpec() {
 
 async function cmdPublish(file, opts = {}) {
   if (!file) fail("uso: dai publish <archivo-us.md> [--parent KEY] [--issuetype T] [--field alias=valor]", 1);
-  loadEnv();
+  loadDaiEnv();
   const md = readFileSync(file, "utf8");
   const title = extractTitle(md);
   if (!title) fail("no pude extraer el título de la US (falta un '# Título').", 1);
@@ -409,7 +434,7 @@ function cmdDone(opts) {
 // ── pr: crea TU PROPIA PR/MR precargada desde el template + el link ────────────
 // (Distinto de dai-review, que revisa la PR de OTRO. Tu PR la creas y revisas tú.)
 async function cmdPr(opts) {
-  loadEnv();
+  loadDaiEnv();
   const remote = gitRemote(), branch = gitBranch(), commit = gitCommit();
   if (!remote) fail("no hay remoto git 'origin'. Configúralo para crear la PR.", 1);
   if (!branch || branch === "HEAD") fail("no estás en una branch.", 1);
@@ -447,7 +472,7 @@ async function cmdPr(opts) {
   for (const f of found) for (const im of f.implements || []) {
     if (!isPlaceholderId(im.id)) { entry = { f, im }; break; }
   }
-  if (!entry) fail("no encontré un implements.yaml con una US real. Ejecuta `dai link-us` primero.", 1);
+  if (!entry) fail("no hay una US linkeada (implements.yaml). Si este PR implementa una US, corré `dai link-us` primero. Si es un chore/tooling (sin US), creá la PR con tu forge: `glab mr create` / `gh pr create`.", 1);
   const { id, version, ac_hash } = entry.im;
 
   // 2. Estado de trazabilidad (dai check) contra la US viva.
@@ -470,7 +495,7 @@ async function cmdPr(opts) {
   const usUrl = usUrlFor(id, live?.url);
   if (!usUrl) {
     warn(`no sé la URL de ${id} en el tracker: la PR va a quedar sin link a la US.`);
-    warn(`configurá DAI_TRACKER_URL_TEMPLATE en el .env (p. ej. https://tu-tracker/browse/{id}).`);
+    warn(`configurá DAI_TRACKER_URL_TEMPLATE en el .env.dai (p. ej. https://tu-tracker/browse/{id}).`);
   }
   const body = composePrBody(readFileSync(tplPath, "utf8"), {
     id, version, ac_hash, status, usUrl, usTitle: live?.title, commits,
@@ -632,7 +657,7 @@ async function cmdInstall(opts) {
 // dai (colisión → warn + skip). `dai sync` NO las toca: es solo de dai.
 function cmdInstallFrom(opts) {
   if (typeof opts.from !== "string" || !opts.from.trim())
-    fail("--from necesita una fuente: un git URL (github.com/org/skills[#ref]) o un path local", 2);
+    fail("--from necesita una fuente: un git URL (github.com/org/skills[#ref]), un paquete npm (npm:@scope/pkg) o un path local", 2);
   let want;
   try { want = parseAssistants(typeof opts.for === "string" ? opts.for : "all"); }
   catch (e) { fail(`--for ${e.message}`); }
@@ -651,6 +676,33 @@ function cmdInstallFrom(opts) {
     try { git(args); }
     catch (e) { rmSync(tmp, { recursive: true, force: true }); fail(`no pude clonar la fuente: ${String(e.message).split("\n")[0]}`, 1); }
     root = tmp;
+  } else if (src.type === "npm") {
+    tmp = mkdtempSync(join(tmpdir(), "dai-skills-"));
+    info(`bajando el paquete npm ${src.location} …`);
+    try {
+      // `npm install` (no `npm pack`) en el temp. Dos decisiones a propósito:
+      // 1) install en vez de pack: los registries de GRUPO de GitLab devuelven una
+      //    `dist.tarball` malformada (el scope duplicado en el nombre) que `npm pack` sigue
+      //    literal y da 404; `npm install` —como `npx`— reconstruye la URL y resuelve.
+      // 2) copiamos el `.npmrc` del repo al temp y corremos con cwd=temp: así npm ve el
+      //    registry/scope privado (con `--prefix` npm NO lee el `.npmrc` del cwd y se va al
+      //    registry público). `--ignore-scripts`: no corremos scripts de un paquete de 3ros.
+      const repoNpmrc = join(process.cwd(), ".npmrc");
+      if (existsSync(repoNpmrc)) cpSync(repoNpmrc, join(tmp, ".npmrc"));
+      runNpmTool("npm", ["install", src.location,
+        "--no-save", "--no-package-lock", "--ignore-scripts", "--no-audit", "--no-fund"],
+        { cwd: tmp, stdio: ["ignore", "ignore", "pipe"] });
+      // El paquete queda en <tmp>/node_modules/<name>. name = spec sin la versión
+      // (@scope/pkg@1.2.3 → @scope/pkg; el `@` inicial del scope no cuenta).
+      let name = src.location; const at = name.lastIndexOf("@");
+      if (at > 0) name = name.slice(0, at);
+      root = join(tmp, "node_modules", name);
+      if (!existsSync(root)) throw new Error(`npm install no dejó '${name}' en node_modules`);
+    } catch (e) {
+      rmSync(tmp, { recursive: true, force: true });
+      const detail = String(e.stderr || e.stdout || e.message || "").split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 3).join("\n         ");
+      fail(`no pude bajar el paquete npm '${src.location}':\n         ${detail || "npm install falló — revisá el spec, el registry y el .npmrc del repo"}`, 1);
+    }
   } else {
     root = src.location;
     if (!existsSync(root)) fail(`no existe la fuente: ${root}`, 2);
@@ -738,7 +790,7 @@ async function cmdInit(repo, opts) {
   }
   const rl = process.stdin.isTTY ? createInterface({ input: process.stdin, output: process.stdout }) : null;
 
-  process.stdout.write("\n  dai · configurar este repo para desarrollo asistido por IA\n");
+  process.stdout.write(initBanner());
 
   // Preguntas primero (después cerramos readline para liberar stdin a los instaladores).
   let forOpt = typeof opts.for === "string" ? opts.for.toLowerCase() : null;
@@ -789,28 +841,32 @@ async function cmdInit(repo, opts) {
   writeFileSync(join(dai, "VERSION"), readFileSync(join(ROOT, "VERSION"), "utf8"));
   ok(".dai/         moldes (templates) + reglas (governance) del método");
 
-  // .env.example — aditivo, reflejando el --pm elegido: mismas claves que el .env
-  // (con valores VACÍOS, sin secretos) para que el token del tracker esté presente.
-  const exSrc = envFor(pm);
-  const exPath = join(repo, ".env.example");
-  if (existsSync(exPath)) {
-    const cur = readFileSync(exPath, "utf8"), merged = mergeEnv(cur, exSrc);
-    if (merged !== cur) { writeFileSync(exPath, merged); ok(".env.example  claves de dai agregadas (aditivo)"); }
-    else ok(".env.example  ya tenía la config de dai");
-  } else { writeFileSync(exPath, exSrc); ok(".env.example  creado"); }
+  // Config de dai en SUS PROPIOS archivos, sin tocar el `.env`/`.env.example` del equipo:
+  // muchas orgs versionan el `.env` como política, así que dai lo deja en paz (solo lo lee,
+  // por compat) y pone lo suyo en `.env.dai` (ver ADR-0017). `.env.dai.example` se versiona
+  // como plantilla; `.env.dai` (gitignored) es donde cada dev completa token y datos propios.
+  const envBlock = envFor(pm);
 
-  // .env — aditivo: agrega las claves de dai que falten; si no existe, lo crea.
-  const envPath = join(repo, ".env"), envBlock = envFor(pm);
+  // .env.dai.example — plantilla VERSIONADA, mismas claves con valores VACÍOS (sin secretos).
+  const exPath = join(repo, ".env.dai.example");
+  if (existsSync(exPath)) {
+    const cur = readFileSync(exPath, "utf8"), merged = mergeEnv(cur, envBlock);
+    if (merged !== cur) { writeFileSync(exPath, merged); ok(".env.dai.example  claves de dai agregadas (aditivo)"); }
+    else ok(".env.dai.example  ya tenía la config de dai");
+  } else { writeFileSync(exPath, envBlock); ok(".env.dai.example  creado (plantilla versionada)"); }
+
+  // .env.dai — el real de cada dev (gitignored): aditivo; si no existe, lo crea.
+  const envPath = join(repo, ".env.dai");
   if (existsSync(envPath)) {
     const cur = readFileSync(envPath, "utf8"), merged = mergeEnv(cur, envBlock);
-    if (merged !== cur) { writeFileSync(envPath, merged); ok(`.env          claves de dai agregadas (aditivo, DAI_PM=${pm}${pm === "md" ? "" : " — completa el token"})`); }
-    else ok(".env          ya tenía la config de dai");
-  } else { writeFileSync(envPath, envBlock); ok(`.env          listo, DAI_PM=${pm}${pm === "md" ? "" : " (completa el token)"}`); }
+    if (merged !== cur) { writeFileSync(envPath, merged); ok(`.env.dai      claves de dai agregadas (aditivo, DAI_PM=${pm}${pm === "md" ? "" : " — completa el token"})`); }
+    else ok(".env.dai      ya tenía la config de dai");
+  } else { writeFileSync(envPath, envBlock); ok(`.env.dai      creado (no versionado), DAI_PM=${pm}${pm === "md" ? "" : " (completa el token)"}`); }
 
   // .gitignore — versiona los artefactos de dai (según --for), deja fuera solo lo personal.
   const giPath = join(repo, ".gitignore");
   const gi = reconcileGitignore(existsSync(giPath) ? readFileSync(giPath, "utf8") : "", want);
-  if (gi.changed) { writeFileSync(giPath, gi.text.endsWith("\n") ? gi.text : gi.text + "\n"); ok(".gitignore    ajustado (skills/constitución versionadas; .env y settings.local.json fuera)"); }
+  if (gi.changed) { writeFileSync(giPath, gi.text.endsWith("\n") ? gi.text : gi.text + "\n"); ok(".gitignore    ajustado (skills/constitución versionadas; .env.dai y settings.local.json fuera)"); }
 
   mkdirSync(join(repo, ".github"), { recursive: true });
   cpSync(join(ROOT, "templates", "pull-request.md"), join(repo, ".github", "pull_request_template.md"));
@@ -894,12 +950,12 @@ async function cmdInit(repo, opts) {
   }
 
   // ── Próximos pasos ─────────────────────────────────────────────────────────
-  process.stdout.write("\n  ✔ Repo configurado. Próximos pasos:\n");
+  process.stdout.write("\n  " + C.y("✔") + " " + C.b("Repo configurado.") + " Próximos pasos:\n");
   process.stdout.write(pm === "md"
-    ? "    1. Crea tu primera US en .dai/us/<ID>.md (criterios bajo '## Criterios de aceptación')\n"
-    : `    1. Completa el token de ${pm} en .env, y verifica con: dai doctor\n`);
-  process.stdout.write("    2. dai link-us <ID>     → crea la branch + el link a la US\n");
-  process.stdout.write("    3. Implementa con test primero, después: dai check\n");
+    ? `    1. Crea tu primera US en ${C.cy(".dai/us/<ID>.md")} (criterios bajo '## Criterios de aceptación')\n`
+    : `    1. Copia ${C.cy(".env.dai.example")} → ${C.cy(".env.dai")} y completa el token de ${pm}; verifica con ${C.y("dai doctor")}\n`);
+  process.stdout.write(`    2. ${C.y("dai link-us <ID>")}     → crea la branch + el link a la US\n`);
+  process.stdout.write(`    3. Implementa con test primero, después: ${C.y("dai check")}\n`);
   process.stdout.write("    Guía paso a paso: https://github.com/dforce2055/dai/blob/main/docs/PROBAR.md\n\n");
 }
 
@@ -1031,7 +1087,7 @@ function cmdSync(repo, opts) {
     () => writeFileSync(giPath, gi.text.endsWith("\n") ? gi.text : gi.text + "\n"));
 
   if (dry) info("dry-run: nada escrito. Quitá --dry-run para aplicar.");
-  else { process.stdout.write("\n"); ok(`sync completo — .dai/ ahora en v${cliV}`); process.stdout.write("  (El .env y OpenSpec no se tocan: OpenSpec se actualiza aparte con `openspec`.)\n"); }
+  else { process.stdout.write("\n"); ok(`sync completo — .dai/ ahora en v${cliV}`); process.stdout.write("  (El .env.dai y OpenSpec no se tocan: OpenSpec se actualiza aparte con `openspec`.)\n"); }
 }
 
 // Imprime el estado de version-drift del scaffold (ADR-0010) con color + ícono.
@@ -1097,7 +1153,7 @@ function cmdUpgrade(opts) {
 
 // ── doctor: diagnóstico ───────────────────────────────────────────────────────
 function cmdDoctor() {
-  loadEnv();
+  loadDaiEnv();
   info(`dai doctor — versión v${readFileSync(join(ROOT, "VERSION"), "utf8").trim()}`);
 
   // Una skill sirve si está en el repo actual (la puso `dai init`) o global (la puso
@@ -1151,11 +1207,11 @@ function cmdDoctor() {
   const pm = process.env.DAI_PM || "md";
   ok(`DAI_PM=${pm}`);
   if (pm === "jira") {
-    if (!process.env.DAI_JIRA_BASE_URL) warn("falta DAI_JIRA_BASE_URL en el .env");
-    if (!process.env.DAI_JIRA_EMAIL) warn("falta DAI_JIRA_EMAIL en el .env");
+    if (!process.env.DAI_JIRA_BASE_URL) warn("falta DAI_JIRA_BASE_URL en .env.dai");
+    if (!process.env.DAI_JIRA_EMAIL) warn("falta DAI_JIRA_EMAIL en .env.dai");
     // Ojo: solo miramos que el token ESTÉ, no que sirva — uno vencido pasa este chequeo
     // y recién falla al publicar. Verificarlo de verdad es pegarle a la red.
-    if (!process.env.DAI_JIRA_TOKEN) warn("falta DAI_JIRA_TOKEN en el .env"); else ok("token de Jira presente (no verificado: eso lo dice `dai publish`)");
+    if (!process.env.DAI_JIRA_TOKEN) warn("falta DAI_JIRA_TOKEN en .env.dai"); else ok("token de Jira presente (no verificado: eso lo dice `dai publish`)");
     if (!process.env.DAI_JIRA_PROJECT) warn("DAI_JIRA_PROJECT vacío — solo hace falta para `dai publish` (crear issues)");
     else {
       try { ok(`proyecto=${assertProjectKey(process.env.DAI_JIRA_PROJECT)} (para dai publish)`); }
@@ -1173,7 +1229,7 @@ function cmdDoctor() {
     }
   }
   if (pm === "clickup") {
-    if (!process.env.DAI_CLICKUP_TOKEN) warn("falta DAI_CLICKUP_TOKEN en el .env"); else ok("token de ClickUp presente");
+    if (!process.env.DAI_CLICKUP_TOKEN) warn("falta DAI_CLICKUP_TOKEN en .env.dai"); else ok("token de ClickUp presente");
     process.env.DAI_CLICKUP_LIST_ID ? ok(`lista=${process.env.DAI_CLICKUP_LIST_ID} (para dai publish)`)
       : warn("DAI_CLICKUP_LIST_ID vacío — solo hace falta para `dai publish` (crear tareas)");
   }
@@ -1238,16 +1294,16 @@ switch (cmd) {
       "      Sin --yes no postea nada: muestra el preview y valida que cada hallazgo apunte al diff.\n\n" +
       "Instalación:\n" +
       "  skills install [--global | --local <repo>] [--force] [--dry-run] [--for <asistentes>]   instala las skills de dai (alias: `install`)\n" +
-      "  skills install --from <git-url|path>[#ref] [--for <asistentes>]   instala skills EXTERNAS (por-stack), convertidas para los 3 asistentes (ADR-0013)\n" +
+      "  skills install --from <git-url|npm:pkg|path>[#ref] [--for <asistentes>]   instala skills EXTERNAS (por-stack), convertidas para los 3 asistentes (ADR-0013)\n" +
       "  init [<repo>]                scaffolder interactivo del repo (asistente, gestor, OpenSpec)\n" +
       "       --for <asistentes>      claude|copilot|cursor (combinables con coma) · o both|all (default all)\n" +
       "                               ej: --for claude,cursor · --for copilot · --for all\n" +
       "       --pm md|jira|clickup · --openspec   (con flags salteas las preguntas)\n" +
-      "  sync [<repo>] [--dry-run] [--for <asistentes>]   refresca skills/constitución/templates a la versión del CLI (aditivo; no toca .env ni OpenSpec)\n" +
+      "  sync [<repo>] [--dry-run] [--for <asistentes>]   refresca skills/constitución/templates a la versión del CLI (aditivo; no toca .env.dai ni OpenSpec)\n" +
       "  upgrade [--check] [--dry-run]   (alias: update) actualiza el CLI global a la última (npm i -g …@latest) y avisa si el repo quedó atrasado (ADR-0012)\n" +
       "  docs <destino>               documentación conceptual → <destino>\n" +
       "  doctor                       diagnóstico del entorno\n\n" +
-      "  (config: .env — ver .env.example)\n"
+      "  (config: .env.dai — ver .env.dai.example)\n"
     );
     process.exit(cmd && cmd !== "help" ? 1 : 0);
 }

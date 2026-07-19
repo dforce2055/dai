@@ -47,13 +47,38 @@ function unquoteScalar(s) {
 // Parsea el frontmatter YAML de un SKILL.md → { name, description, body }.
 // Devuelve los valores YA sin comillas, para que quien los reserialice (skillToCursor)
 // no los cite dos veces.
+// Lee un campo del frontmatter. Soporta escalar de una línea (con/sin comillas) y BLOQUE
+// YAML (`|` literal, `>` plegado, con chomp `-`/`+`): junta las líneas indentadas siguientes
+// hasta la próxima clave (columna 0). El parser de dai es regex, no un YAML completo — esto
+// cubre lo común: descripciones multilínea, que es como se escriben las skills reales.
+function readFmField(fm, key) {
+  const lines = fm.split(/\r?\n/);
+  const keyRe = new RegExp(`^${key}:\\s*(.*)$`);
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(keyRe);
+    if (!m) continue;
+    const inline = m[1].trim();
+    const blk = inline.match(/^([|>])[-+]?\s*$/);       // |, >, |-, |+, >-, >+
+    if (!blk) return unquoteScalar(inline) || null;     // escalar de una línea
+    const buf = [];
+    for (let j = i + 1; j < lines.length; j++) {
+      if (lines[j].trim() === "") { buf.push(""); continue; }
+      if (!/^\s/.test(lines[j])) break;                 // sin indentar → empezó otra clave
+      buf.push(lines[j]);
+    }
+    const indent = ((buf.find((l) => l.trim() !== "") || "").match(/^\s*/) || [""])[0].length;
+    const text = buf.map((l) => l.slice(indent)).join("\n").replace(/\s+$/, "");
+    // `>` plegado: un salto simple → espacio; los dobles (párrafo) se conservan.
+    return (blk[1] === ">" ? text.replace(/([^\n])\n(?!\n)/g, "$1 ") : text) || null;
+  }
+  return null;
+}
+
 export function parseFrontmatter(md) {
   const m = md.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
   if (!m) return { name: null, description: null, body: md.trim() };
   const fm = m[1];
-  const name = unquoteScalar((fm.match(/^name:\s*(.+)$/m) || [])[1]) || null;
-  const description = unquoteScalar((fm.match(/^description:\s*(.+)$/m) || [])[1]) || null;
-  return { name, description, body: m[2].trim() };
+  return { name: readFmField(fm, "name"), description: readFmField(fm, "description"), body: m[2].trim() };
 }
 
 // Valida el contrato MÍNIMO de un SKILL.md para que dai lo ingiera y los asistentes lo
@@ -66,7 +91,11 @@ export function validateSkill(md) {
   if (!name) return "falta 'name' en el frontmatter";
   if (!description) return "falta 'description' en el frontmatter";
   for (const key of ["name", "description"]) {
-    const issue = yamlScalarIssue(rawFrontmatterValue(md, key));
+    const raw = rawFrontmatterValue(md, key);
+    // Un bloque YAML (`|`, `>`, con chomp) es literal → siempre válido; su contenido va en las
+    // líneas indentadas, no en el valor de la clave. No lo pasamos por el scalar-check.
+    if (/^[|>][-+]?\s*$/.test(String(raw ?? "").trim())) continue;
+    const issue = yamlScalarIssue(raw);
     if (issue) return `'${key}' no es YAML válido: ${issue} — citá el valor con comillas dobles`;
   }
   return null;
@@ -98,7 +127,7 @@ export function skillToCursor(md) {
 // la URL canónica que devuelve el tracker, así que el `/t/{id}` que escribíamos acá
 // tapaba la de ClickUp con team_id. Queda como override manual para trackers raros.
 export function envFor(pm) {
-  const head = "# Config de dai — completá lo que falte. NUNCA commitees tokens (.env está gitignored).\n";
+  const head = "# Config de dai — va en .env.dai (NO versionado), no en el .env del equipo.\n# Completá lo que falte. NUNCA commitees tokens.\n";
   if (pm === "clickup") {
     return head + "DAI_PM=clickup\nDAI_CLICKUP_TOKEN=\nDAI_CLICKUP_LIST_ID=\n";
   }
@@ -156,7 +185,10 @@ export function reconcileGitignore(text, want) {
   // `.dai/` NO va acá: ahí vive config que SÍ se versiona (jira-fields.json). Solo se
   // ignora `.dai/reviews/`, que son borradores de `dai forge review` — efímeros, con
   // hallazgos a medio editar, y no tienen por qué viajar en un commit.
-  const ensure = [".env", ".dai/reviews/"];
+  // `.env.dai` (config y secretos de dai) SÍ se ignora; el `.env` del equipo NO lo tocamos:
+  // es suyo y muchas orgs lo versionan como política (ADR-0017). La plantilla
+  // `.env.dai.example` sí se versiona (no matchea `.env.dai` exacto, así que no se ignora).
+  const ensure = [".env.dai", ".dai/reviews/"];
   if (want.claude) { broad.add("CLAUDE.md"); broad.add(".claude"); ensure.push(".claude/settings.local.json"); }
   if (want.cursor) { broad.add(".cursor"); }
   let changed = false;
@@ -199,7 +231,7 @@ export function constitution(kind) {
 - **El link se autora una vez** (\`implements.yaml\`); la cobertura se **deriva** (nunca a mano).
 - **Verifica el comportamiento, no solo que compile:** que pase el chequeo estático o el build no prueba que funcione; ejercita el flujo real antes de darlo por hecho.
 - **La IA confirma antes de construir:** el asistente declara que entendió esta constitución y la va a obedecer antes de generar código.
-- **Secretos:** en \`.env\` (nunca commiteados). git por **SSH**, APIs por **token scopeado**.
+- **Secretos:** en \`.env.dai\` (NO versionado; el \`.env\` del equipo no se toca). git por **SSH**, APIs por **token scopeado**.
 - **No bajes la seguridad para avanzar:** si una llamada falla por el certificado, declara la CA (\`NODE_EXTRA_CA_CERTS\`). **Nunca** \`NODE_TLS_REJECT_UNAUTHORIZED=0\`, \`verify=False\`, \`-k\` ni equivalentes: apagan la verificación de toda la conexión, y por ahí viajan los tokens.
 - **Si el CLI no llega, para y dilo:** cuando \`dai\` no cubre un caso, repórtalo — no improvises una llamada a la API por fuera. El atajo publica igual, pero rompe el link QUÉ↔CÓMO en silencio y nadie se entera hasta que la trazabilidad ya está mal.
 - **Docs vivas:** una constitución o arquitectura desactualizada es un defecto, no documentación.

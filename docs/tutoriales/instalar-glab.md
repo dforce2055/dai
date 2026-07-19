@@ -39,9 +39,10 @@ gh --version
 ### Instalar
 
 ```bash
-brew install glab               # macOS
+brew install glab               # macOS · o Linux con Homebrew
 winget install GitLab.GLab      # Windows  (alternativa: scoop install glab)
-# otras opciones: https://gitlab.com/gitlab-org/cli/-/releases
+sudo pacman -S glab             # Arch / Manjaro
+# Debian/Ubuntu y otras distros: el .deb o el binario de https://gitlab.com/gitlab-org/cli/-/releases
 ```
 
 ### Autenticar
