@@ -22,7 +22,7 @@ export function clickupTaskToText(json) {
 }
 
 export function clickupAdapter(env) {
-  if (!env.DAI_CLICKUP_TOKEN) throw new Error("falta DAI_CLICKUP_TOKEN en el .env (backend clickup).");
+  if (!env.DAI_CLICKUP_TOKEN) throw new Error("falta DAI_CLICKUP_TOKEN en el .env.dai (backend clickup).");
   return {
     kind: "clickup",
     async fetchUS(id) {
@@ -43,7 +43,7 @@ export function clickupAdapter(env) {
     },
     async createUS({ title, descriptionMarkdown }) {
       const list = env.DAI_CLICKUP_LIST_ID;
-      if (!list) throw new Error("falta DAI_CLICKUP_LIST_ID en el .env (la lista donde crear la tarea).");
+      if (!list) throw new Error("falta DAI_CLICKUP_LIST_ID en el .env.dai (la lista donde crear la tarea).");
       const res = await fetch(`${API}/list/${encodeURIComponent(list)}/task`, {
         method: "POST", headers: clickupAuthHeaders(env),
         body: JSON.stringify({ name: title, markdown_content: descriptionMarkdown }),

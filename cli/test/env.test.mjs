@@ -3,13 +3,23 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { loadEnv } from "../lib/env.mjs";
+import { loadEnv, loadDaiEnv } from "../lib/env.mjs";
 
 function withEnvFile(content) {
   const dir = mkdtempSync(join(tmpdir(), "dai-env-"));
   const path = join(dir, ".env");
   writeFileSync(path, content);
   return loadEnv(path, {});
+}
+
+// loadDaiEnv lee `.env.dai` y `.env` con rutas fijas desde el CWD: para testear la
+// precedencia, creamos un dir temporal con esos archivos y corremos ahí adentro.
+function inDir(files, fn) {
+  const dir = mkdtempSync(join(tmpdir(), "dai-envdai-"));
+  for (const [name, content] of Object.entries(files)) writeFileSync(join(dir, name), content);
+  const prev = process.cwd();
+  process.chdir(dir);
+  try { return fn(); } finally { process.chdir(prev); }
 }
 
 test("loadEnv recorta comentario inline en valores sin comillas (bug del token # ←)", () => {
@@ -38,4 +48,26 @@ test("loadEnv no pisa una var ya presente en el entorno", () => {
   writeFileSync(path, "DAI_PM=md\n");
   const env = loadEnv(path, { DAI_PM: "clickup" });
   assert.equal(env.DAI_PM, "clickup");
+});
+
+// ── loadDaiEnv: precedencia shell > .env.dai > .env (equipos que versionan el .env) ──
+
+test("loadDaiEnv: .env.dai gana sobre .env (override local del dev)", () => {
+  const env = inDir({ ".env": "DAI_PM=md\n", ".env.dai": "DAI_PM=jira\n" }, () => loadDaiEnv({}));
+  assert.equal(env.DAI_PM, "jira");
+});
+
+test("loadDaiEnv: sigue leyendo el .env (compat con repos que tienen DAI_* ahí)", () => {
+  const env = inDir({ ".env": "DAI_JIRA_PROJECT=PROJ\n" }, () => loadDaiEnv({}));
+  assert.equal(env.DAI_JIRA_PROJECT, "PROJ");
+});
+
+test("loadDaiEnv: el entorno (shell/CI) gana sobre ambos archivos", () => {
+  const env = inDir({ ".env": "DAI_PM=md\n", ".env.dai": "DAI_PM=jira\n" }, () => loadDaiEnv({ DAI_PM: "clickup" }));
+  assert.equal(env.DAI_PM, "clickup");
+});
+
+test("loadDaiEnv: sin ningún archivo no explota", () => {
+  const env = inDir({}, () => loadDaiEnv({}));
+  assert.deepEqual(env, {});
 });

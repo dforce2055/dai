@@ -98,7 +98,7 @@ export function skillToCursor(md) {
 // la URL canónica que devuelve el tracker, así que el `/t/{id}` que escribíamos acá
 // tapaba la de ClickUp con team_id. Queda como override manual para trackers raros.
 export function envFor(pm) {
-  const head = "# Config de dai — completá lo que falte. NUNCA commitees tokens (.env está gitignored).\n";
+  const head = "# Config de dai — va en .env.dai (NO versionado), no en el .env del equipo.\n# Completá lo que falte. NUNCA commitees tokens.\n";
   if (pm === "clickup") {
     return head + "DAI_PM=clickup\nDAI_CLICKUP_TOKEN=\nDAI_CLICKUP_LIST_ID=\n";
   }
@@ -156,7 +156,10 @@ export function reconcileGitignore(text, want) {
   // `.dai/` NO va acá: ahí vive config que SÍ se versiona (jira-fields.json). Solo se
   // ignora `.dai/reviews/`, que son borradores de `dai forge review` — efímeros, con
   // hallazgos a medio editar, y no tienen por qué viajar en un commit.
-  const ensure = [".env", ".dai/reviews/"];
+  // `.env.dai` (config y secretos de dai) SÍ se ignora; el `.env` del equipo NO lo tocamos:
+  // es suyo y muchas orgs lo versionan como política (ADR-0017). La plantilla
+  // `.env.dai.example` sí se versiona (no matchea `.env.dai` exacto, así que no se ignora).
+  const ensure = [".env.dai", ".dai/reviews/"];
   if (want.claude) { broad.add("CLAUDE.md"); broad.add(".claude"); ensure.push(".claude/settings.local.json"); }
   if (want.cursor) { broad.add(".cursor"); }
   let changed = false;
@@ -199,7 +202,7 @@ export function constitution(kind) {
 - **El link se autora una vez** (\`implements.yaml\`); la cobertura se **deriva** (nunca a mano).
 - **Verifica el comportamiento, no solo que compile:** que pase el chequeo estático o el build no prueba que funcione; ejercita el flujo real antes de darlo por hecho.
 - **La IA confirma antes de construir:** el asistente declara que entendió esta constitución y la va a obedecer antes de generar código.
-- **Secretos:** en \`.env\` (nunca commiteados). git por **SSH**, APIs por **token scopeado**.
+- **Secretos:** en \`.env.dai\` (NO versionado; el \`.env\` del equipo no se toca). git por **SSH**, APIs por **token scopeado**.
 - **No bajes la seguridad para avanzar:** si una llamada falla por el certificado, declara la CA (\`NODE_EXTRA_CA_CERTS\`). **Nunca** \`NODE_TLS_REJECT_UNAUTHORIZED=0\`, \`verify=False\`, \`-k\` ni equivalentes: apagan la verificación de toda la conexión, y por ahí viajan los tokens.
 - **Si el CLI no llega, para y dilo:** cuando \`dai\` no cubre un caso, repórtalo — no improvises una llamada a la API por fuera. El atajo publica igual, pero rompe el link QUÉ↔CÓMO en silencio y nadie se entera hasta que la trazabilidad ya está mal.
 - **Docs vivas:** una constitución o arquitectura desactualizada es un defecto, no documentación.

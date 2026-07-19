@@ -117,7 +117,8 @@ test("reconcileGitignore versiona artefactos de dai y deja fuera solo lo persona
   assert.doesNotMatch(text, /^CLAUDE\.md$/m);                 // deja versionar la constitución
   assert.match(text, /node_modules/);                        // no toca lo demás
   assert.match(text, /\.claude\/settings\.local\.json/);     // solo lo personal fuera
-  assert.match(text, /^\.env$/m);
+  assert.match(text, /^\.env\.dai$/m);                        // dai ignora SU archivo de secretos
+  assert.doesNotMatch(text, /^\.env$/m);                      // el .env del equipo NO se toca (ADR-0017)
 });
 
 test("reconcileGitignore es idempotente y no duplica", () => {

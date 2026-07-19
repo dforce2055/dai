@@ -3,6 +3,36 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
+## [0.10.0] — 2026-07-18
+
+**La config de dai deja de vivir en el `.env` del equipo y pasa a un `.env.dai` propio (no
+versionado). Resuelve el caso de las empresas que versionan el `.env` como política: dai no
+toca ese archivo y guarda sus secretos donde git realmente los ignora. Y `dai init` estrena
+una bienvenida con el Sol de Mayo en bloques.**
+
+### Agregado
+- **Banner de bienvenida en `dai init`**: el Sol de Mayo de dai en bloques (cuerpo y rayos
+  rectos en oro, rayos ondulados en celeste) junto al título, más un preview de lo que se va
+  a configurar. Cero dependencias (solo ANSI); degrada a ASCII sin color en no-TTY o con
+  `NO_COLOR`.
+
+### Cambiado
+- **`dai init` escribe en `.env.dai` + `.env.dai.example`, no en `.env`/`.env.example`**
+  ([ADR-0017](docs/adr/0017-env-dai.md)). El `.env` del equipo queda intacto (dai solo lo
+  lee). `.env.dai` (secretos) se gitignorea; `.env.dai.example` (plantilla) se versiona.
+  En un repo sin `.env`, dai ya no crea uno: es del equipo, no de dai.
+- **El loader lee `.env.dai` y `.env`** con precedencia **shell/CI > `.env.dai` > `.env`**.
+  Seguir leyendo `.env` mantiene la compatibilidad: los repos que ya tenían los `DAI_*` ahí
+  no se rompen.
+- **`.gitignore`**: dai ignora `.env.dai` (su archivo), no `.env`. Ya no fuerza un ignore
+  sobre un archivo que muchas orgs versionan a propósito.
+- Se renombró el `.env.example` del paquete a `.env.dai.example`, y se actualizaron doctor,
+  mensajes de init/sync, tutoriales, constitución y README a la nueva convención.
+
+### Interno
+- **228 tests** (+4 desde 0.9.0): precedencia de `loadDaiEnv` (shell > `.env.dai` > `.env`),
+  compat con `.env`, y sin-archivos. Smokes de `dai init` con y sin `.env` preexistente.
+
 ## [0.9.0] — 2026-07-17
 
 **El review de dai deja de ser un comentario al final del hilo y pasa a ser un review
@@ -405,6 +435,7 @@ ClickUp y Jira Cloud.
 - Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
   `files` de npm sin tests ni secretos.
 
+[0.10.0]: https://github.com/dforce2055/dai/releases/tag/v0.10.0
 [0.9.0]: https://github.com/dforce2055/dai/releases/tag/v0.9.0
 [0.8.2]: https://github.com/dforce2055/dai/releases/tag/v0.8.2
 [0.8.1]: https://github.com/dforce2055/dai/releases/tag/v0.8.1

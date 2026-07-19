@@ -4,6 +4,18 @@
 
 import { readFileSync } from "node:fs";
 
+// Config de dai: `.env.dai` (propio, nunca versionado) tiene prioridad sobre `.env`.
+// Pensado para equipos que versionan el `.env` (política de empresa): dai deja ese
+// archivo en paz y pone sus claves y secretos en `.env.dai` (gitignored). Se carga
+// `.env.dai` PRIMERO porque el loader es "primero-gana" (ver más abajo), así la
+// precedencia queda: entorno (shell/CI) > .env.dai > .env. Leer también `.env`
+// mantiene compatibilidad con repos previos que tienen los DAI_* ahí.
+export function loadDaiEnv(env = process.env) {
+  loadEnv(".env.dai", env);
+  loadEnv(".env", env);
+  return env;
+}
+
 export function loadEnv(path = ".env", env = process.env) {
   let text;
   try { text = readFileSync(path, "utf8"); } catch { return env; } // sin .env: no pasa nada
