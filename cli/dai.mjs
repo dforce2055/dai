@@ -680,19 +680,28 @@ function cmdInstallFrom(opts) {
     tmp = mkdtempSync(join(tmpdir(), "dai-skills-"));
     info(`bajando el paquete npm ${src.location} …`);
     try {
-      // `npm pack` resuelve el registry del `.npmrc` del cwd (así anda con registries
-      // privados con scope) y deja el .tgz en tmp; lo extraemos (npm siempre a `package/`).
-      // SIN `--silent`: si npm falla (404, auth, registry mal), queremos el error real,
-      // no un mensaje vacío. Capturamos stderr y lo mostramos.
-      runNpmTool("npm", ["pack", src.location, "--pack-destination", tmp], { stdio: ["ignore", "ignore", "pipe"] });
-      const tgz = readdirSync(tmp).find((f) => f.endsWith(".tgz"));
-      if (!tgz) throw new Error("npm pack no dejó un .tgz");
-      execFileSync("tar", ["-xzf", join(tmp, tgz), "-C", tmp]);
-      root = join(tmp, "package");
+      // `npm install` (no `npm pack`) en el temp. Dos decisiones a propósito:
+      // 1) install en vez de pack: los registries de GRUPO de GitLab devuelven una
+      //    `dist.tarball` malformada (el scope duplicado en el nombre) que `npm pack` sigue
+      //    literal y da 404; `npm install` —como `npx`— reconstruye la URL y resuelve.
+      // 2) copiamos el `.npmrc` del repo al temp y corremos con cwd=temp: así npm ve el
+      //    registry/scope privado (con `--prefix` npm NO lee el `.npmrc` del cwd y se va al
+      //    registry público). `--ignore-scripts`: no corremos scripts de un paquete de 3ros.
+      const repoNpmrc = join(process.cwd(), ".npmrc");
+      if (existsSync(repoNpmrc)) cpSync(repoNpmrc, join(tmp, ".npmrc"));
+      runNpmTool("npm", ["install", src.location,
+        "--no-save", "--no-package-lock", "--ignore-scripts", "--no-audit", "--no-fund"],
+        { cwd: tmp, stdio: ["ignore", "ignore", "pipe"] });
+      // El paquete queda en <tmp>/node_modules/<name>. name = spec sin la versión
+      // (@scope/pkg@1.2.3 → @scope/pkg; el `@` inicial del scope no cuenta).
+      let name = src.location; const at = name.lastIndexOf("@");
+      if (at > 0) name = name.slice(0, at);
+      root = join(tmp, "node_modules", name);
+      if (!existsSync(root)) throw new Error(`npm install no dejó '${name}' en node_modules`);
     } catch (e) {
       rmSync(tmp, { recursive: true, force: true });
       const detail = String(e.stderr || e.stdout || e.message || "").split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 3).join("\n         ");
-      fail(`no pude bajar el paquete npm '${src.location}':\n         ${detail || "npm pack falló — revisá el spec, el registry y el .npmrc del repo"}`, 1);
+      fail(`no pude bajar el paquete npm '${src.location}':\n         ${detail || "npm install falló — revisá el spec, el registry y el .npmrc del repo"}`, 1);
     }
   } else {
     root = src.location;
