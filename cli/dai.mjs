@@ -657,7 +657,7 @@ async function cmdInstall(opts) {
 // dai (colisión → warn + skip). `dai sync` NO las toca: es solo de dai.
 function cmdInstallFrom(opts) {
   if (typeof opts.from !== "string" || !opts.from.trim())
-    fail("--from necesita una fuente: un git URL (github.com/org/skills[#ref]) o un path local", 2);
+    fail("--from necesita una fuente: un git URL (github.com/org/skills[#ref]), un paquete npm (npm:@scope/pkg) o un path local", 2);
   let want;
   try { want = parseAssistants(typeof opts.for === "string" ? opts.for : "all"); }
   catch (e) { fail(`--for ${e.message}`); }
@@ -676,6 +676,21 @@ function cmdInstallFrom(opts) {
     try { git(args); }
     catch (e) { rmSync(tmp, { recursive: true, force: true }); fail(`no pude clonar la fuente: ${String(e.message).split("\n")[0]}`, 1); }
     root = tmp;
+  } else if (src.type === "npm") {
+    tmp = mkdtempSync(join(tmpdir(), "dai-skills-"));
+    info(`bajando el paquete npm ${src.location} …`);
+    try {
+      // `npm pack` resuelve el registry del `.npmrc` del cwd (así anda con registries
+      // privados con scope) y deja el .tgz en tmp; lo extraemos (npm siempre a `package/`).
+      runNpmTool("npm", ["pack", src.location, "--pack-destination", tmp, "--silent"], { stdio: ["ignore", "pipe", "pipe"] });
+      const tgz = readdirSync(tmp).find((f) => f.endsWith(".tgz"));
+      if (!tgz) throw new Error("npm pack no dejó un .tgz");
+      execFileSync("tar", ["-xzf", join(tmp, tgz), "-C", tmp]);
+      root = join(tmp, "package");
+    } catch (e) {
+      rmSync(tmp, { recursive: true, force: true });
+      fail(`no pude bajar el paquete npm '${src.location}': ${String(e.stderr || e.message).split("\n")[0]}`, 1);
+    }
   } else {
     root = src.location;
     if (!existsSync(root)) fail(`no existe la fuente: ${root}`, 2);
@@ -1267,7 +1282,7 @@ switch (cmd) {
       "      Sin --yes no postea nada: muestra el preview y valida que cada hallazgo apunte al diff.\n\n" +
       "Instalación:\n" +
       "  skills install [--global | --local <repo>] [--force] [--dry-run] [--for <asistentes>]   instala las skills de dai (alias: `install`)\n" +
-      "  skills install --from <git-url|path>[#ref] [--for <asistentes>]   instala skills EXTERNAS (por-stack), convertidas para los 3 asistentes (ADR-0013)\n" +
+      "  skills install --from <git-url|npm:pkg|path>[#ref] [--for <asistentes>]   instala skills EXTERNAS (por-stack), convertidas para los 3 asistentes (ADR-0013)\n" +
       "  init [<repo>]                scaffolder interactivo del repo (asistente, gestor, OpenSpec)\n" +
       "       --for <asistentes>      claude|copilot|cursor (combinables con coma) · o both|all (default all)\n" +
       "                               ej: --for claude,cursor · --for copilot · --for all\n" +

@@ -18,10 +18,16 @@ dueño ni gatekeeper de ellas.
 
 ## Decisión
 
-Agregamos **`dai skills install --from <git-url|path>[#ref]`**: instala skills
-**externas** desde un repo/dir (con estructura `skills/<nombre>/SKILL.md`, la misma
+Agregamos **`dai skills install --from <git-url|npm:pkg|path>[#ref]`**: instala skills
+**externas** desde un repo/dir/paquete (con estructura `skills/<nombre>/SKILL.md`, la misma
 de dai), **convertidas para los 3 asistentes** (Claude copia · Cursor `skillToCursor`
 · Copilot `skillToPrompt` → `.github/prompts/`).
+
+- **Tres fuentes:** un **git URL** (`github.com/org/skills[#ref]` → clone), un **path
+  local**, o un **paquete npm** (`npm:@scope/pkg[@version]` → `npm pack` a un temp,
+  respetando el `.npmrc` del cwd, así resuelve registries privados con scope). Es común
+  distribuir skills como paquete npm (una org publica sus componentes + skills juntas);
+  materializarlo a mano era fricción de más.
 
 - **`dai skills` es el namespace canónico** de las operaciones de skills, consistente
   con `dai forge <verb>`. `dai skills install` (sin `--from`) instala las de dai;
@@ -42,8 +48,9 @@ de dai), **convertidas para los 3 asistentes** (Claude copia · Cursor `skillToC
 - **Se acepta pagar:** es **one-off** (dai no mantiene esas skills al día; re-corrés
   `--from`). **Sin registro** → dai no sabe qué repos tienen skills externas, a
   propósito: cero gatekeeping, bajo riesgo del equipo. Las fuentes remotas dependen de
-  git/red, y la **auth se delega en git** (público sin más; privado por SSH o credential
-  helper — dai no autentica): *si puedes `git clone` la fuente, dai instala desde ahí*.
+  git/red/npm, y la **auth se delega en la herramienta** (git: SSH o credential helper;
+  npm: el `.npmrc` del repo — dai no autentica): *si puedes `git clone` o `npm pack` la
+  fuente, dai instala desde ahí*.
 
 ## Alternativas consideradas
 

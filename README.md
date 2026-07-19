@@ -183,7 +183,7 @@ flowchart TD
 |---|---|
 | `dai init [<repo>]` | scaffolder interactivo del repo. Flags: `--for claude\|copilot\|both\|cursor\|all` (asistente, default `all`) · `--pm md\|jira\|clickup` (tracker) · `--openspec` |
 | `dai skills install [--global \| --local <repo>] [--force] [--dry-run] [--for claude\|copilot\|cursor\|all]` | instala/actualiza las skills de dai en Claude, Copilot y/o Cursor (`--for all` por defecto; Copilot global → `~/.copilot/skills`, local → `.github/skills/`). `--force` re-copia. Alias: **`dai install`**. Ej: `dai skills install --local . --for cursor --force` |
-| `dai skills install --from <git-url\|path>[#ref] [--for …]` | instala **skills externas** (por-stack: .NET, Java, …) desde un repo/dir, **convertidas para los 3 asistentes**. Self-service, one-off, sin registro; `dai sync` no las toca. Colisión con una skill de dai → salta ([ADR-0013](docs/adr/0013-skills-externas-install-from.md)). Ej: `dai skills install --from github.com/mi-org/net-skills` |
+| `dai skills install --from <git-url\|npm:pkg\|path>[#ref] [--for …]` | instala **skills externas** (por-stack: .NET, Java, …) desde un repo/dir/**paquete npm**, **convertidas para los 3 asistentes**. Self-service, one-off, sin registro; `dai sync` no las toca. Colisión con una skill de dai → salta ([ADR-0013](docs/adr/0013-skills-externas-install-from.md)). Ej: `dai skills install --from github.com/mi-org/net-skills` · `dai skills install --from npm:@mi-org/ui-skills` (usa el `.npmrc` del repo → registries privados OK) |
 | `dai sync [--dry-run] [--for <asistentes>]` | **refresca** skills, constitución, templates y PR template a la versión del CLI — **aditivo** (no pisa tu `CLAUDE.md`), no toca el `.env.dai` ni OpenSpec. Detecta los asistentes del repo o pasás `--for`. `--dry-run` muestra qué cambiaría ([ADR-0010](docs/adr/0010-versionado-y-upgrade.md)) |
 | `dai upgrade [--check] [--dry-run]` · alias `dai update` | **actualiza el CLI global** a la última publicada (`npm i -g …@latest`) — self-update. **No toca el repo**: reporta el drift del scaffold pero deja el `dai sync` al mantenedor. `--check` solo informa · `--dry-run` muestra el comando ([ADR-0012](docs/adr/0012-upgrade-self-update-del-cli.md)) |
 | `dai publish <us.md> [--parent KEY] [--issuetype T] [--field alias=valor]` | crea la US en el tracker (Jira/ClickUp/md) desde un `.md` y devuelve el key — el fallback del MCP para publicar sin el asistente. `--parent PROJ-42` la cuelga de su épica · `--issuetype Epic` publica una épica (fallback CLI de `grill-epic`) · `--field clasificacion=Mejora` (repetible) manda los campos propios que exige tu Jira, declarados en `.dai/jira-fields.json` ([ADR-0015](docs/adr/0015-jira-corporativo.md)) |
@@ -208,11 +208,13 @@ flowchart TD
 > pediría migración. ([ADR-0010](docs/adr/0010-versionado-y-upgrade.md))
 
 > **🧩 Skills de cualquier stack — `dai skills install --from`.** Además de las skills de
-> dai, cada equipo suma las suyas (por-stack: .NET, Java, Rust…) desde su propio repo:
-> `dai skills install --from github.com/tu-org/net-skills`. dai las **convierte para los 3
-> asistentes** (Claude/Cursor/Copilot) e instala. **dai es el distribuidor de skills de
-> cualquier stack, sin opinar sobre su contenido** — self-service, sin registro; `dai sync`
-> sigue siendo solo de dai. ([ADR-0013](docs/adr/0013-skills-externas-install-from.md))
+> dai, cada equipo suma las suyas (por-stack: .NET, Java, Rust…) desde su propio repo o
+> **paquete npm**: `dai skills install --from github.com/tu-org/net-skills` · `dai skills
+> install --from npm:@tu-org/ui-skills` (el paquete npm usa el `.npmrc` del repo, así
+> resuelve registries privados con scope). dai las **convierte para los 3 asistentes**
+> (Claude/Cursor/Copilot) e instala. **dai es el distribuidor de skills de cualquier stack,
+> sin opinar sobre su contenido** — self-service, sin registro; `dai sync` sigue siendo solo
+> de dai. ([ADR-0013](docs/adr/0013-skills-externas-install-from.md))
 >
 > La fuente puede ser **pública, privada (por SSH) o un path local**: dai no hace auth
 > propia, delega en git — **si puedes `git clone` el repo, dai instala desde ahí**. Para

@@ -15,6 +15,11 @@ una bienvenida con el Sol de Mayo en bloques.**
   rectos en oro, rayos ondulados en celeste) junto al título, más un preview de lo que se va
   a configurar. Cero dependencias (solo ANSI); degrada a ASCII sin color en no-TTY o con
   `NO_COLOR`.
+- **`dai skills install --from npm:@scope/pkg`** — nueva fuente para skills externas
+  ([ADR-0013](docs/adr/0013-skills-externas-install-from.md)): además de git URL y path
+  local, ahora un **paquete npm**. dai hace `npm pack` a un temp respetando el `.npmrc` del
+  repo, así resuelve **registries privados con scope**. Es común distribuir skills como
+  paquete npm; antes había que materializarlo a mano.
 
 ### Cambiado
 - **`dai init` escribe en `.env.dai` + `.env.dai.example`, no en `.env`/`.env.example`**
