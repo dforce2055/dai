@@ -269,8 +269,8 @@ aprobación o rechazo:
 ## Paso 7 — Merge: la trazabilidad se estampa sola
 
 Al mergear, se corre `dai stamp` (el dev, o el CI si está automatizado — ADR-0003).
-Lee el `implements.yaml` y **estampa la cobertura inversa** en el ticket `ABC-482`,
-con links a la implementación:
+Deduce que la US de esta rama es `ABC-482`, lee el `implements.yaml` y **estampa la
+cobertura inversa** en el ticket, con links a la implementación:
 
 ```
 ABC-482 · implementado por  (lo estampó dai stamp)
@@ -312,7 +312,30 @@ AC-3 verdes → **US aceptada**. Cero sorpresas: si el QUÉ hubiera cambiado, el
 
 Dos sprints después, el PO agrega un criterio a `ABC-482` (ahora exige **avisar al
 comprador qué productos quedaron sin stock, sin cancelar el resto del carrito**).
-Sube la US a **v2** → cambia el `ac_hash`.
+
+Lo hace con `dai edit-us ABC-482`: la baja del tracker, la abre en su editor, valida el
+formato cuando guarda, y le pregunta si el cambio es material o editorial.
+
+```
+  ── formato de la US (.dai/us/ABC-482.md) ────────────
+  ✓ formato válido — 4 criterio(s), 4 en Gherkin completo
+
+  Cambiaron los criterios (ac_hash 7f3a9c2e → b81d40f5).
+    s = cambio material: subo spec_version a v2 y los repos con v1 se marcan ATRASADOS
+    n = cambio editorial (typo, redacción): se queda en v1
+  ¿Subo spec_version a v2? (S/n) s
+
+  ── ABC-482 · qué cambia en jira ────────────
+  título:     Finalizar la compra del carrito  (sin cambios)
+  criterios:  4
+  version:    v1 → v2
+  ac_hash:    7f3a9c2e → b81d40f5
+  ──────────────────────────────────────
+  Esto PISA la US ABC-482 en jira. ¿Guardo? (s/N) s
+✓ ABC-482 actualizada en jira  →  https://acme.atlassian.net/browse/ABC-482
+```
+
+La US sube a **v2** → cambia el `ac_hash`.
 
 ```
 ABC-482 · implementado por
