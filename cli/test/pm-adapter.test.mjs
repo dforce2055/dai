@@ -72,3 +72,44 @@ test("loadEnv no pisa variables ya seteadas", () => {
   assert.equal(env.DAI_JIRA_TOKEN, "secreto");   // comillas removidas
   assert.equal(env.YA, "viejo");                 // no pisa lo ya seteado
 });
+
+// ── updateUS del backend md (dai update-us, issue #23) ───────────────────────
+
+test("md updateUS pisa el .md canónico de la US", () => {
+  const dir = mkdtempSync(join(tmpdir(), "dai-md-"));
+  const usDir = join(dir, "us");
+  mkdirSync(usDir, { recursive: true });
+  writeFileSync(join(usDir, "ABC-1.md"), "# Viejo\n\n## Criterios de aceptación\n- Dado a\n");
+  const a = getAdapter({ DAI_PM: "md", DAI_MD_US_DIR: usDir });
+  const r = a.updateUS("ABC-1", { title: "Nuevo", descriptionMarkdown: "# Nuevo\n\n## Criterios de aceptación\n- Dado b\n" });
+  assert.equal(readFileSync(r.url, "utf8").includes("Dado b"), true);
+  assert.equal(readFileSync(r.url, "utf8").includes("Dado a"), false);
+});
+
+// Si el .md no existe, escribirlo sería CREAR una US con un id que nadie validó — y
+// `dai update-us` se llama "update" justamente porque la US ya existe.
+test("md updateUS NO crea la US si no existe: falla claro", () => {
+  const dir = mkdtempSync(join(tmpdir(), "dai-md-"));
+  const a = getAdapter({ DAI_PM: "md", DAI_MD_US_DIR: join(dir, "us") });
+  assert.throws(() => a.updateUS("ABC-404", { title: "x", descriptionMarkdown: "# x\n" }), /no existe/);
+  assert.equal(existsSync(join(dir, "us", "ABC-404.md")), false);
+});
+
+test("md updateUS antepone el título si el markdown no trae un H1", () => {
+  const dir = mkdtempSync(join(tmpdir(), "dai-md-"));
+  const usDir = join(dir, "us");
+  mkdirSync(usDir, { recursive: true });
+  writeFileSync(join(usDir, "ABC-1.md"), "# Viejo\n");
+  const a = getAdapter({ DAI_PM: "md", DAI_MD_US_DIR: usDir });
+  const r = a.updateUS("ABC-1", { title: "Titulo", descriptionMarkdown: "Cuerpo sin heading\n" });
+  assert.match(readFileSync(r.url, "utf8"), /^# Titulo\n/);
+});
+
+test("md fetchUS devuelve el markdown crudo (lo que edit-us abre)", () => {
+  const dir = mkdtempSync(join(tmpdir(), "dai-md-"));
+  const usDir = join(dir, "us");
+  mkdirSync(usDir, { recursive: true });
+  writeFileSync(join(usDir, "ABC-1.md"), US);
+  const us = getAdapter({ DAI_PM: "md", DAI_MD_US_DIR: usDir }).fetchUS("ABC-1");
+  assert.equal(us.raw, US, "el archivo tal cual, sin reformatear");
+});

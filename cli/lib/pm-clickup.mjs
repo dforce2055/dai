@@ -30,8 +30,9 @@ export function clickupAdapter(env) {
       if (res.status === 404) return null;
       if (!res.ok) throw new Error(`clickup ${res.status}: ${await res.text()}`);
       const j = await res.json();
+      const raw = clickupTaskToText(j);
       // `url` es la canónica (/t/<team_id>/<id>): la sabe ClickUp, no la deducimos.
-      return { id, ...parseUS(clickupTaskToText(j)), url: j.url || null };
+      return { id, ...parseUS(raw), url: j.url || null, raw };
     },
     async stamp(id, record) {
       const res = await fetch(clickupCommentUrl(id), {
@@ -40,6 +41,20 @@ export function clickupAdapter(env) {
       });
       if (!res.ok) throw new Error(`clickup ${res.status}: ${await res.text()}`);
       return `task ${id} (comentario)`;
+    },
+    // PUT /task/<id>: ClickUp acepta `markdown_content` para pisar la descripción.
+    // Solo mandamos lo que cambió — un PUT con `name` vacío renombraría la tarea.
+    async updateUS(id, { title, descriptionMarkdown }) {
+      const payload = {};
+      if (title) payload.name = title;
+      if (descriptionMarkdown != null) payload.markdown_content = descriptionMarkdown;
+      const res = await fetch(`${API}/task/${encodeURIComponent(id)}`, {
+        method: "PUT", headers: clickupAuthHeaders(env), body: JSON.stringify(payload),
+      });
+      if (res.status === 404) throw new Error(`clickup: no existe la tarea '${id}' (404). Revisá el id.`);
+      if (!res.ok) throw new Error(`clickup ${res.status}: ${await res.text()}`);
+      const j = await res.json().catch(() => ({}));
+      return { id, url: j.url || null };
     },
     async createUS({ title, descriptionMarkdown }) {
       const list = env.DAI_CLICKUP_LIST_ID;
