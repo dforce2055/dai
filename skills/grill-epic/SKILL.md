@@ -60,11 +60,11 @@ la forma. Nunca reescribas el formato inline.
 1. **Armar la épica** con el formato de `templates/epica.md`: metadata (`ID`, autor,
    estado, US que la componen) + objetivo + alcance (in/out) + lista de US + métricas +
    dependencias.
-2. **Publicar en el tracker.** **No asumas el tracker: lee `DAI_PM` del `.env` primero.**
+2. **Publicar en el tracker.** **No asumas el tracker: lee `DAI_PM` primero**, de `.env.dai` o `.env` (dai lee los dos; `.env.dai` gana clave por clave).
    Tres caminos, mismo contenido:
    - **Con MCP** (`jira` → MCP de Atlassian · `clickup` → MCP de ClickUp): crea el ticket
      de épica; las US hijas se crean como tickets vinculados (o quedan listadas).
-   - **Sin MCP, con token** (`DAI_PM=jira` + token en `.env`): escribe la épica como `.md`
+   - **Sin MCP, con token** (`DAI_PM=jira` + token en `.env.dai` o `.env`): escribe la épica como `.md`
      y publícala con **`dai publish <epica.md> --issuetype Epic`**. Devuelve el key. Si el
      proyecto exige campos propios, van con `--field alias=valor` (los declarados en
      `.dai/jira-fields.json`; `dai doctor` te los lista). Después, cada US hija se cuelga
