@@ -14,11 +14,25 @@ la IA hace dos cosas, en orden:
    o `descartar` (no vale la pena ahora). Un "no lo construyas" es un éxito del gate,
    no una falla.
 
+## Cuando la US ya existe y hay que editarla
+
+El refinamiento no termina cuando la US entra al sprint: aparece un criterio que faltaba,
+o una regla que nadie había dicho. `dai edit-us <ID>` cierra ese ciclo sin copiar y pegar:
+baja la US del tracker, la abre en el editor del PO, **valida el formato** (título +
+criterios + Gherkin completo), muestra qué cambia, pregunta si el cambio es **material**
+(sube `spec_version`, los repos atrasados se marcan solos) o **editorial** (no sube nada),
+y recién con la confirmación escribe.
+
+Si el que refina es el **dev** —un criterio que aparece escribiendo el test— es el mismo
+camino por la otra puerta: `dai update-us <ID>` empuja el `us.md` del change, con el mismo
+preview y la misma confirmación ([ADR-0018](../adr/0018-alcance-de-stamp-y-gate-de-ci.md)).
+
 ## Herramientas
 
 - `/grill-user-story` → US en formato [`formato-us.md`](../../templates/formato-us.md),
   publicada en Jira/ClickUp (o `.md` de fallback).
 - `/grill-intent` → `openspec/intents/<fecha-slug>/intent.md`
+- `dai edit-us <ID>` → trae la US del tracker, la editas, dai valida el formato y la devuelve.
 - Gate de entrada: [`definition-of-ready.md`](../../templates/definition-of-ready.md).
 
 ## Qué firma el humano

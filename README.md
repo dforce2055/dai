@@ -112,6 +112,14 @@ dai pr --assignee <compañero>   # crea la PR precargada y se la asigna a un com
 dai stamp                       # al mergear: estampa la cobertura en el tracker
 ```
 
+> ¿Cambió el QUÉ? `dai edit-us <ID>` baja la US del tracker, te la abre en tu editor, valida
+> el formato y te pregunta si el cambio es material (sube `spec_version`) o editorial. Si
+> ya tenés el `.md` escrito —lo refinaste implementando— `dai update-us <ID>` lo empuja y
+> re-estampa tu `ac_hash`, que si no `dai check` te marca atrasado por tu propia edición.
+> Y si quieres que el link deje de depender de la memoria del equipo, `dai check --ci` es
+> el gate ejecutable de [`governance/ci-rules.md`](governance/ci-rules.md): copia
+> [`templates/ci-dai-gate.yml`](templates/ci-dai-gate.yml) a `.github/workflows/`.
+
 > **Para que `dai pr` cree la PR/MR** necesitas el CLI del forge instalado y autenticado, una
 > sola vez por máquina:
 > - **GitHub** → [`gh`](https://cli.github.com) · `gh auth login`
@@ -159,13 +167,15 @@ flowchart TD
 | 4 | **Linkear la US** | `dai link-us <ID>` → branch + `openspec/changes/<id>/implements.yaml` | dev |
 | 5 | **Verificar / listar** | `dai check` (¿al día?) · `dai ls` (qué implementa el repo) | dev |
 | 6 | **Resincronizar** *(si el PO editó la US)* | `dai link-us <ID> --resync` | dev |
+| 6b | **Editar la US** | `dai edit-us <ID>` la baja del tracker, la abrís en tu editor, valida el formato y la devuelve · `dai update-us <ID>` empuja un `.md` que ya escribiste. Las dos preguntan si subir el `spec_version` | PO / dev |
 | 7 | **Diseñar el CÓMO** | en el asistente: `/opsx:explore` → `/opsx:propose` → design + tasks | dev + IA |
 | 8 | **Implementar** | `/opsx:apply` → implementa la US con TDD y genera los commits | dev + IA |
 | 9 | **Code review propio** | revisas tu implementación (correctitud + calidad) antes de la PR | dev |
 | 10 | **Smoke test** | pides al agente un smoke local del flujo | dev + IA |
 | 11 | **Crear la PR** | `dai pr` → pregunta la branch base, arma el texto, lo muestra, confirma, pushea y crea la PR/MR | dev |
 | 12 | **Review de un partner** | skill `/dai-review <PR>` deja un **review inline** (resumen + un comentario por línea, low/medium/high); te muestra el preview y **espera tu OK** antes de postear; un humano aprueba | partner |
-| 13 | **Merge + estampar** | al mergear: `dai stamp` → cobertura inversa en el tracker | dev / CI |
+| 13 | **Merge + estampar** | al mergear: `dai stamp` → cobertura inversa en el tracker (deduce la US de la rama; en CI pasa el ID) | dev / CI |
+| 13b | **Gate de trazabilidad** *(opcional)* | `dai check --ci` en el CI → bloquea una rama de producto sin link; `chore/`/`docs/` quedan exentas ([template](templates/ci-dai-gate.yml)) | CI |
 | 14 | **Cerrar la US** | `dai done` → vuelve a la base, actualiza y borra la branch local (si está mergeada) | dev |
 
 > **Paso 3b (publicar):** el MCP crea el issue interactivamente; `dai publish` necesita el

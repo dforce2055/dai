@@ -143,7 +143,8 @@ export function jiraAdapter(env) {
       const res = await daiFetch(jiraIssueUrl(base, id), { headers: jiraAuthHeaders(env) });
       if (res.status === 404) return null;
       if (!res.ok) throw new Error(`jira ${res.status}: ${await res.text()}`);
-      return { id, ...parseUS(jiraIssueToText(await res.json())), url: `${trim(base)}/browse/${id}` };
+      const raw = jiraIssueToText(await res.json());
+      return { id, ...parseUS(raw), url: `${trim(base)}/browse/${id}`, raw };
     },
     async stamp(id, record) {
       const res = await daiFetch(jiraCommentUrl(base, id), {
@@ -152,6 +153,25 @@ export function jiraAdapter(env) {
       });
       if (!res.ok) throw new Error(`jira ${res.status}: ${await res.text()}`);
       return `${trim(base)}/browse/${id}`;
+    },
+    // PUT /issue/<id>: Jira responde 204 SIN cuerpo, así que la URL la componemos
+    // nosotros. Solo se mandan los campos que cambian — un PUT con summary vacío
+    // borraría el título de la US.
+    async updateUS(id, { title, descriptionMarkdown, fields }) {
+      const payload = { ...(fields || {}) };
+      if (title) payload.summary = title;
+      if (descriptionMarkdown != null) payload.description = markdownToAdf(descriptionMarkdown);
+      if (Object.keys(payload).length === 0) throw new Error("nada que actualizar (ni título, ni descripción, ni campos).");
+      const res = await daiFetch(`${trim(base)}/rest/api/3/issue/${encodeURIComponent(id)}`, {
+        method: "PUT", headers: jiraAuthHeaders(env), body: JSON.stringify({ fields: payload }),
+      });
+      if (res.status === 404) throw new Error(`jira: no existe el issue '${id}' (404), o tu usuario no lo ve.`);
+      if (res.status === 403) throw new Error(`jira: sin permiso para editar '${id}' (403). ¿Tu usuario puede editar issues en ese proyecto?`);
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`jira ${res.status}: ${body}${createHint(res.status, body)}`);
+      }
+      return { id, url: `${trim(base)}/browse/${id}` };
     },
     // `fields` son los campos propios del proyecto ya resueltos (ver jira-fields.mjs);
     // `parent` cuelga la US de su épica. Ambos son opcionales: un Jira sin campos

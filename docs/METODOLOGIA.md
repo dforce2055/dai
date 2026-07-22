@@ -83,6 +83,11 @@ cambio.
 - **`ac_hash`** lo calcula la máquina para **detectar**. Es el hash del bloque de
   *Criterios de aceptación* normalizado (whitespace colapsado, orden estable).
 
+> El reparto no es decorativo: la máquina sabe **que** algo cambió, la persona sabe **si
+> importa**. Un typo corregido mueve el hash igual que un criterio nuevo, y solo un humano
+> distingue el uno del otro. Por eso `dai edit-us` / `dai update-us` **proponen** subir el
+> `spec_version` cuando el hash se mueve, y esperan un sí o un no — nunca lo deciden solos.
+
 Cuando el QUÉ evoluciona, cambia el `ac_hash`; todos los CÓMO que declaran el hash
 viejo quedan marcados **atrasados** solos. El funcional ve "el backend todavía no
 tomó mi cambio"; el dev ve "el QUÉ que implementé cambió". Nadie avisa a nadie — el

@@ -255,7 +255,9 @@
       <div class="step m"><div class="num">4</div><div class="body">
         <h3>Verifica la trazabilidad</h3>
         <p>¿Tu código sigue al día con la US? dai re-deriva el hash de la US viva y compara.
-           Si el QUÉ cambió, te avisa y te dice cómo resincronizar.</p>
+           Si el QUÉ cambió, te avisa y te dice cómo resincronizar. Y si el que lo cambió
+           fuiste vos —un criterio que apareció escribiendo el test— <code>dai update-us</code>
+           lo empuja al tracker en vez de que lo copies a mano.</p>
         <span class="tool">dai check  →  ✅ al día  /  ⚠️ atrasado</span>
       </div></div>
 
@@ -268,8 +270,8 @@
 
       <div class="step m"><div class="num">6</div><div class="body">
         <h3>Estampa la cobertura y cierra</h3>
-        <p>Al mergear, dai escribe en el tracker quién implementó qué. Después cierra la US:
-           vuelve a la base y borra la branch.</p>
+        <p>Al mergear, dai escribe en el tracker quién implementó qué — la US de tu rama, no
+           todas las del repo. Después cierra la US: vuelve a la base y borra la branch.</p>
         <span class="tool">dai stamp  →  dai done</span>
       </div></div>
     </div>

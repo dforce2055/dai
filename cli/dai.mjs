@@ -35,6 +35,9 @@ import { parseSource } from "./lib/skills-source.mjs";
 import { skillToCursor, validateSkill, constitution, constitutionCursorRule, envFor, mergeEnv, upsertBlock, reconcileGitignore, stalePromptFiles } from "./lib/bootstrap.mjs";
 import { parseFieldsFile, parseFieldOverrides, resolveJiraFields } from "./lib/jira-fields.mjs";
 import { assertProjectKey } from "./lib/pm-jira.mjs";
+import { flattenImplements, stampScope, requiresLink, trackerKeysIn } from "./lib/branch-scope.mjs";
+import { describeForgeError, parseForgeError } from "./lib/forge-api.mjs";
+import { validateUS, renderValidation, parseSpecVersion, bumpSpecVersion, setSpecVersion } from "./lib/us-format.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -50,6 +53,9 @@ const _color = process.stdout.isTTY && !process.env.NO_COLOR;
 const paint = (code, m) => (_color ? `\x1b[${code}m${m}\x1b[0m` : m);
 const C = { y: (m) => paint("33", m), r: (m) => paint("31", m), cy: (m) => paint("36", m), b: (m) => paint("1", m), dim: (m) => paint("2", m) };
 const ROOT = join(HERE, "..");            // raíz del paquete dai (cli/ está adentro)
+// Rutas relativas al cwd en la salida: una ruta absoluta de 120 caracteres no se lee ni
+// se copia. Si el archivo está fuera del cwd (`../otro`), se muestra tal cual.
+const rel = (p) => { const r = relative(process.cwd(), p); return !r || r.startsWith("..") ? p : r; };
 
 // Banner de bienvenida de `dai init`: el Sol de Mayo en bloques (cuerpo y rayos rectos en
 // oro; rayos ondulados en celeste) al lado del título, más el preview de lo que se configura.
@@ -203,6 +209,81 @@ function gitRemote() { try { return git(["remote", "get-url", "origin"]); } catc
 function gitBranch() { try { return git(["rev-parse", "--abbrev-ref", "HEAD"]); } catch { return null; } }
 function gitCommit() { try { return git(["rev-parse", "HEAD"]); } catch { return null; } }
 
+// ── check --ci: el gate de governance/ci-rules.md, ejecutable ────────────────
+//
+// La brecha del issue #26: ci-rules.md prometía "sin implements.yaml el CI bloquea",
+// pero no existía el comando que lo hiciera. Era una regla escrita que nadie aplicaba.
+//
+// Lo que NO hace: exigirle US a todo. Una `chore/` o una `fix/` sin ticket son trabajo
+// legítimo (branch-naming.md), y un gate que las bloquea se desactiva a la semana.
+// Quién decide es requiresLink(), leyendo el nombre de la branch.
+//
+// Salidas:  0 = pasa · 1 = falta el link · 2 = hay link pero el QUÉ cambió (atrasado)
+async function cmdCheckCi(opts = {}) {
+  const branch = opts.branch || process.env.DAI_CI_BRANCH || ciBranch() || gitBranch();
+  const { required, reason } = requiresLink(branch);
+  const rows = flattenImplements(discoverImplements(process.cwd(), { includeArchived: false }));
+
+  info(`branch '${branch || "(desconocida)"}' — ${reason}`);
+  if (!required) {
+    if (rows.length) info(`igual declara ${rows.length} US (${rows.map((r) => r.id).join(", ")}) — se chequea su cobertura.`);
+    else { ok("gate OK — esta branch no requiere US."); process.exit(0); }
+  }
+  if (required && rows.length === 0) {
+    const ids = trackerKeysIn(branch);
+    process.stderr.write(
+      "✗ gate: falta el link QUÉ↔CÓMO — esta branch no tiene implements.yaml.\n" +
+      `    Crealo:  dai link-us ${ids[0] || "<ID-DE-LA-US>"}\n` +
+      "    Si NO implementa una US (tooling, deps, docs), renombrá la branch con un\n" +
+      "    prefijo exento — chore/, docs/, ci/ — según governance/branch-naming.md.\n");
+    process.exit(1);
+  }
+
+  // Hay link: que además esté al día contra la US viva. Sin token/backend eso no se
+  // puede saber, y un gate que bloquea por falta de red es un gate que se apaga:
+  // con --no-network (o sin adaptador utilizable) valida el link y no más.
+  if (opts.noNetwork) {
+    ok(`gate OK — ${rows.length} US linkeada(s): ${rows.map((r) => r.id).join(", ")} (--no-network: no se comparó contra la US viva).`);
+    process.exit(0);
+  }
+  loadDaiEnv();
+  let adapter;
+  try { adapter = getAdapter(process.env); }
+  catch (e) {
+    warn(`no puedo comparar contra la US viva: ${e.message}`);
+    ok(`gate OK igual — el link existe (${rows.map((r) => r.id).join(", ")}). Configurá el backend para chequear también el atraso.`);
+    process.exit(0);
+  }
+  let worst = 0;
+  for (const r of rows) {
+    let live = null, netErr = null;
+    try { live = await adapter.fetchUS(r.id); } catch (e) { netErr = String(e.message).split("\n")[0]; }
+    if (netErr) { warn(`${r.id}: no pude leer la US (${netErr}) — no bloqueo por un problema de red/credencial.`); continue; }
+    const status = coverageStatus(r.ac_hash, live?.ac_hash);
+    if (status === "al-dia") ok(`${r.id} al día (${r.version})`);
+    else if (status === "atrasado") {
+      process.stderr.write(`✗ gate: ${r.id} ATRASADO — implementaste ${r.ac_hash}, la US viva es ${live.ac_hash}.\n` +
+        `    El QUÉ cambió. Resincronizá y revisá que lo cubras:  dai link-us ${r.id} --resync\n`);
+      worst = Math.max(worst, 2);
+    } else {
+      warn(`${r.id}: no encontré la US en ${adapter.kind} — el link apunta a un ID que el tracker no tiene.`);
+      worst = Math.max(worst, 2);
+    }
+  }
+  if (worst === 0) ok(`gate OK — ${rows.length} US linkeada(s) y al día.`);
+  process.exit(worst);
+}
+
+// La branch real en CI: en una PR, HEAD es un merge commit detached, así que
+// `git rev-parse --abbrev-ref HEAD` devuelve "HEAD" y no el nombre. Cada forge la
+// expone en su propia variable.
+function ciBranch() {
+  const e = process.env;
+  return e.GITHUB_HEAD_REF || e.CI_MERGE_REQUEST_SOURCE_BRANCH_NAME || e.CI_COMMIT_REF_NAME ||
+    e.BITBUCKET_BRANCH || e.BUILD_SOURCEBRANCHNAME ||
+    (e.GITHUB_REF_NAME && !/^\d+\/merge$/.test(e.GITHUB_REF_NAME) ? e.GITHUB_REF_NAME : null) || null;
+}
+
 // ── check ──────────────────────────────────────────────────────────────────
 async function cmdCheck() {
   loadDaiEnv();
@@ -235,38 +316,106 @@ async function cmdCheck() {
 }
 
 // ── stamp ──────────────────────────────────────────────────────────────────
-async function cmdStamp() {
+// Estampa la cobertura de UNA US: la de esta branch. Antes recorría todo el repo
+// —archivados incluidos— así que cerrar una US le dejaba un comentario a las cuatro
+// del sprint (issue #22). Ahora decide con branch-scope.mjs y, si no puede saber cuál,
+// PREGUNTA en vez de estampar de más: un comentario en el tracker no se deshace.
+async function cmdStamp(ids = [], opts = {}) {
   loadDaiEnv();
   const adapter = getAdapter(process.env);
   const remote = gitRemote(), branch = gitBranch(), commit = gitCommit();
-  const found = discoverImplements(process.cwd());
-  let n = 0;
-  for (const f of found) for (const im of f.implements || []) {
-    if (isPlaceholderId(im.id)) continue;   // plantilla sin completar, no es una US real
-    n++;
-    const live = await adapter.fetchUS(im.id);
-    const status = coverageStatus(im.ac_hash, live?.ac_hash);
+  const rows = flattenImplements(discoverImplements(process.cwd(), { includeArchived: false }));
+  const allRows = flattenImplements(discoverImplements(process.cwd()));
+  const scope = stampScope({ branch, rows, allRows, ids, all: !!opts.all });
+
+  if (scope.mode === "none") { process.stdout.write("No hay implements.yaml para estampar.\n"); return; }
+  if (scope.mode === "explicit" && scope.missing?.length) {
+    fail(`no encontré implements.yaml para: ${scope.missing.join(", ")}.\n` +
+         `  US en este repo: ${allRows.map((r) => r.id).join(", ") || "(ninguna)"}`, 1);
+  }
+
+  let targets = scope.targets;
+  if (scope.mode === "ambiguous") {
+    warn(`${scope.reason}.`);
+    const listed = scope.candidates.map((r, i) => `    ${i + 1}) ${r.id}  ${C.dim(`(${r.change})`)}`).join("\n");
+    process.stdout.write(`  US vivas en el repo:\n${listed}\n`);
+    if (opts.yes || !process.stdin.isTTY) {
+      fail("no sé cuál estampar. Decilo explícitamente:  dai stamp <ID>   (o `dai stamp --all` para todas).", 1);
+    }
+    const ans = await askOrCancel("  ¿Cuál estampo? (número, varios con coma, 'a'=todas, Enter=cancelar) ");
+    if (!ans) { info("Cancelado — no se estampó nada."); return; }
+    if (/^a(ll|)$/i.test(ans)) targets = scope.candidates;
+    else {
+      const picked = ans.split(/[,\s]+/).filter(Boolean).map((t) => Number(t));
+      if (picked.some((n) => !Number.isInteger(n) || n < 1 || n > scope.candidates.length)) {
+        fail(`respuesta inválida: '${ans}'. Se esperaba número(s) entre 1 y ${scope.candidates.length}, o 'a'.`, 1);
+      }
+      targets = picked.map((n) => scope.candidates[n - 1]);
+    }
+  } else if (scope.mode !== "all") {
+    info(`${scope.reason} → estampo ${targets.map((t) => t.id).join(", ")}.`);
+  }
+
+  for (const r of targets) {
+    const live = await adapter.fetchUS(r.id);
+    const status = coverageStatus(r.ac_hash, live?.ac_hash);
     const record = {
-      repo: f.repo, change: f.change, version: im.version, ac_hash: im.ac_hash, status,
+      repo: r.repo, change: r.change, version: r.version, ac_hash: r.ac_hash, status,
       branch, branchUrl: branchUrl(remote, branch), commit, commitUrl: commitUrl(remote, commit),
     };
-    const where = await adapter.stamp(im.id, record);
-    process.stdout.write(`✓ ${im.id} → ${where}  (${statusLabel(status)})\n`);
+    const where = await adapter.stamp(r.id, record);
+    process.stdout.write(`✓ ${r.id} → ${where}  (${statusLabel(status)})\n`);
   }
-  if (n === 0) process.stdout.write("No hay implements.yaml para estampar.\n");
+  if (targets.length === 0) process.stdout.write("No se estampó nada.\n");
 }
 
 // ── forge (review) ───────────────────────────────────────────────────────────
+// El review.json lo escribe la SKILL, no el CLI — así que `dai init`/`dai sync` son los
+// únicos que ponían `.dai/reviews/` en el .gitignore, y un repo inicializado con una dai
+// vieja se comía borradores a medio editar en un commit (issue #25). Acá lo arreglamos
+// donde duele: al consumir el archivo. Aditivo, y solo si el borrador está bajo
+// `.dai/reviews/` — si el equipo decidió versionar sus reviews en otro lado, no opinamos.
+function ensureReviewsIgnored(fromPath) {
+  const rel = relative(process.cwd(), fromPath).replace(/\\/g, "/");
+  if (!rel.startsWith(".dai/reviews/")) return;
+  const giPath = join(process.cwd(), ".gitignore");
+  if (!existsSync(giPath)) return;               // sin .gitignore no inventamos uno
+  const cur = readFileSync(giPath, "utf8");
+  const gi = reconcileGitignore(cur, {});        // {} → solo el `ensure` base (.env.dai, .dai/reviews/)
+  if (!gi.changed) return;
+  writeFileSync(giPath, gi.text.endsWith("\n") ? gi.text : gi.text + "\n");
+  info(".gitignore: agregué `.dai/reviews/` — los borradores de review no viajan en un commit.");
+  info("            Si tu equipo los quiere versionar, sacá esa línea a mano.");
+}
+
+// Una pregunta puntual por TTY. Ctrl+D (EOF) devuelve "" — se trata como "cancelar", no
+// como un crash: en un prompt que precede a una acción irreversible, abortar es la
+// respuesta más segura, y "Aborted with Ctrl+D" no le dice eso a nadie.
+async function askOrCancel(q) {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try { return (await rl.question(q)).trim(); }
+  catch { process.stdout.write("\n"); return ""; }
+  finally { rl.close(); }
+}
+
+// Corre una llamada al forge y, si falla, la traduce a una causa concreta (issue #24)
+// en vez del genérico "¿token? ¿ref correcta?".
+async function forgeCall(pr, fn) {
+  try { return await fn(); }
+  catch (e) { fail(describeForgeError(pr, { ...parseForgeError(e), env: process.env }), 1); }
+}
+
 async function cmdForge(sub, ref, opts) {
   loadDaiEnv();
   const pr = parsePrRef(ref, gitRemote());
   if (!pr) fail("no pude resolver la PR/MR. Pasa la URL completa o el número (con remoto git).", 1);
   if (sub === "pr") {
-    process.stdout.write(JSON.stringify(await getPR(pr, process.env), null, 2) + "\n");
+    const j = await forgeCall(pr, () => getPR(pr, process.env));
+    process.stdout.write(JSON.stringify(j, null, 2) + "\n");
   } else if (sub === "comment") {
     const body = opts.bodyFile ? readFileSync(opts.bodyFile, "utf8") : opts.body;
     if (!body) fail("falta --body-file <archivo> o --body <texto>.", 1);
-    const res = await postComment(pr, body, process.env);
+    const res = await forgeCall(pr, () => postComment(pr, body, process.env));
     process.stdout.write(`✓ comentario posteado${res.url ? `: ${res.url}` : ""}\n`);
   } else if (sub === "review") {
     await cmdForgeReview(pr, opts);
@@ -284,11 +433,11 @@ async function cmdForge(sub, ref, opts) {
 async function cmdForgeReview(pr, opts) {
   if (!opts.from) fail("falta --from <review.json>. Lo escribe la skill dai-review; revisalo antes de postear.", 1);
   const review = parseFindings(readFileSync(opts.from, "utf8"));
+  ensureReviewsIgnored(opts.from);
 
   // El diff sale de git (local, por SSH), no de la API: es la fuente de verdad de qué
   // línea es comentable, y no gasta rate limit.
-  const remote = await Promise.resolve(getPR(pr, process.env)).catch(() => null);
-  if (!remote) fail("no pude leer la PR/MR del forge (¿token? ¿ref correcta?).", 1);
+  const remote = await forgeCall(pr, () => getPR(pr, process.env));
   const base = opts.base || remote.baseRef;
   if (!base) fail("no pude saber la branch base de la PR. Pasala con --base <branch>.", 1);
   let diff = "";
@@ -335,7 +484,7 @@ async function cmdForgeReview(pr, opts) {
   }
   if (!kept.length && !review.summary) fail("no hay nada que postear (0 comentarios y resumen vacío).", 1);
 
-  const res = await postReview(pr, { body, comments, headSha: remote.headSha, diffRefs: remote.diffRefs }, process.env);
+  const res = await forgeCall(pr, () => postReview(pr, { body, comments, headSha: remote.headSha, diffRefs: remote.diffRefs }, process.env));
   ok(`review posteado${res.url ? `: ${res.url}` : ""} — ${res.posted} comentario(s) en línea.`);
   if (res.failed.length) {
     warn(`${res.failed.length} comentario(s) NO entraron (gitlab no es atómico: el resumen y el resto SÍ están posteados):`);
@@ -385,6 +534,254 @@ async function cmdPublish(file, opts = {}) {
   ok(`US publicada en ${adapter.kind}: ${r.id}${r.url ? `  →  ${r.url}` : ""}`);
   if (parent) info(`colgada de ${parent}`);
   info(`Próximo paso (el dev abre el CÓMO):  dai link-us ${r.id}`);
+}
+
+// ── edit-us / update-us: el QUÉ cambia y el tracker se entera ────────────────
+//
+// Dos puertas de entrada a UN camino. La diferencia es de dónde sale el markdown:
+//
+//   dai edit-us <ID>    trae la US del tracker → la abrís en tu editor → valida → empuja
+//   dai update-us <ID>  ya tenés el .md escrito (lo refinaste implementando) → empuja
+//
+// El tramo compartido —validar, mostrar el diff, proponer el bump de spec_version,
+// confirmar, escribir, re-estampar el ac_hash local— es `pushUS`. No es código duplicado
+// con dos nombres: es un solo camino con dos entradas, y por eso las dos puertas dan
+// exactamente el mismo preview y la misma confirmación.
+
+// Los campos propios de Jira, si el proyecto los exige (compartido por las dos puertas).
+function fieldsFor(adapter, opts) {
+  if (opts.field === undefined) return undefined;
+  if (adapter.kind !== "jira") fail(`--field es solo para jira (DAI_PM=${adapter.kind}).`, 2);
+  return resolveJiraFields({
+    spec: loadJiraFieldsSpec(),
+    issuetype: opts.issuetype || process.env.DAI_JIRA_ISSUETYPE || "Story",
+    overrides: parseFieldOverrides(asList(opts.field)),
+  });
+}
+
+// El backend md devuelve SINCRÓNICO (el contrato del adaptador lo permite), así que
+// `adapter.fetchUS(id).catch(...)` explotaba con DAI_PM=md. Se normaliza a promesa.
+const fetchLive = (adapter, id) => Promise.resolve().then(() => adapter.fetchUS(id)).catch(() => null);
+
+// Valida el formato e imprime el veredicto. Devuelve el resultado; corta si hay errores.
+function validateOrFail(md, source, { strict = false } = {}) {
+  const v = validateUS(md);
+  const lines = renderValidation(v);
+  process.stdout.write(`\n  ── formato de la US (${source}) ────────────\n`);
+  for (const l of lines) process.stdout.write(l + "\n");
+  if (!v.ok) {
+    process.stdout.write("\n");
+    fail("la US no tiene el formato mínimo para viajar al tracker (ver arriba).\n" +
+         "  El molde canónico está en .dai/templates/formato-us.md, y /grill-user-story te interroga hasta llegar a él.", 2);
+  }
+  if (strict && v.warnings.length) {
+    process.stdout.write("\n");
+    fail(`--strict: ${v.warnings.length} advertencia(s) y ninguna se puede ignorar en este modo.`, 2);
+  }
+  return v;
+}
+
+// El tramo compartido: preview → spec_version → confirmación → tracker → ac_hash local.
+// `md` puede reescribirse acá (el bump de spec_version), por eso devuelve el markdown final.
+async function pushUS(id, md, { adapter, file, opts, live }) {
+  const validation = validateOrFail(md, rel(file), { strict: !!opts.strict });
+  const title = opts.title || validation.title;
+  const newHash = acHash(md);
+
+  // ── spec_version: el número COMUNICA, el hash DETECTA (METODOLOGIA §4) ──────
+  // Si cambiaron los criterios se PROPONE subirlo, no se impone: dai mirando el hash no
+  // distingue un criterio nuevo de un typo corregido, y quien sabe la diferencia es el PO.
+  const curVer = parseSpecVersion(md);
+  const hashChanged = live?.ac_hash !== newHash;
+  let newVer = curVer;
+  if (hashChanged && !opts.noBump) {
+    const proposed = bumpSpecVersion(curVer);
+    if (opts.bump === true || opts.yes) newVer = proposed;
+    else if (typeof opts.bump === "string") newVer = opts.bump;
+    else if (process.stdin.isTTY) {
+      process.stdout.write(`\n  Cambiaron los criterios (ac_hash ${C.dim(live?.ac_hash ?? "ninguno")} → ${C.b(newHash)}).\n`);
+      process.stdout.write(`    s = cambio ${C.b("material")}: subo spec_version a ${C.b(proposed)} y los repos con ${curVer || "la versión vieja"} se marcan ATRASADOS\n`);
+      process.stdout.write(`    n = cambio ${C.b("editorial")} (typo, redacción): se queda en ${curVer || "(sin versión)"}\n`);
+      const ans = await askOrCancel(`  ¿Subo spec_version a ${proposed}? (S/n) `);
+      if (!/^n/i.test(ans)) newVer = proposed;
+    } else {
+      // Sin TTY y sin --bump/--no-bump no hay quién decida, y decidir por nuestra cuenta
+      // sería inventar la respuesta a la única pregunta que este comando NO puede
+      // responder solo. Se deja como está, pero se DICE — un no-op silencioso acá
+      // termina en un spec_version que dejó de comunicar nada.
+      info(`cambiaron los criterios y spec_version se queda en ${curVer || "(sin versión)"}: no hay TTY para preguntarlo.`);
+      info(`  Si el cambio es material:  --bump    (${curVer || "v1"} → ${proposed}, marca atrasados a los repos)`);
+      info("  Si es editorial (typo):   --no-bump");
+    }
+  }
+  if (newVer && newVer !== curVer) md = setSpecVersion(md, newVer);
+
+  // ── Preview: qué cambia ALLÁ ARRIBA. Se muestra siempre, antes de escribir nada ──
+  // "(ninguno)" también del lado del "sin cambios": imprimir el `null` crudo hace dudar
+  // de si el comando se rompió, justo en el preview que la persona lee antes de aprobar.
+  const show = (v) => v ?? "(ninguno)";
+  const chg = (from, to) => (from === to ? `${show(to)}${C.dim("  (sin cambios)")}` : `${C.dim(show(from))} → ${C.b(show(to))}`);
+  process.stdout.write(`\n  ── ${id} · qué cambia en ${adapter.kind} ────────────\n`);
+  process.stdout.write(`  título:     ${chg(live?.title, title)}\n`);
+  process.stdout.write(`  criterios:  ${validation.criteria.length}\n`);
+  process.stdout.write(`  version:    ${chg(curVer, newVer)}\n`);
+  process.stdout.write(`  ac_hash:    ${chg(live?.ac_hash, newHash)}\n`);
+  process.stdout.write(`  fuente:     ${rel(file)}\n  ──────────────────────────────────────\n`);
+
+  if (opts.dryRun) { info("[dry-run] no se tocó el tracker."); return md; }
+  if (!opts.yes && process.stdin.isTTY) {
+    const ans = await askOrCancel(`  Esto PISA la US ${id} en ${adapter.kind}. ¿Guardo? (s/N) `);
+    if (!/^s|^y/i.test(ans)) { info("Cancelado — el tracker quedó como estaba."); return null; }
+  }
+  if (md !== readFileSync(file, "utf8")) writeFileSync(file, md);   // el bump también queda local
+
+  const r = await adapter.updateUS(id, { title, descriptionMarkdown: md, fields: fieldsFor(adapter, opts) });
+  ok(`${id} actualizada en ${adapter.kind}${r.url ? `  →  ${r.url}` : ""}`);
+
+  // Re-estampar el ac_hash local: si no, `dai check` marca atrasado por tu propia edición.
+  if (opts.noResync) { info("--no-resync: el implements.yaml quedó con el ac_hash viejo (dai check te lo va a marcar)."); return md; }
+  const target = discoverImplements(process.cwd()).find((f) => (f.implements || []).some((im) => im.id === id));
+  if (!target) { info(`sin implements.yaml para ${id} en este repo — no hay ac_hash local que resincronizar.`); return md; }
+  const prev = (target.implements.find((im) => im.id === id) || {}).ac_hash;
+  if (prev === newHash && !newVer) { ok(`ac_hash local ya estaba al día (${newHash}).`); return md; }
+  let txt = readFileSync(target.path, "utf8").replace(/^(\s*ac_hash:\s*).*$/m, `$1${newHash}`);
+  if (newVer) txt = txt.replace(/^(\s*version:\s*).*$/m, `$1${newVer}`);
+  writeFileSync(target.path, txt);
+  ok(`ac_hash re-estampado: ${prev} → ${newHash}${newVer && newVer !== curVer ? ` (${newVer})` : ""} en ${rel(target.path)}`);
+  if (prev !== newHash) warn("cambiaron los criterios: revisá que tu implementación los cubra, y corré tus tests.");
+  return md;
+}
+
+// El .md de trabajo de una US: explícito con --us, o el `us.md` del change que la implementa.
+function usFileFor(id, opts, { quiet = false } = {}) {
+  if (typeof opts.us === "string") return opts.us;
+  const target = discoverImplements(process.cwd()).find((f) => (f.implements || []).some((im) => im.id === id));
+  const guess = target ? join(dirname(target.path), "us.md") : null;
+  if (guess && existsSync(guess)) {
+    if (!quiet) info(`sin --us: uso ${rel(guess)} (el change que implementa ${id}).`);
+    return guess;
+  }
+  return null;
+}
+
+// ── edit-us: traer la US del tracker, editarla, validarla y guardarla ─────────
+//
+// Para el PO: la US vive en el tracker, no en un .md que alguien tiene que acordarse de
+// sincronizar. Este comando la BAJA, te la abre en tu editor, valida el formato cuando
+// guardás, te muestra qué cambia y recién ahí la sube. Si el formato no da, te deja
+// volver al editor en vez de tirarte el trabajo.
+async function cmdEditUs(id, opts = {}) {
+  if (!id) fail("uso: dai edit-us <ID> [--us <archivo.md>] [--strict] [--dry-run] [--yes]", 1);
+  if (!isValidKey(id)) fail(`key inválido: '${id}'. Sin espacios ni barras (ej.: ABC-482 o 86cxyz).`, 1);
+  loadDaiEnv();
+  const adapter = getAdapter(process.env);
+  if (typeof adapter.updateUS !== "function") fail(`el backend '${adapter.kind}' no soporta actualizar US.`, 1);
+
+  const live = await fetchLive(adapter, id);
+  if (!live) {
+    fail(`no encontré la US ${id} en ${adapter.kind}. ¿Es el key correcto?\n` +
+         `  Para CREARLA:  dai publish <us.md>   (edit-us edita una que ya existe)`, 2);
+  }
+
+  // Dónde se edita: el us.md del change si existe (así el dev y el PO tocan el MISMO
+  // archivo), si no `.dai/us/<ID>.md`, que es la convención del backend md.
+  const file = usFileFor(id, opts, { quiet: true }) ||
+    join(process.env.DAI_MD_US_DIR || join(".dai", "us"), `${id}.md`);
+
+  // El cuerpo que baja del tracker. Si ya hay un .md local con el MISMO ac_hash, se
+  // respeta el local: puede tener secciones del molde (contexto, fuera de scope) que el
+  // tracker no devuelve, y pisarlas con la versión de arriba sería perder trabajo.
+  let md = live.raw || null;
+  const localExists = existsSync(file);
+  const local = localExists ? readFileSync(file, "utf8") : null;
+  if (local && acHash(local) === live.ac_hash) {
+    md = local;
+    info(`${rel(file)} ya está al día con ${adapter.kind} (ac_hash ${live.ac_hash}) — edito el local, que tiene el molde completo.`);
+  } else if (md == null) {
+    fail(`el backend '${adapter.kind}' no devuelve el cuerpo de la US, así que no puedo traerla para editar.\n` +
+         "  Editá el .md a mano y empujalo con:  dai update-us " + id + " --us <archivo.md>", 1);
+  } else if (localExists && typeof opts.us === "string") {
+    // Pediste ESE archivo: es la fuente, punto. Bajarle la versión del tracker encima
+    // borraría justo lo que viniste a subir — es el camino que usa /grill-user-story,
+    // que escribe la US refinada al .md y después la empuja.
+    md = local;
+    info(`${rel(file)} es tu fuente (local ${acHash(local) || "sin criterios"} vs vivo ${live.ac_hash}) — no lo piso con el tracker.`);
+  } else if (localExists) {
+    warn(`${rel(file)} existe pero DIFIERE del tracker (local ${acHash(local) || "sin criterios"} vs vivo ${live.ac_hash}).`);
+    // Ante la duda gana lo LOCAL: es trabajo que alguien escribió y que el tracker no
+    // tiene. Pisarlo es la única de las dos opciones que destruye algo.
+    if (!opts.yes && process.stdin.isTTY) {
+      const ans = await askOrCancel("  ¿Lo piso con la versión del tracker? (s/N — 'n' edita el local tal cual) ");
+      if (!/^s|^y/i.test(ans)) { md = local; info("Edito el local, sin pisarlo."); }
+    } else {
+      md = local;
+      info(`edito el local sin pisarlo (${opts.yes ? "--yes" : "no interactivo"}). Para partir del tracker, borrá ${rel(file)} o pasá otro --us.`);
+    }
+  }
+
+  mkdirSync(dirname(file), { recursive: true });
+  if (md !== local) { writeFileSync(file, md); ok(`traje ${id} de ${adapter.kind} → ${rel(file)}`); }
+
+  // ── El ciclo editar → validar ──────────────────────────────────────────────
+  // Un formato inválido NO tira el trabajo: te devuelve al editor con los errores a la
+  // vista. Se sale con Ctrl+C, no perdiendo lo escrito.
+  for (;;) {
+    if (!opts.noEditor) await openEditor(file);
+    md = readFileSync(file, "utf8");
+    const v = validateUS(md);
+    if (v.ok || opts.noEditor || !process.stdin.isTTY) break;
+    process.stdout.write(`\n  ── formato de la US (${rel(file)}) ────────────\n`);
+    for (const l of renderValidation(v)) process.stdout.write(l + "\n");
+    const ans = await askOrCancel("\n  El formato no da. ¿Vuelvo a abrir el editor? (S/n — 'n' aborta sin tocar el tracker) ");
+    if (/^n/i.test(ans)) { info("Abortado — el tracker quedó como estaba; tu edición está en " + rel(file) + "."); return; }
+  }
+
+  await pushUS(id, md, { adapter, file, opts, live });
+}
+
+// Abre $VISUAL/$EDITOR sobre el archivo. Sin editor configurado no se impone `vi`: se
+// pide editar el archivo y volver — funciona igual en una terminal, en un IDE, o con el
+// archivo abierto en otra ventana.
+async function openEditor(file) {
+  const ed = process.env.VISUAL || process.env.EDITOR;
+  if (ed && process.stdin.isTTY) {
+    info(`abriendo ${rel(file)} en ${ed}…`);
+    try {
+      execFileSync(ed, [file], { stdio: "inherit", shell: process.platform === "win32" });
+      return;
+    } catch (e) {
+      warn(`no pude abrir '${ed}': ${String(e.message).split("\n")[0]}`);
+    }
+  }
+  if (!process.stdin.isTTY) return;
+  if (!ed) info("no hay $EDITOR ni $VISUAL configurados.");
+  await askOrCancel(`  Editá ${rel(file)} y presioná Enter cuando termines (Ctrl+C para abortar) `);
+}
+
+// ── update-us: empuja al tracker una US que ya escribiste ─────────────────────
+//
+// El inverso de `dai publish`: la US ya existe con su key, la refinaste implementando (un
+// criterio que apareció escribiendo el test) y el tracker quedó viejo. Sin esto había que
+// copiar y pegar a mano, que es justo lo que el método no quiere (Art. 10).
+async function cmdUpdateUs(id, opts = {}) {
+  if (!id) fail("uso: dai update-us <ID> [--us <archivo.md>] [--strict] [--no-resync] [--dry-run] [--yes]", 1);
+  if (!isValidKey(id)) fail(`key inválido: '${id}'. Sin espacios ni barras (ej.: ABC-482 o 86cxyz).`, 1);
+  loadDaiEnv();
+
+  const file = usFileFor(id, opts);
+  if (!file) {
+    fail(`falta --us <archivo.md> con la US (no encontré un us.md junto al implements.yaml de ${id}).\n` +
+         `  Si querés traerla del tracker y editarla ahí mismo:  dai edit-us ${id}`, 1);
+  }
+  if (!existsSync(file)) fail(`no existe el archivo '${file}'.`, 1);
+
+  const adapter = getAdapter(process.env);
+  if (typeof adapter.updateUS !== "function") fail(`el backend '${adapter.kind}' no soporta actualizar US.`, 1);
+  const live = await fetchLive(adapter, id);
+  if (!live && adapter.kind !== "md") {
+    fail(`no encontré la US ${id} en ${adapter.kind}. ¿Es el key correcto? Para CREARLA: dai publish ${rel(file)}`, 2);
+  }
+  await pushUS(id, readFileSync(file, "utf8"), { adapter, file, opts, live });
 }
 
 // ── done: cierra una US — vuelve a la base, actualiza y borra la branch local ──
@@ -840,6 +1237,7 @@ async function cmdInit(repo, opts) {
   }
   writeFileSync(join(dai, "VERSION"), readFileSync(join(ROOT, "VERSION"), "utf8"));
   ok(".dai/         moldes (templates) + reglas (governance) del método");
+  info("              gate de CI opcional: cp .dai/templates/ci-dai-gate.yml .github/workflows/");
 
   // Config de dai en SUS PROPIOS archivos, sin tocar el `.env`/`.env.example` del equipo:
   // muchas orgs versionan el `.env` como política, así que dai lo deja en paz (solo lo lee,
@@ -1252,8 +1650,10 @@ switch (cmd) {
   case "ac-hash": cmdAcHash(pos[0]); break;
   case "ls":      cmdLs(opts); break;
   case "link-us": cmdLinkUs(pos[0], opts).catch((e) => fail(String(e.message))); break;
-  case "check":   cmdCheck().catch((e) => fail(String(e.message))); break;
-  case "stamp":   cmdStamp().catch((e) => fail(String(e.message))); break;
+  case "check":   (opts.ci ? cmdCheckCi(opts) : cmdCheck()).catch((e) => fail(String(e.message))); break;
+  case "stamp":   cmdStamp(pos, opts).catch((e) => fail(String(e.message))); break;
+  case "update-us": cmdUpdateUs(pos[0], opts).catch((e) => fail(String(e.message))); break;
+  case "edit-us": cmdEditUs(pos[0], opts).catch((e) => fail(String(e.message))); break;
   case "forge":   cmdForge(pos[0], pos[1], opts).catch((e) => fail(String(e.message))); break;
   case "publish": cmdPublish(pos[0], opts).catch((e) => fail(String(e.message))); break;
   case "pr":
@@ -1283,8 +1683,19 @@ switch (cmd) {
       "      [--field alias=valor]    campos propios que exige tu Jira (.dai/jira-fields.json); repetible\n" +
       "  link-us <KEY> [--us <md>]    crea branch + implements.yaml; sin --us trae la US del tracker (ADR-0004)\n" +
       "  link-us <KEY> --resync       re-estampa el ac_hash contra la US viva (tras un ⚠️ de check)\n" +
+      "  edit-us <KEY>                trae la US del tracker, la abrís en tu editor, valida el formato,\n" +
+      "                               muestra qué cambia y la guarda (para el PO)\n" +
+      "      [--no-editor]            no abre $EDITOR (para skills/scripts que ya escribieron el .md)\n" +
+      "      [--bump | --no-bump]     decide el spec_version sin preguntar (sin TTY no se toca y avisa)\n" +
+      "  update-us <KEY> [--us <md>]  empuja al tracker un .md que ya escribiste + re-estampa el ac_hash\n" +
+      "      [--dry-run] [--yes]      sin --yes muestra el diff y pide confirmación · [--no-resync]\n" +
+      "      [--strict]               las advertencias de formato también frenan · [--no-bump] no toca spec_version\n" +
       "  check                        compara vs la US viva → atrasado (ADR-0003)\n" +
-      "  stamp                        estampa la cobertura en el tracker (ADR-0005)\n" +
+      "  check --ci                   gate de CI: exige el link según branch-naming (chore/ y docs/ exentas)\n" +
+      "      [--branch b]             la branch a evaluar (en CI se detecta sola) · [--no-network]\n" +
+      "                               salidas: 0 pasa · 1 falta el link · 2 el QUÉ cambió\n" +
+      "  stamp [<ID>…] [--all]        estampa la cobertura en el tracker (ADR-0005)\n" +
+      "                               sin ID: la US de esta branch; si hay varias, pregunta\n" +
       "  done [--base main] [--force] cierra la US: vuelve a la base, actualiza y borra la branch local (si está mergeada)\n" +
       "  archive [<change>] [--skip-specs]   funde los delta specs del change en las specs canónicas y lo archiva (lo corre el aprobador en la PR)\n" +
       "  pr (alias mr) [--assignee u] [--base b] [--draft] [--yes]   crea TU PR/MR precargada (muestra + confirma)\n" +

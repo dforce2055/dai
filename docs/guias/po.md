@@ -31,7 +31,45 @@
    válido es *"no lo construyas"* — eso es el gate haciendo su trabajo (Art. 4).
 4. **Verificas el [DoR](../../templates/definition-of-ready.md)** → antes de que entre al sprint, la US cumple el
    [`definition-of-ready.md`](../../templates/definition-of-ready.md).
-5. **Demo** → aceptas o rechazas contra los mismos criterios que ya eran tests.
+5. **Editas una US que ya existe** → `dai edit-us ABC-482`. La **baja del gestor**, te la
+   abre en tu editor, **valida el formato** cuando guardas, te muestra qué cambia y
+   recién ahí la sube. Ver [Cuando el QUÉ cambia](#cuando-el-que-cambia) abajo.
+6. **Demo** → aceptas o rechazas contra los mismos criterios que ya eran tests.
+
+## Cuando el QUÉ cambia {#cuando-el-que-cambia}
+
+Un criterio que faltaba, una regla que aparece a mitad del sprint. La US **vive en el
+gestor**, no en un `.md` que alguien tiene que acordarse de sincronizar — así que dai la
+trae, te deja editarla y la devuelve:
+
+```bash
+dai edit-us ABC-482
+```
+
+1. **Baja** la US del gestor (Jira / ClickUp) a un `.md`.
+2. **La abre** en tu `$EDITOR`. Escribes en markdown, con el
+   [molde canónico](../../templates/formato-us.md) delante.
+3. **Valida el formato** al guardar: que tenga título, que tenga criterios, y que cada
+   criterio sea Gherkin completo (`Dado / Cuando / Entonces`). Si algo no da, **te
+   devuelve al editor** — no te tira lo escrito.
+4. **Te muestra qué cambia** allá arriba: título, cuántos criterios, el `ac_hash`.
+5. **Te pregunta si subir el `spec_version`** — y esta es la decisión tuya, no de dai:
+
+   | Tu cambio | Respondes | Qué pasa |
+   |---|---|---|
+   | Un criterio nuevo, una regla distinta (**material**) | `s` → `v1` → `v2` | los repos que implementaron `v1` se marcan **atrasados** solos |
+   | Un typo, redacción más clara (**editorial**) | `n` → se queda en `v1` | nadie se marca atrasado |
+
+   dai no puede distinguir las dos cosas mirando el hash: sabe *que* cambió, no *si
+   importa*. Eso lo sabes tú.
+6. **Confirmas** y recién ahí escribe en el gestor. Sin confirmación no se toca nada.
+
+> **`--dry-run`** te muestra todo el preview sin escribir. Úsalo la primera vez.
+
+Solo dos cosas te **frenan**: que la US no tenga título, o que no tenga criterios. Sin
+criterios no hay `ac_hash`, y sin `ac_hash` la US no se puede linkear a ningún repo — no
+es una regla de estilo, es lo que sostiene la trazabilidad. Todo lo demás (un criterio
+que no es Gherkin, un título largo) es un **aviso**: dai te lo dice y sigue.
 
 ## La trampa a evitar
 
@@ -52,5 +90,6 @@ el CI (Art. 10).
 - `/grill-epic` — algo grande → una épica partida en varias US
 - `/grill-user-story` — una US funcional y testeable
 - `/grill-intent` — Gate 0: desafía el problema de la US antes del spec
+- `dai edit-us <ID>` — traes una US del gestor, la editas, dai valida y la devuelve
 - el gestor de proyectos
 - [`definition-of-ready.md`](../../templates/definition-of-ready.md)

@@ -230,3 +230,68 @@ test("[red] jira createUS: DAI_JIRA_PROJECT con una issue key falla ANTES de la 
     },
   );
 });
+
+// ── updateUS (dai update-us, issue #23) ──────────────────────────────────────
+
+test("[red] jira updateUS: PUT al issue con summary + descripción en ADF", async () => {
+  await withMockFetch(() => mockResponse(204, ""), async (calls) => {
+    const r = await jiraAdapter(ENV).updateUS("ABC-482", {
+      title: "Finalizar la compra",
+      descriptionMarkdown: "## Criterios de aceptación\n- Dado x\n",
+    });
+    assert.equal(calls[0].opts.method, "PUT");
+    assert.match(calls[0].url, /\/rest\/api\/3\/issue\/ABC-482$/);
+    const body = JSON.parse(calls[0].opts.body);
+    assert.equal(body.fields.summary, "Finalizar la compra");
+    assert.equal(body.fields.description.type, "doc", "la descripción va en ADF, no en markdown pelado");
+    // 204 no trae cuerpo: la URL la componemos nosotros o el comando no sabría qué mostrar.
+    assert.equal(r.url, "https://j.acme.com/browse/ABC-482");
+  });
+});
+
+// Un PUT con summary vacío BORRA el título de la US en Jira. Solo se manda lo que cambia.
+test("[red] jira updateUS: sin título no manda summary (no lo borra)", async () => {
+  await withMockFetch(() => mockResponse(204, ""), async (calls) => {
+    await jiraAdapter(ENV).updateUS("ABC-1", { descriptionMarkdown: "# x\n" });
+    const body = JSON.parse(calls[0].opts.body);
+    assert.ok(!("summary" in body.fields), "no debe mandar summary vacío");
+    assert.ok("description" in body.fields);
+  });
+});
+
+test("[red] jira updateUS: sin nada que cambiar falla antes de salir a la red", async () => {
+  await withMockFetch(() => mockResponse(204, ""), async (calls) => {
+    await assert.rejects(jiraAdapter(ENV).updateUS("ABC-1", {}), /nada que actualizar/);
+    assert.equal(calls.length, 0, "no debería haber pegado a Jira");
+  });
+});
+
+test("[red] jira updateUS: 404 y 403 se explican distinto", async () => {
+  await withMockFetch(() => mockResponse(404, "not found"), async () => {
+    await assert.rejects(jiraAdapter(ENV).updateUS("ABC-9", { title: "x" }), /no existe el issue 'ABC-9'/);
+  });
+  await withMockFetch(() => mockResponse(403, "forbidden"), async () => {
+    await assert.rejects(jiraAdapter(ENV).updateUS("ABC-9", { title: "x" }), /sin permiso para editar/);
+  });
+});
+
+test("[red] jira updateUS: los campos propios del proyecto viajan junto al resto", async () => {
+  await withMockFetch(() => mockResponse(204, ""), async (calls) => {
+    await jiraAdapter(ENV).updateUS("ABC-1", { title: "x", fields: { customfield_10050: { value: "Mejora" } } });
+    const body = JSON.parse(calls[0].opts.body);
+    assert.deepEqual(body.fields.customfield_10050, { value: "Mejora" });
+    assert.equal(body.fields.summary, "x");
+  });
+});
+
+// `raw` es lo que `dai edit-us` baja para abrirte en el editor. Sin esto solo teníamos el
+// parseo (título + hash): alcanza para detectar drift, no para editar la US.
+test("[red] jira fetchUS devuelve el markdown crudo, no solo el parseo", async () => {
+  await withMockFetch(() => mockResponse(200, { key: "ABC-1", fields: { summary: "Finalizar la compra", description: ADF } }),
+    async () => {
+      const us = await jiraAdapter(ENV).fetchUS("ABC-1");
+      assert.match(us.raw, /^# Finalizar la compra/);
+      assert.match(us.raw, /Criterios de aceptación/, "el cuerpo entero, listo para editar");
+      assert.equal(us.ac_hash, acHash(us.raw), "el hash que reporta es el de ese mismo texto");
+    });
+});

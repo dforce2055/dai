@@ -226,3 +226,76 @@ test("[red] postReview gitlab reporta los parciales en vez de fingir atomicidad"
 test("[red] postReview en un forge no soportado falla claro", async () => {
   await assert.rejects(postReview({ forge: "bitbucket", number: 1 }, { body: "x" }, {}), /no soportado para review/);
 });
+
+// ── describeForgeError (issue #24) ───────────────────────────────────────────
+// El mensaje viejo era "¿token? ¿ref correcta?" para TODO: sin token, token vencido,
+// sin scope y PR inexistente caían en la misma frase, y costaba una sesión de
+// diagnóstico equivocado. Cada causa tiene una acción distinta y se nombra aparte.
+
+test("describeForgeError: SIN token lo dice explícitamente, no habla de validez", async () => {
+  const { describeForgeError } = await import("../lib/forge-api.mjs");
+  const m = describeForgeError(GH, { status: 401, env: {} });
+  assert.match(m, /no hay GITHUB_TOKEN configurado/);
+  assert.match(m, /\.env\.dai/, "dice dónde ponerlo");
+  assert.doesNotMatch(m, /vencido|revocado/, "sin token no se puede afirmar que esté vencido");
+});
+
+test("describeForgeError: 401 CON token dice que el token no sirve, y cómo probarlo", async () => {
+  const { describeForgeError } = await import("../lib/forge-api.mjs");
+  const m = describeForgeError(GH, { status: 401, env: { GITHUB_TOKEN: "ghp_x" } });
+  assert.match(m, /NO es válido/);
+  assert.match(m, /vencido, revocado, o mal copiado/);
+  assert.match(m, /curl/, "da el comando para verificarlo sin adivinar");
+});
+
+test("describeForgeError: 403 es permiso/scope, no credencial inválida", async () => {
+  const { describeForgeError } = await import("../lib/forge-api.mjs");
+  const m = describeForgeError(GH, { status: 403, env: { GITHUB_TOKEN: "t" } });
+  assert.match(m, /válido pero NO tiene permiso/);
+  assert.doesNotMatch(m, /vencido/);
+});
+
+test("describeForgeError: 403 por rate limit no manda a revisar scopes", async () => {
+  const { describeForgeError } = await import("../lib/forge-api.mjs");
+  const m = describeForgeError(GH, { status: 403, body: "API rate limit exceeded", env: { GITHUB_TOKEN: "t" } });
+  assert.match(m, /rate limit/);
+  assert.doesNotMatch(m, /scope/);
+});
+
+// El 404 de GitHub sobre un repo privado es ambiguo POR DISEÑO (no filtra existencia).
+// Fingir que solo puede ser "la ref está mal" es lo que mandó el diagnóstico para el lado
+// equivocado la primera vez.
+test("describeForgeError: 404 nombra las DOS causas y no elige una", async () => {
+  const { describeForgeError } = await import("../lib/forge-api.mjs");
+  const m = describeForgeError(GH, { status: 404, env: { GITHUB_TOKEN: "t" } });
+  assert.match(m, /no existe con ese número/i);
+  assert.match(m, /privado/);
+});
+
+test("describeForgeError: gitlab habla de GITLAB_TOKEN, no de GITHUB_TOKEN", async () => {
+  const { describeForgeError } = await import("../lib/forge-api.mjs");
+  const m = describeForgeError(GL, { status: 401, env: {} });
+  assert.match(m, /GITLAB_TOKEN/);
+  assert.doesNotMatch(m, /GITHUB_TOKEN/);
+});
+
+test("describeForgeError: sin status es un problema de red, no de credencial", async () => {
+  const { describeForgeError } = await import("../lib/forge-api.mjs");
+  const m = describeForgeError(GH, { env: { GITHUB_TOKEN: "t" }, cause: "getaddrinfo ENOTFOUND" });
+  assert.match(m, /red \/ proxy \/ VPN/);
+});
+
+test("parseForgeError: separa el status del cuerpo que pegó getPR", async () => {
+  const { parseForgeError } = await import("../lib/forge-api.mjs");
+  assert.deepEqual(parseForgeError(new Error('forge 401: {"message":"Bad credentials"}')),
+    { status: 401, body: '{"message":"Bad credentials"}' });
+  const other = parseForgeError(new Error("fetch failed"));
+  assert.equal(other.status, null);
+  assert.equal(other.cause, "fetch failed");
+});
+
+test("tokenFor: un token con espacios de más cuenta como ausente", async () => {
+  const { tokenFor, describeForgeError } = await import("../lib/forge-api.mjs");
+  assert.equal(tokenFor(GH, { GITHUB_TOKEN: "  " }), "");
+  assert.match(describeForgeError(GH, { status: 401, env: { GITHUB_TOKEN: "  " } }), /no hay GITHUB_TOKEN/);
+});

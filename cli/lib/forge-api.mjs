@@ -72,11 +72,68 @@ export function inlinePosition(ref, c, { diffRefs } = {}) {
   return { body: c.body, position };
 }
 
+// La variable de entorno que autentica contra este forge, y su valor.
+export function tokenVar(ref) { return ref.forge === "gitlab" ? "GITLAB_TOKEN" : "GITHUB_TOKEN"; }
+export function tokenFor(ref, env = process.env) { return String(env[tokenVar(ref)] || "").trim(); }
+
 export function authHeaders(ref, env = process.env) {
   if (ref.forge === "github") {
     return { Authorization: `Bearer ${env.GITHUB_TOKEN || ""}`, Accept: "application/vnd.github+json", "User-Agent": "dai" };
   }
   return { "PRIVATE-TOKEN": env.GITLAB_TOKEN || "" };
+}
+
+// Traduce el fallo del forge a algo accionable (issue #24).
+//
+// El mensaje viejo era `¿token? ¿ref correcta?` para TODO: sin token, token vencido,
+// token sin scope, PR inexistente y repo privado caían en la misma frase. Costó una
+// sesión de diagnóstico equivocado. Cada causa tiene una acción distinta, así que se
+// nombran por separado — y "no hay token" se detecta ANTES de salir a la red.
+//
+// Ojo con el 404 de GitHub: en un repo privado, un token sin permiso devuelve 404 (no
+// 403) para no filtrar la existencia del repo. Por eso el 404 nombra las dos causas.
+export function describeForgeError(ref, { status = null, body = "", env = process.env, cause = null } = {}) {
+  const v = tokenVar(ref);
+  const has = tokenFor(ref, env) !== "";
+  const where = `${ref.projectPath}#${ref.number} (${ref.host})`;
+  const setIt = `  Configuralo en tu .env.dai (o exportalo en la shell):  ${v}=<token>`;
+
+  if (!has) {
+    return `no hay ${v} configurado, así que la llamada al forge salió sin credencial.\n` +
+      `${setIt}\n` +
+      (ref.forge === "github"
+        ? "  Token: https://github.com/settings/tokens  ·  scope 'repo' (o fine-grained con Pull requests: read+write)."
+        : "  Token: <tu-gitlab>/-/user_settings/personal_access_tokens  ·  scope 'api'.");
+  }
+  if (status === 401) {
+    return `el forge rechazó tu ${v} (401): el token existe pero NO es válido — vencido, revocado, o mal copiado.\n` +
+      `  Probalo:  ${ref.forge === "github"
+        ? "curl -sI -H \"Authorization: Bearer $GITHUB_TOKEN\" https://api.github.com/user"
+        : `curl -sI -H "PRIVATE-TOKEN: $GITLAB_TOKEN" https://${ref.host}/api/v4/user`}\n` +
+      `  Si da 200, el token sirve y el problema es otro. Si da 401, generá uno nuevo.\n${setIt}`;
+  }
+  if (status === 403) {
+    const rate = /rate limit|api rate/i.test(String(body));
+    return rate
+      ? `el forge te frenó por rate limit (403). Esperá unos minutos, o usá un ${v} con más cuota.`
+      : `tu ${v} es válido pero NO tiene permiso sobre ${where} (403).\n` +
+        `  Le falta scope (github: 'repo' / fine-grained con Pull requests read+write · gitlab: 'api'),\n` +
+        "  o tu usuario no tiene acceso a ese repo.";
+  }
+  if (status === 404) {
+    return `el forge no encontró ${where} (404). Dos causas posibles, y no se distinguen desde afuera:\n` +
+      "    1. La PR/MR no existe con ese número en ese repo (revisá la ref).\n" +
+      `    2. El repo es privado y tu ${v} no tiene permiso — GitHub devuelve 404, no 403, para no filtrar que existe.`;
+  }
+  if (status != null) return `el forge respondió ${status} sobre ${where}.${body ? `\n  ${String(body).slice(0, 400)}` : ""}`;
+  return `no pude hablar con ${ref.host}${cause ? `: ${cause}` : ""}. ¿Hay red / proxy / VPN de por medio?`;
+}
+
+// El error que tiran getPR/postComment/postReview lleva el status pegado al mensaje
+// (`forge 401: {...}`). Esto lo vuelve a separar para poder explicarlo.
+export function parseForgeError(e) {
+  const m = String(e?.message || e || "").match(/^forge (\d{3}): ([\s\S]*)$/);
+  return m ? { status: Number(m[1]), body: m[2] } : { status: null, body: "", cause: String(e?.message || e || "") };
 }
 
 // Comentario estándar de dai-review (mismo formato lo emita el CLI o la skill).

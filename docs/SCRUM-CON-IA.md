@@ -50,8 +50,8 @@
 | **Clásico** | El PO parte épicas en Historias de Usuario y les pone criterios de aceptación. |
 | **Dolor** | US vagas, no testeables ("el usuario quiere un botón"). El malentendido se descubre tarde, ya implementado. |
 | **Con IA** | `grill-user-story` **interroga** al PO hasta que la US es testeable por construcción (INVEST + Gherkin); y después el Gate 0 de `grill-intent` desafía el *problema* detrás (veredicto: a-spec / reframe / descartar). La IA no *escribe* la US: la *saca a preguntas*. La US nace con ID estable y criterios hasheables. |
-| **Humano (HITL)** | El PO responde y decide. La IA no inventa requerimientos: los pule. |
-| **Herramienta** | `grill-user-story`, `grill-intent`, `formato-us.md` |
+| **Humano (HITL)** | El PO responde y decide. La IA no inventa requerimientos: los pule. Si la US ya existe y hay que retocarla, `dai edit-us <ID>` la baja del tracker, valida el formato al guardar y **pregunta** si el cambio es material (sube `spec_version`) o editorial. |
+| **Herramienta** | `grill-user-story`, `grill-intent`, `formato-us.md`, `dai edit-us` |
 | **Detalle →** | [`detalle/01-refinamiento.md`](detalle/01-refinamiento.md) |
 
 #### 2. Sprint Planning: comprometer US y derivar tareas

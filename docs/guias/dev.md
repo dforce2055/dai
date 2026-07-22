@@ -41,6 +41,9 @@
 8. **Verificas el DoD** → [`definition-of-done.md`](../../templates/definition-of-done.md) antes de mergear.
 9. **Merge → se estampa la cobertura** con `dai stamp` (lo corres tú tras mergear, o el CI
    si la org lo tiene automatizado — mismo comando, ADR-0003). El estado se **deriva** (Art. 10).
+   `dai stamp` deduce **qué US** estampar del nombre de tu rama; si el repo tiene varias
+   vivas y no puede saberlo, te pregunta antes de escribir en el tracker. En un pipeline
+   pasa el ID: `dai stamp ABC-482` ([ADR-0018](../adr/0018-alcance-de-stamp-y-gate-de-ci.md)).
 10. **(Opcional) Limpias la rama** → `dai done` te devuelve a la base (default `main`, o
    `--base develop`), hace `fetch --prune` + `pull` y borra la rama local **solo si está
    mergeada**. Higiene del repo tras el merge, sin riesgo de perder trabajo sin integrar.
@@ -57,6 +60,23 @@ Si el PO sube la US a `v2`, tu `implements.yaml` (que apunta a `v1`) se marca
 **atrasado** solo. Abres una nueva iteración contra `v2` y vuelves al paso 3. Nadie
 te avisa: el link versionado lo hace [Art. 11](../MANIFIESTO.md#art-11).
 
+### Cuando el que cambia el QUÉ eres tú
+
+Implementando aparece un criterio que la US no decía, y lo escribes en el `us.md` del
+change. Ahí el tracker queda viejo y tu `ac_hash` deja de coincidir con nada:
+
+```bash
+dai update-us ABC-482        # empuja tu us.md al tracker + re-estampa el ac_hash local
+```
+
+Te muestra qué va a cambiar allá arriba y **pide confirmación** antes de pisar la US
+(`--dry-run` para solo mirar, `--yes` para saltar la pregunta). Sin `--us` toma el `us.md`
+que está junto a tu `implements.yaml`.
+
+> Que un criterio nuevo pase por el tracker no es burocracia: es lo que hace que el
+> **PO se entere** de que la historia creció. Editar solo el `us.md` local deja el QUÉ
+> partido en dos versiones y ninguna es la buena.
+
 ## Tus herramientas
 
 - `/link-us`
@@ -66,4 +86,5 @@ te avisa: el link versionado lo hace [Art. 11](../MANIFIESTO.md#art-11).
 - `/tdd` — la disciplina TDD que aplica el paso anterior
 - `/dai-review`
 - `dai check` · `dai pr` · `dai stamp` · `dai done` (limpieza, opcional)
+- `dai update-us` — empuja al tracker una US que refinaste implementando
 - `definition-of-done.md`

@@ -30,7 +30,7 @@ falló. El CLI lo caza antes.
 ### Cómo postear (elige la primera disponible)
 
 1. **`dai forge review <ref> --from <archivo> --yes`** — la forma. Review inline:
-   resumen + un comentario por línea. Usa `GITHUB_TOKEN`/`GITLAB_TOKEN` del `.env`.
+   resumen + un comentario por línea. Usa `GITHUB_TOKEN`/`GITLAB_TOKEN` de `.env.dai` o `.env`.
 2. **MCP del forge / `dai forge comment`** — fallback si no hay token, o si necesitas
    dejar un comentario suelto sin anclar. Pierdes el inline y la validación.
 

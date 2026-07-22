@@ -36,7 +36,7 @@ Pull *up* from the story's "I want Y" to the problem underneath, and pressure-te
 1. **Read** the user story and the constitution.
 2. **Challenge, one axis at a time.** grill-me discipline: ask, listen, push, move on. Don't dump the five questions at once.
 3. **Reach a verdict** — `a-spec` (problem survived, go to propose), `reframe` (the real problem is different, back to `grill-user-story`), or `descartar` (not worth solving now, stop and record why).
-4. **Emit** the filled `intent.md` (default location `openspec/intents/<YYYYMMDD-slug>/intent.md`; adjust to where the manifesto puts intents). Embed the tracker ID (the issue/task key — Jira or ClickUp, per `DAI_PM` in the repo's `.env`) and the source story.
+4. **Emit** the filled `intent.md` (default location `openspec/intents/<YYYYMMDD-slug>/intent.md`; adjust to where the manifesto puts intents). Embed the tracker ID (the issue/task key — Jira or ClickUp, per `DAI_PM` in the repo's `.env.dai` or `.env` — dai reads both, `.env.dai` wins) and the source story.
 
 ## Hand-off
 
