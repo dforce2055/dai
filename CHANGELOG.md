@@ -70,6 +70,13 @@ de error dejan de mandar el diagnóstico para el lado equivocado.**
 - Un `Ctrl+D` en un prompt de confirmación se trata como **cancelar** en vez de crashear
   con `Aborted with Ctrl+D`.
 
+### Interno
+- **`cli/test/package-hygiene.test.mjs`** — chequea lo que hasta ahora era un `git grep` a
+  mano antes de pushear: que ningún fuente versionado tenga bytes NUL (uno se coló y git
+  pasó a tratar el archivo como binario, con el diff dejando de ser revisable), que todo
+  sea UTF-8 válido, que no viajen identificadores de repos de terceros —la convención de
+  los ejemplos es ACME— y que `files[]` no publique el sitio.
+
 ### Versionado
 
 **Minor → 0.11.0.** `dai stamp` sin argumentos **cambia de comportamiento**: antes estampaba
