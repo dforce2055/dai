@@ -225,3 +225,36 @@ test("las 7 skills que dai distribuye pasan su propia validación", async () => 
     assert.equal(validateSkill(readFileSync(join(root, n, "SKILL.md"), "utf8")), null, `${n} no valida`);
   }
 });
+
+// ── .dai/reviews/ en el .gitignore (issue #25) ───────────────────────────────
+// Un review.json a medio editar —con hallazgos que un LLM todavía no validó— no tiene
+// por qué viajar en un commit. Va ignorado por default; quien quiera versionarlos saca
+// la línea a mano.
+
+test("reconcileGitignore ignora .dai/reviews/ por default, en cualquier asistente", () => {
+  for (const want of [{}, { claude: true }, { cursor: true }, { claude: true, cursor: true }]) {
+    const { text } = reconcileGitignore("", want);
+    assert.ok(text.split("\n").some((l) => l.trim() === ".dai/reviews/"), `falta con ${JSON.stringify(want)}`);
+  }
+});
+
+// `.dai/` entero NO se ignora: ahí vive .dai/jira-fields.json, que SÍ se versiona.
+test("reconcileGitignore no ignora .dai/ entero — ahí hay config versionada", () => {
+  const { text } = reconcileGitignore("", { claude: true });
+  assert.ok(!text.split("\n").some((l) => ["dai", ".dai"].includes(l.trim().replace(/^\/|\/$/g, ""))));
+});
+
+// Antes se comparaba el texto crudo, así que a quien ya la tenía sin barra final le
+// agregábamos una segunda línea con la misma regla.
+test("reconcileGitignore no duplica una regla que ya está escrita distinto", () => {
+  for (const existing of [".dai/reviews", "/.dai/reviews/", ".dai/reviews/"]) {
+    const { text } = reconcileGitignore(`${existing}\n.env.dai\n`, {});
+    const hits = text.split("\n").filter((l) => l.trim().replace(/^\/+|\/+$/g, "") === ".dai/reviews");
+    assert.equal(hits.length, 1, `duplicó con '${existing}': ${JSON.stringify(text)}`);
+  }
+});
+
+test("reconcileGitignore: un comentario que menciona la ruta no cuenta como regla", () => {
+  const { text } = reconcileGitignore("# .dai/reviews/ lo ignoramos algún día\n", {});
+  assert.ok(text.split("\n").some((l) => l.trim() === ".dai/reviews/"));
+});

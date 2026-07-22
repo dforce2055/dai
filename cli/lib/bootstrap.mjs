@@ -197,8 +197,11 @@ export function reconcileGitignore(text, want) {
     if (broad.has(norm(line))) { changed = true; return false; }
     return true;
   });
-  const have = new Set(lines.map((l) => l.trim()));
-  const add = ensure.filter((e) => !have.has(e));
+  // Se compara NORMALIZADO: `.dai/reviews`, `/.dai/reviews/` y `.dai/reviews/` son la
+  // misma regla para git. Comparando el texto crudo agregábamos un duplicado al repo
+  // de quien ya la había puesto a mano.
+  const have = new Set(lines.filter((l) => !l.trim().startsWith("#")).map((l) => norm(l)));
+  const add = ensure.filter((e) => !have.has(norm(e)));
   if (add.length) {
     changed = true;
     if (lines.length && lines[lines.length - 1].trim() !== "") lines.push("");
