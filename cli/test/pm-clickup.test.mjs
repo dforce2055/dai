@@ -90,3 +90,45 @@ test("[red] clickup createUS postea a /list/{id}/task y devuelve el id", async (
 test("[red] clickup createUS sin DAI_CLICKUP_LIST_ID → error", async () => {
   await assert.rejects(clickupAdapter({ DAI_CLICKUP_TOKEN: "pk" }).createUS({ title: "X", descriptionMarkdown: "y" }), /DAI_CLICKUP_LIST_ID/);
 });
+
+// ── updateUS (dai update-us, issue #23) ──────────────────────────────────────
+
+test("[red] clickup updateUS: PUT a la tarea con name + markdown_content", async () => {
+  await withMockFetch(() => mockResponse(200, { id: "abc", url: "https://app.clickup.com/t/1/abc" }), async (calls) => {
+    const r = await clickupAdapter(ENV).updateUS("abc", {
+      title: "Finalizar la compra", descriptionMarkdown: "## Criterios de aceptación\n- Dado x\n",
+    });
+    assert.equal(calls[0].opts.method, "PUT");
+    assert.match(calls[0].url, /\/task\/abc$/);
+    assert.equal(calls[0].opts.headers.Authorization, "pk_1");
+    const body = JSON.parse(calls[0].opts.body);
+    assert.equal(body.name, "Finalizar la compra");
+    assert.match(body.markdown_content, /Criterios de aceptación/);
+    assert.equal(r.url, "https://app.clickup.com/t/1/abc");
+  });
+});
+
+// Un PUT con name vacío renombra la tarea a "". Solo se manda lo que cambia.
+test("[red] clickup updateUS: sin título no manda name (no la renombra)", async () => {
+  await withMockFetch(() => mockResponse(200, {}), async (calls) => {
+    await clickupAdapter(ENV).updateUS("abc", { descriptionMarkdown: "# x\n" });
+    const body = JSON.parse(calls[0].opts.body);
+    assert.ok(!("name" in body));
+  });
+});
+
+test("[red] clickup updateUS: 404 dice que el id no existe, no un error crudo", async () => {
+  await withMockFetch(() => mockResponse(404, "not found"), async () => {
+    await assert.rejects(clickupAdapter(ENV).updateUS("nope", { title: "x" }), /no existe la tarea 'nope'/);
+  });
+});
+
+test("[red] clickup fetchUS devuelve el markdown crudo (lo que edit-us abre)", async () => {
+  await withMockFetch(() => mockResponse(200, { id: "abc", name: "Finalizar la compra",
+    markdown_description: "## Criterios de aceptación\n- Dado x\n- Cuando y\n- Entonces z" }),
+    async () => {
+      const us = await clickupAdapter(ENV).fetchUS("abc");
+      assert.match(us.raw, /^# Finalizar la compra/);
+      assert.match(us.raw, /Criterios de aceptación/);
+    });
+});

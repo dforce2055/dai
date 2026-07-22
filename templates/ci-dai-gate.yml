@@ -1,0 +1,50 @@
+# Gate de trazabilidad de dai — la regla de governance/ci-rules.md, ejecutable.
+#
+# Qué hace: en cada PR, verifica que una branch de producto declare qué US implementa
+# (implements.yaml) y que ese link no haya quedado atrasado contra la US viva.
+#
+# Qué NO hace: exigirle US a todo. `chore/`, `docs/`, `ci/`, `build/`, `test/`,
+# `refactor/`, `style/`, `release/`, `hotfix/` y `revert/` pasan sin link — son trabajo
+# legítimo sin ticket (governance/branch-naming.md). Un gate que bloquea esas branches
+# se termina desactivando, y entonces no protege nada.
+#
+# Cómo se instala: copialo a .github/workflows/ de tu repo. Si tu CI no es GitHub
+# Actions, el contrato es el mismo en cualquier runner — es un solo comando:
+#
+#     npx --yes @dforce2055/dai check --ci
+#
+# Códigos de salida:  0 = pasa · 1 = falta el link · 2 = el QUÉ cambió (US atrasada)
+
+name: dai · trazabilidad
+
+on:
+  pull_request:
+
+jobs:
+  link:
+    name: link QUÉ↔CÓMO
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # `dai check --ci` detecta solo la branch de la PR (GITHUB_HEAD_REF): en una PR,
+      # HEAD es un merge commit detached y `git rev-parse --abbrev-ref HEAD` diría "HEAD".
+      #
+      # Sin secrets del tracker, el gate valida el LINK y no compara contra la US viva
+      # (--no-network). Con secrets, sacá el flag y además detecta las US atrasadas.
+      - name: Gate de trazabilidad
+        run: npx --yes @dforce2055/dai check --ci --no-network
+
+      # Variante con tracker — descomentala y cargá los secrets del repo para que el
+      # gate marque también las US ATRASADAS (salida 2). Comentá el paso de arriba.
+      #
+      # - name: Gate de trazabilidad (con tracker)
+      #   env:
+      #     DAI_PM: jira                                  # o clickup
+      #     DAI_JIRA_BASE_URL: ${{ vars.DAI_JIRA_BASE_URL }}
+      #     DAI_JIRA_EMAIL: ${{ secrets.DAI_JIRA_EMAIL }}
+      #     DAI_JIRA_TOKEN: ${{ secrets.DAI_JIRA_TOKEN }}
+      #   run: npx --yes @dforce2055/dai check --ci

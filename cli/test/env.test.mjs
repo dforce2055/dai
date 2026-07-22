@@ -62,6 +62,31 @@ test("loadDaiEnv: sigue leyendo el .env (compat con repos que tienen DAI_* ahí)
   assert.equal(env.DAI_JIRA_PROJECT, "PROJ");
 });
 
+// `.env.dai` es una OPCIÓN, no una migración obligatoria: hay equipos con toda la config
+// en el `.env` de siempre y tienen que seguir funcionando sin tocar nada. Si esto se
+// rompe, esos repos ven "no hay tracker configurado" y el fallo parece del tracker.
+test("loadDaiEnv: un repo SIN .env.dai levanta toda su config del .env", () => {
+  const env = inDir({ ".env": "DAI_PM=clickup\nDAI_CLICKUP_TOKEN=pk_1\nDAI_CLICKUP_LIST_ID=901\n" },
+    () => loadDaiEnv({}));
+  assert.deepEqual(
+    { pm: env.DAI_PM, token: env.DAI_CLICKUP_TOKEN, list: env.DAI_CLICKUP_LIST_ID },
+    { pm: "clickup", token: "pk_1", list: "901" },
+  );
+});
+
+// Los dos archivos se COMPLEMENTAN, no se reemplazan: `.env.dai` gana clave por clave,
+// pero lo que solo existe en `.env` se sigue leyendo. Si el loader cortara al encontrar
+// `.env.dai`, un repo a medio migrar perdería en silencio las claves que quedaron atrás.
+test("loadDaiEnv: los dos archivos se fusionan por clave, no se excluyen", () => {
+  const env = inDir({
+    ".env": "DAI_PM=md\nDAI_TRACKER_URL_TEMPLATE=https://viejo/{id}\n",
+    ".env.dai": "DAI_PM=jira\nDAI_JIRA_TOKEN=tk\n",
+  }, () => loadDaiEnv({}));
+  assert.equal(env.DAI_PM, "jira", "la clave repetida la gana .env.dai");
+  assert.equal(env.DAI_JIRA_TOKEN, "tk", "lo que solo está en .env.dai");
+  assert.equal(env.DAI_TRACKER_URL_TEMPLATE, "https://viejo/{id}", "lo que solo está en .env NO se pierde");
+});
+
 test("loadDaiEnv: el entorno (shell/CI) gana sobre ambos archivos", () => {
   const env = inDir({ ".env": "DAI_PM=md\n", ".env.dai": "DAI_PM=jira\n" }, () => loadDaiEnv({ DAI_PM: "clickup" }));
   assert.equal(env.DAI_PM, "clickup");

@@ -7,12 +7,17 @@
 //   clickup — REST v2 (pm-clickup.mjs)
 //
 // Interfaz (fetchUS/stamp pueden ser sync o async — el CLI siempre await-ea):
-//   fetchUS(id)          → { id, title, spec_version, ac_hash, url } | null
+//   fetchUS(id)          → { id, title, spec_version, ac_hash, url, raw } | null
 //   stamp(id, record)    → destino donde quedó la cobertura
+//   createUS({...})      → { id, url }            (opcional: `dai publish`)
+//   updateUS(id, {...})  → { id, url }            (opcional: `dai update-us`)
 //   kind                 → nombre del backend
 //
 // `url` es la URL web canónica de la US según el tracker (opcional: null si el backend
 // no la sabe, como md). El CLI la prefiere sobre la derivada — ver tracker-url.mjs.
+// `raw` es el markdown COMPLETO de la US tal como vive en el backend: es lo que
+// `dai edit-us` baja y te abre. Sin esto solo teníamos el parseo (título + hash), que
+// alcanza para detectar drift pero no para editar.
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -32,7 +37,8 @@ function mdAdapter(env) {
     fetchUS(id) {
       const p = join(dir, `${id}.md`);
       if (!existsSync(p)) return null;
-      return { id, ...parseUS(readFileSync(p, "utf8")) };
+      const raw = readFileSync(p, "utf8");
+      return { id, ...parseUS(raw), raw };
     },
     stamp(id, record) {
       const p = join(dir, `${id}.coverage.md`);
@@ -44,6 +50,14 @@ function mdAdapter(env) {
       const id = slugify(title);            // sin tracker, el "key" es el slug del título
       const p = join(dir, `${id}.md`);
       mkdirSync(dir, { recursive: true });
+      writeFileSync(p, descriptionMarkdown.startsWith("# ") ? descriptionMarkdown : `# ${title}\n\n${descriptionMarkdown}`);
+      return { id, url: p };
+    },
+    // Sin tracker, "actualizar la US" es pisar el .md canónico. Se exige que exista:
+    // si no, `dai update-us` estaría creando una US con el id equivocado en silencio.
+    updateUS(id, { title, descriptionMarkdown }) {
+      const p = join(dir, `${id}.md`);
+      if (!existsSync(p)) throw new Error(`no existe ${p} — con DAI_PM=md, update-us actualiza el .md canónico. Creá la US primero (dai publish).`);
       writeFileSync(p, descriptionMarkdown.startsWith("# ") ? descriptionMarkdown : `# ${title}\n\n${descriptionMarkdown}`);
       return { id, url: p };
     },

@@ -12,15 +12,45 @@
 
 ## Qué valida el CI en cada PR/MR
 
-| Check | Regla | Si falla |
-|---|---|---|
-| **Link presente** | Toda rama de producto (`feature/ABC-###-*`) tiene `implements.yaml`. | ❌ bloquea el PR |
-| **ID válido** | El `id` matchea el formato del gestor (`ABC-\d+`) y el ID existe. | ❌ bloquea |
-| **`ac_hash` calculado** | El CI (re)calcula el hash de los criterios de la US y lo compara. | ⚠️ marca atrasado si no coincide |
-| **Tests verdes** | La suite de la US pasa. | ❌ bloquea |
-| **Estándares** | Lint + tipos + convenciones del repo. | ❌ bloquea |
+Las dos primeras filas **las ejecuta un comando**, no la buena voluntad:
 
-> Ramas `chore/`/`fix/` sin US no requieren `implements.yaml` (ver `branch-naming.md`).
+```bash
+dai check --ci        # salidas: 0 pasa · 1 falta el link · 2 el QUÉ cambió
+```
+
+Hay un workflow listo para copiar en [`templates/ci-dai-gate.yml`](../templates/ci-dai-gate.yml).
+Si tu CI no es GitHub Actions, el contrato es el mismo: un comando y su código de salida.
+
+| Check | Regla | Quién lo hace | Si falla |
+|---|---|---|---|
+| **Link presente** | Toda rama de producto (`feature/`) tiene `implements.yaml`. | `dai check --ci` | ❌ bloquea (exit 1) |
+| **`ac_hash` al día** | Recalcula el hash de los criterios de la US viva y lo compara. | `dai check --ci` | ❌ bloquea (exit 2) |
+| **ID resoluble** | El `id` del link existe en el gestor. | `dai check --ci` | ❌ bloquea (exit 2) |
+| **Tests verdes** | La suite de la US pasa. | el CI del repo | ❌ bloquea |
+| **Estándares** | Lint + tipos + convenciones del repo. | el CI del repo | ❌ bloquea |
+
+### Qué ramas quedan exentas
+
+Un gate que le exige US a todo se desactiva a la semana, y entonces no protege nada.
+Por eso `dai check --ci` decide **leyendo el nombre de la rama** (`branch-naming.md`):
+
+| Prefijo | ¿Exige `implements.yaml`? |
+|---|---|
+| `feature/`, `feat/` | **Sí, siempre** — es trabajo de producto |
+| `chore/`, `docs/`, `ci/`, `build/`, `test/`, `refactor/`, `style/`, `release/`, `hotfix/`, `revert/` | **No** — trabajo sin US |
+| `fix/` y cualquier otro prefijo | **Solo si el nombre trae un ID** (`fix/ABC-482-…`). Sin ID, no |
+| `main`, `develop` (sin prefijo) | No — no es una rama de trabajo |
+
+> Si tu PR es una corrección o un chore y el gate te lo bloquea, la respuesta **no** es
+> inventarle una US: es renombrar la rama con el prefijo que corresponde. El nombre de la
+> rama es la declaración de qué tipo de trabajo es.
+
+### Sin credenciales del tracker
+
+`dai check --ci --no-network` valida el link y **no** compara contra la US viva. Es el
+default del template: un gate que falla porque un token venció o porque el CI no tiene
+salida a internet enseña al equipo a ignorarlo. Con los secrets cargados, sacá el flag y
+el gate detecta además las US atrasadas.
 
 ## Qué hace el CI al mergear
 
@@ -28,6 +58,15 @@
 2. **Estampa la cobertura inversa** en el gestor: en el ticket `ABC-###`, deja
    "implementado por `<repo>` @ `<version>` (`ac_hash`) ✅". **Nadie lo escribe a
    mano** ([Art. 10](../docs/MANIFIESTO.md#art-10)).
+
+   ```bash
+   dai stamp ABC-482       # explícito: lo que corresponde en CI
+   dai stamp               # local: deduce la US de la rama; si hay varias, pregunta
+   ```
+
+   > En CI **pasá el ID**. `dai stamp` sin argumentos es para el dev en su máquina:
+   > deduce la US del nombre de la rama y, si no puede, pregunta en vez de estampar de
+   > más. Un comentario en el tracker no se deshace.
 3. **Actualiza el índice/router central** de la federación: la fila `ABC-### → { repos }`.
 
 ## Qué hace el CD al desplegar (solo N3 · organización grande)

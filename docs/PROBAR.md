@@ -41,10 +41,17 @@ dai link-us finalizar-la-compra-del-carrito   # branch + implements.yaml
 git add -A && git commit -m "feat: guard carrito vacío"
 dai check                        # ✅ al día
 
-# 4. La demo del ⚠️: edita el criterio en .dai/us/<slug>.md y vuelve a chequear
+# 4. La demo del ⚠️: cambia el QUÉ y mira cómo se detecta solo
+dai edit-us finalizar-la-compra-del-carrito   # la trae, la abres, valida, pregunta si sube spec_version
 dai check                        # ⚠️ ATRASADO (exit 1)  → sugiere: dai link-us <id> --resync
+
+# 5. Estampa la cobertura
 dai stamp                        # con md, deja .dai/us/<slug>.coverage.md
 ```
+
+> En el paso 4, `dai edit-us` abre tu `$EDITOR`. Si no tienes uno configurado te pide
+> editar el archivo y volver, así que también funciona con el archivo abierto en tu IDE.
+> Agrega un criterio, guarda, y responde `s` a "¿subo spec_version?" para ver el ⚠️.
 
 Con esto ya viste el ciclo entero. Ahora conéctalo a tu tracker real.
 
@@ -75,6 +82,9 @@ dai check                        # ✅ al día
 # → edita un criterio de la tarea en ClickUp (en el navegador). Después:
 dai check                        # ⚠️ ATRASADO (lo detectó solo)
 dai stamp                        # deja un COMENTARIO en la tarea con la cobertura
+
+# ¿Editar la US sin salir de la terminal? La trae, la abres, valida y la devuelve:
+dai edit-us 86cxyz --dry-run     # el preview completo, sin escribir en ClickUp
 ```
 
 > El `.env.dai` **no se versiona**: el token no se commitea, y el `.env` del equipo no se
@@ -86,6 +96,7 @@ dai stamp                        # deja un COMENTARIO en la tarea con la cobertu
 |---|---|
 | `no encontré la US <id>` | ID mal, o el token no ve esa tarea |
 | `clickup 401` | token inválido o expirado |
+| `edit-us` dice que la US no tiene el formato mínimo | le falta el `# Título` o la sección `## Criterios de aceptación`. Sin criterios no hay `ac_hash` y no hay link |
 | `check` siempre da ⚠️ | editaste la US entre `link-us` y `check` (esperado), **o** los criterios no están bajo el heading `Criterios de aceptación` |
 | `sin US` en `check` | la tarea no tiene el bloque de criterios en la descripción |
 | branch/commit vacíos en el stamp | falta el remoto git (`git remote add origin …`) |
