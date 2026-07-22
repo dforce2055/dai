@@ -3,6 +3,105 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
+## [0.11.0] — 2026-07-22
+
+**Ronda de fixes reportados usándola, más el eslabón que faltaba: editar el QUÉ. `dai stamp`
+deja de estampar de más, el gate de governance pasa de regla escrita a comando ejecutable,
+`dai edit-us` trae la US del tracker y valida el formato antes de devolverla, y los mensajes
+de error dejan de mandar el diagnóstico para el lado equivocado.**
+
+### Agregado
+- **`dai check --ci`** — el gate de [`governance/ci-rules.md`](governance/ci-rules.md),
+  ejecutable ([ADR-0018](docs/adr/0018-alcance-de-stamp-y-gate-de-ci.md), issue #26). El
+  documento prometía "sin `implements.yaml` el CI bloquea" y no existía el comando que lo
+  hiciera: era una regla escrita que nadie aplicaba. Ahora lee el nombre de la rama y
+  aplica `branch-naming.md` — `feature/` siempre exige US, `chore/`/`docs/`/`ci/`/`release/`
+  y compañía quedan **exentas**, `fix/` exige solo si el nombre trae un ID. Salidas:
+  `0` pasa · `1` falta el link · `2` el QUÉ cambió. Detecta sola la rama en CI
+  (`GITHUB_HEAD_REF` y equivalentes: en una PR, `HEAD` es un merge commit detached).
+  Con `--no-network` valida el link sin pegarle al tracker.
+- **`templates/ci-dai-gate.yml`** — workflow listo para copiar a `.github/workflows/`.
+  Fuera de GitHub Actions el contrato es el mismo: un comando y su código de salida.
+- **`dai edit-us <ID>` y `dai update-us <ID>`** — editar el QUÉ deja de ser copiar y pegar
+  (issue #23, [ADR-0018](docs/adr/0018-alcance-de-stamp-y-gate-de-ci.md)). Dos puertas a un
+  solo camino: `edit-us` **baja la US del tracker**, te la abre en tu `$EDITOR` y la sube
+  (para el PO); `update-us` empuja un `.md` que ya escribiste (para el dev que refinó la US
+  implementándola). Las dos dan el mismo preview y la misma confirmación, porque comparten
+  el mismo tramo de escritura.
+  - **Valida el formato antes de guardar** contra el molde canónico
+    (`templates/formato-us.md`): frenan las tres cosas sin las cuales no hay `ac_hash`
+    —sin título, sin sección de criterios, sección vacía— y **avisan** las demás (un
+    criterio que no es Gherkin completo, uno que se mete en el CÓMO, un título
+    kilométrico). `--strict` sube los avisos a errores.
+  - **Un formato inválido no tira lo escrito**: te devuelve al editor con los errores a la
+    vista, las veces que haga falta.
+  - **Propone subir el `spec_version`** cuando el `ac_hash` se movió, y espera un sí o un
+    no: `s` = cambio material (los repos con la versión vieja se marcan **atrasados**),
+    `n` = cambio editorial (no se marca nadie). dai sabe *que* cambió, no *si importa* —
+    eso lo sabe el PO. `--bump` / `--no-bump` para el modo no interactivo.
+  - **Re-estampa el `ac_hash`** del `implements.yaml`, que si no `dai check` te marcaría
+    atrasado por tu propia edición. `--dry-run` muestra todo el preview sin escribir.
+
+### Arreglado
+- **`dai stamp` estampaba TODAS las US del repo, archivadas incluidas** (issue #22). Cerrar
+  una historia dejaba un comentario de cobertura en los tickets de las otras tres del
+  sprint — y un comentario en un tracker no se deshace. Ahora el alcance sale de la rama
+  ([ADR-0018](docs/adr/0018-alcance-de-stamp-y-gate-de-ci.md)): si la rama nombra la US,
+  esa; si hay una sola viva, esa; si hay varias y no puede saber cuál, **pregunta** en vez
+  de estampar de más (y sin TTY falla pidiendo el ID, en vez de decidir por vos). Los
+  changes archivados salen del default. `dai stamp <ID>` es explícito y `dai stamp --all`
+  recupera el comportamiento anterior.
+- **El error del forge decía `¿token? ¿ref correcta?` para todo** (issue #24). Sin token,
+  token vencido, token sin scope y PR inexistente caían en la misma frase, y eso costó una
+  sesión entera de diagnóstico equivocado. Ahora se nombran por separado: **no hay
+  `GITHUB_TOKEN`/`GITLAB_TOKEN`** (se detecta antes de salir a la red, y no se afirma que
+  esté vencido algo que no existe) · **401** el token existe pero no sirve, con el `curl`
+  para verificarlo · **403** válido pero sin permiso, o rate limit · **404** nombra las
+  **dos** causas, porque en un repo privado GitHub devuelve 404 y no 403 a propósito. El
+  diagnóstico ahora cubre `forge pr`, `forge comment` y `forge review`, que antes se
+  tragaban el error real.
+- **`.dai/reviews/` en el `.gitignore` de los repos ya inicializados** (issue #25). La
+  regla estaba desde 0.10.0, pero solo la aplicaban `dai init`/`dai sync`, y el
+  `review.json` lo escribe la skill: un repo scaffoldeado con una dai vieja se comía
+  borradores a medio editar en un commit. Ahora `dai forge review` lo agrega al consumir
+  un borrador que está bajo `.dai/reviews/`. Además la reconciliación compara **normalizado**
+  (`.dai/reviews`, `/.dai/reviews/` y `.dai/reviews/` son la misma regla), así no duplica
+  la línea a quien ya la había puesto a mano.
+- Un `Ctrl+D` en un prompt de confirmación se trata como **cancelar** en vez de crashear
+  con `Aborted with Ctrl+D`.
+
+### Versionado
+
+**Minor → 0.11.0.** `dai stamp` sin argumentos **cambia de comportamiento**: antes estampaba
+todas las US del repo, ahora una. En el papel es incompatible; en la práctica el
+comportamiento viejo era el bug que reporta el issue #22, y quien lo quiera tiene `--all`.
+El contrato del modelo (`ac_hash`, schema de `implements.yaml`) queda intacto, y todo lo
+demás es aditivo.
+
+### Cambiado
+- `governance/ci-rules.md` describe lo que la máquina realmente hace: el comando que
+  ejecuta cada regla, la tabla de ramas exentas, y por qué el gate no bloquea sin
+  credenciales del tracker.
+- **Los adaptadores de PM devuelven `raw`** (el markdown completo de la US) además del
+  parseo. Es lo que `edit-us` abre; antes solo salían título + hash, que alcanza para
+  detectar drift pero no para editar.
+- **`/grill-user-story` distingue crear de refinar.** Si la US es nueva la crea como
+  siempre (MCP o `dai publish`); si **ya tiene key**, ahora la actualiza con
+  `dai edit-us <ID> --us <md> --no-editor` en vez de pisar el ticket por MCP. Así el
+  camino de la skill pasa por los mismos controles que el manual: validación de formato
+  antes de escribir, preview, y la pregunta del `spec_version` — que la skill tiene
+  instrucción explícita de trasladarle al PO, no de responder con `--yes`.
+- **Las skills dicen bien dónde está la config: `.env.dai` *o* `.env`.** Varias mandaban a
+  leer solo uno de los dos, y quien tenía todo en el `.env` del equipo veía a la skill
+  concluir que no había tracker configurado. dai **carga los dos** —`.env.dai` gana si una
+  clave está en ambos, y un repo que nunca creó `.env.dai` sigue funcionando igual
+  (ADR-0017)—; ahora las skills lo dicen así. Sin cambios de comportamiento en el CLI:
+  el loader ya hacía esto.
+- Documentación al día con los comandos nuevos: la [guía del PO](docs/guias/po.md) estrena
+  una sección "Cuando el QUÉ cambia", más `docs/guias/dev.md`, `docs/PROBAR.md`,
+  `docs/EJEMPLO-END-TO-END.md`, `docs/SCRUM-CON-IA.md`, `docs/METODOLOGIA.md`,
+  `docs/glosario.md`, `docs/detalle/01-refinamiento.md` y `docs/detalle/07-merge-trazabilidad.md`.
+
 ## [0.10.0] — 2026-07-18
 
 **La config de dai deja de vivir en el `.env` del equipo y pasa a un `.env.dai` propio (no
