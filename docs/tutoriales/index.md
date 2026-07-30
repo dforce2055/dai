@@ -2,6 +2,12 @@
 
 Guías de **setup operativo** — lo que haces una vez por máquina para trabajar con dai.
 
+## De cero a publicar
+
+- [**Setup para analistas funcionales y PMs (Windows)**](./setup-funcional) — el camino
+  completo sin git ni repositorio: Node, dai, las skills en Copilot, el token de Jira y una
+  épica + US de prueba publicadas de verdad.
+
 ## Preparar el entorno
 
 - [**Configurar git**](./configurar-git) — tu identidad (nombre + correo) para que los
