@@ -12,11 +12,11 @@ Es el otro lado del [setup del funcional](./setup-funcional.md): ahí la US **na
 > y `/dai-review` (review inline de la MR de un compañero). El CLI `dai` es lo mecánico:
 > `dai check`, `dai mr`, `dai stamp`. Más abajo está la tabla de qué va dónde.
 
-**Atajo:** si ya tienes Node, `dai` y el repositorio clonado, salta al **Paso 6** — es el que
-conecta tu repositorio con Jira.
+**Atajo:** si tu proyecto **ya tiene dai** (existe la carpeta `.dai\`), lo único que te falta
+es tu `.env.dai` con tus credenciales → salta al [**Paso 6**](#paso-6-conecta-jira).
 
-Los ejemplos usan `acme.atlassian.net`, el proyecto `PROJ` y el repositorio
-`gitlab.acme.com/equipo/tienda`: reemplázalos por los de tu empresa.
+Los ejemplos usan `acme.atlassian.net`, el proyecto `PROJ`, un GitLab en `gitlab.acme.com` y
+un repositorio `tienda`: reemplázalos por los de tu empresa.
 
 ---
 
@@ -114,38 +114,21 @@ que aparecer marcadas **`User Data`** — esa etiqueta confirma que salen de tu 
 
 ---
 
-## Paso 5 — El repositorio
+## Paso 5 — Inicializa dai en tu proyecto
 
-Clona el repositorio y entra:
-
-```powershell
-cd $HOME\proyectos
-git clone git@gitlab.acme.com:equipo/tienda.git
-cd tienda
-```
-
-Ahora hay dos caminos, según si el repositorio **ya** usa dai:
+Párate en el repositorio en el que vas a trabajar — el que ya tienes clonado — y comprueba si
+dai ya está instalado ahí:
 
 ```powershell
+cd $HOME\proyectos\tienda
 dir .dai
 ```
 
-### A) El repositorio ya tiene dai (lo normal)
+> **Si la carpeta `.dai\` ya existe**, tu proyecto ya tiene dai: **no ejecutes `dai init`**, el
+> scaffold es del equipo y está versionado. Lo único que te falta es tu configuración personal
+> → salta al [Paso 6](#paso-6-conecta-jira).
 
-Si existe la carpeta `.dai\`, **no ejecutes `dai init`**: el scaffold ya está versionado y es
-del equipo. Solo te falta tu configuración personal:
-
-```powershell
-copy .env.dai.example .env.dai
-```
-
-Y salta al Paso 6 a completar el token.
-
-> Si algún comando te avisa que el scaffold quedó viejo respecto de tu CLI, quien mantiene el
-> repositorio ejecuta `dai sync` y lo commitea. No lo hagas por tu cuenta en medio de una
-> historia.
-
-### B) Eres el primero del equipo en traer dai al repositorio
+Si no existe, inicializa dai en el repositorio:
 
 ```powershell
 dai init --for copilot --pm jira
@@ -165,8 +148,8 @@ Lo que deja:
 ✓ Copilot:      .github/skills/ (7) + copilot-instructions.md
 ```
 
-Todo eso se **commitea** (menos el `.env.dai`, que ya quedó ignorado) en una rama `chore/`, y
-va por MR como cualquier otro cambio.
+Todo eso se **commitea** —menos el `.env.dai`, que ya quedó ignorado— en una rama `chore/`, y
+va por MR como cualquier otro cambio: es el scaffold que va a usar todo el equipo.
 
 > **Si OpenSpec falló** (proxy, permisos de npm), súmalo después:
 > ```powershell
@@ -174,13 +157,29 @@ va por MR como cualquier otro cambio.
 > openspec init --tools github-copilot
 > ```
 
+> **Si algún comando te avisa que el scaffold quedó viejo** respecto de tu CLI, se actualiza
+> con `dai sync` y se commitea. No lo hagas en medio de una historia: es un cambio del equipo,
+> no tuyo.
+
 ---
 
-## Paso 6 — Conecta Jira
+## Paso 6 — Conecta Jira {#paso-6-conecta-jira}
 
-El `.env.dai` es tuyo y **no se versiona** ([ADR-0017](../adr/0017-env-dai.md)). Necesitas un
-**token de API de Atlassian**: si no tienes, sigue 👉 [Cómo obtener el token de API de
-Jira](./token-jira.md) y vuelve con el token copiado.
+El `.env.dai` es **tuyo**, lleva tus credenciales y **no se versiona**
+([ADR-0017](../adr/0017-env-dai.md)). Es lo único que edita cada dev: el resto del scaffold es
+del equipo.
+
+Necesitas un **token de API de Atlassian**: si no tienes, sigue 👉 [Cómo obtener el token de
+API de Jira](./token-jira.md) y vuelve con el token copiado.
+
+Si el proyecto ya tenía dai, el archivo todavía no existe en tu copia — créalo desde la
+plantilla versionada:
+
+```powershell
+copy .env.dai.example .env.dai
+```
+
+(Si lo acabas de crear con `dai init`, ya está: solo hay que completarlo.)
 
 Abre el repositorio en el editor y completa el `.env.dai`:
 
