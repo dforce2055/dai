@@ -18,6 +18,7 @@ export function replaceSection(body, heading, content) {
 // placeholders que encuentra y deja el resto para que el humano lo edite.
 export function composePrBody(template, d) {
   let b = template;
+  if (!d.id) return composePrBodyNoUs(b, d);
   b = b.replace(/`ABC-###`/g, `\`${d.id}\``);
   b = b.replace(/@ `vX`/g, `@ \`${d.version}\``);
   b = b.replace(/`<hash>`/g, `\`${d.ac_hash}\``);
@@ -26,6 +27,21 @@ export function composePrBody(template, d) {
   // Descripción: default desde la US (el humano lo pule).
   if (d.usTitle) b = replaceSection(b, "Descripción", `Implementa la US **${d.usTitle}** (\`${d.id}\`). Ver los criterios de aceptación en el tracker.`);
   // Cambios realizados: de los commits de la branch (como gh pr create --fill).
+  if (d.commits && d.commits.length) {
+    b = replaceSection(b, "Cambios realizados", d.commits.map((c) => `- [x] ${c}`).join("\n"));
+  }
+  return upsertLinksBlock(b, d);
+}
+
+// PR de una branch exenta (chore/, docs/, release/…): no implementa una US y no se le
+// exige link. Lo que NO puede pasar es que salga con la US de otro ni con el placeholder
+// `ABC-###` del template — las dos cosas pasaron en repos reales (issues #31, #33).
+// Se dice explícitamente que no hay US, y por qué.
+function composePrBodyNoUs(template, d) {
+  let b = replaceSection(template, "🔗 Implementa",
+    `- **Sin US:** esta PR no implementa una User Story.\n` +
+    (d.noUsReason ? `- **Motivo:** ${d.noUsReason}.\n` : "") +
+    `- No se le exige link (\`governance/branch-naming.md\`).`);
   if (d.commits && d.commits.length) {
     b = replaceSection(b, "Cambios realizados", d.commits.map((c) => `- [x] ${c}`).join("\n"));
   }
@@ -70,8 +86,12 @@ export function upsertLinksBlock(body, d) {
 }
 
 // Título del PR: el pasado a mano, o "<ID>: <título de la US>", o solo el ID.
-export function prTitle(opts, id, usTitle) {
+// Sin US (branch exenta) cae al `fallback` — el subject del último commit: describe
+// lo que hay adentro. Inventar un título con la US de otro es el bug de los issues
+// #31/#33, y el título es lo ÚNICO que se ve en la lista de PRs.
+export function prTitle(opts, id, usTitle, fallback = "") {
   if (opts.title) return opts.title;
+  if (!id) return fallback;
   if (usTitle) return `${id}: ${usTitle}`;
   return id;
 }

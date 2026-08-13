@@ -174,3 +174,89 @@ test("requiresLink: fix/ con una palabra numerada no se confunde con una US", ()
   assert.equal(requiresLink("fix/bug-123-en-el-form").required, false);
   assert.equal(requiresLink("fix/ABC-482-doble-cobro").required, true);
 });
+
+// ── prScope: con qué US titula `dai pr` (issues #31, #32, #33) ────────────────
+// El bug original: `dai pr` recorría TODOS los implements.yaml del repo —archivados
+// incluidos— y se quedaba con el último. La PR salía titulada con la historia de otro,
+// con su link y su `dai check ✅`, y nadie se enteraba.
+test("prScope: la branch manda, aunque haya otras US vivas", async () => {
+  const { prScope } = await import("../lib/branch-scope.mjs");
+  const rows = [R("86acme002"), R("86acme001"), R("86acme003")];
+  const s = prScope({ branch: "feature/86acme001-finalizar-la-compra", rows });
+  assert.equal(s.mode, "branch");
+  assert.equal(s.target.id, "86acme001", "el caso real del issue #32: ganaba 86acme003 por orden de directorio");
+});
+
+test("prScope: los archivados no compiten con el change activo", async () => {
+  const { prScope } = await import("../lib/branch-scope.mjs");
+  const rows = [R("ABC-1")];                                  // vivo
+  const allRows = [R("ABC-1"), R("ABC-9"), R("ABC-99")];      // + archivados
+  const s = prScope({ branch: "feature/sin-id-en-el-nombre", rows, allRows });
+  assert.equal(s.mode, "only");
+  assert.equal(s.target.id, "ABC-1");
+});
+
+test("prScope: una chore/ NO hereda la US viva del repo — sale sin US", async () => {
+  const { prScope } = await import("../lib/branch-scope.mjs");
+  // El caso 2 del issue #31: `chore/archive-specs` salió titulada con la historia ajena.
+  const s = prScope({ branch: "chore/archive-specs", rows: [R("ABC-1")] });
+  assert.equal(s.mode, "exempt");
+  assert.equal(s.target, null);
+});
+
+test("prScope: una chore/ que SÍ nombra una US viva la usa igual", async () => {
+  const { prScope } = await import("../lib/branch-scope.mjs");
+  const s = prScope({ branch: "chore/ABC-1-limpieza", rows: [R("ABC-1"), R("ABC-2")] });
+  assert.equal(s.mode, "branch");
+  assert.equal(s.target.id, "ABC-1");
+});
+
+test("prScope: varias US vivas y la branch no dice cuál → no elige, pregunta", async () => {
+  const { prScope } = await import("../lib/branch-scope.mjs");
+  const rows = [R("ABC-1"), R("ABC-2")];
+  const s = prScope({ branch: "feature/sin-id", rows });
+  assert.equal(s.mode, "ambiguous");
+  assert.equal(s.target, null);
+  assert.deepEqual(s.candidates.map((c) => c.id), ["ABC-1", "ABC-2"]);
+});
+
+test("prScope: si la branch nombra DOS US vivas, las candidatas son esas dos", async () => {
+  const { prScope } = await import("../lib/branch-scope.mjs");
+  const rows = [R("ABC-1"), R("ABC-2"), R("ABC-3")];
+  const s = prScope({ branch: "feature/ABC-1-y-ABC-2-juntas", rows });
+  assert.equal(s.mode, "ambiguous");
+  assert.deepEqual(s.candidates.map((c) => c.id), ["ABC-1", "ABC-2"]);
+});
+
+test("prScope: --us gana, y puede apuntar a un change ya archivado", async () => {
+  const { prScope } = await import("../lib/branch-scope.mjs");
+  const rows = [R("ABC-1")];
+  const allRows = [R("ABC-1"), R("ABC-9")];
+  const s = prScope({ branch: "feature/ABC-1-x", rows, allRows, ids: ["abc-9"] });
+  assert.equal(s.mode, "explicit");
+  assert.equal(s.target.id, "ABC-9");
+  assert.deepEqual(s.missing, []);
+});
+
+test("prScope: un --us que no existe se reporta con la grafía del usuario", async () => {
+  const { prScope } = await import("../lib/branch-scope.mjs");
+  const s = prScope({ branch: "feature/ABC-1-x", rows: [R("ABC-1")], ids: ["ABC-404"] });
+  assert.equal(s.target, null);
+  assert.deepEqual(s.missing, ["ABC-404"]);
+});
+
+test("prScope: feature/ sin ninguna US viva → none (hay que linkear primero)", async () => {
+  const { prScope } = await import("../lib/branch-scope.mjs");
+  const s = prScope({ branch: "feature/algo", rows: [], allRows: [R("ABC-9")] });
+  assert.equal(s.mode, "none");
+  assert.equal(s.target, null);
+});
+
+test("prScope: cada modo explica de dónde salió la US (para el preview)", async () => {
+  const { prScope } = await import("../lib/branch-scope.mjs");
+  for (const s of [
+    prScope({ branch: "feature/ABC-1-x", rows: [R("ABC-1"), R("ABC-2")] }),
+    prScope({ branch: "feature/x", rows: [R("ABC-1")] }),
+    prScope({ branch: "chore/deps", rows: [R("ABC-1")] }),
+  ]) assert.match(s.reason, /\S/);
+});
