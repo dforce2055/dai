@@ -140,3 +140,24 @@ test("forgeTool elige gh o glab", () => {
   assert.equal(forgeTool("github"), "gh");
   assert.equal(forgeTool("gitlab"), "glab");
 });
+
+// ── PR sin US: branch exenta (chore/, docs/…) — issues #31, #33 ───────────────
+test("prTitle sin US cae al fallback (el último commit), no al ID de otro", () => {
+  assert.equal(prTitle({}, null, null, "chore: archivar specs del sprint"), "chore: archivar specs del sprint");
+  assert.equal(prTitle({ title: "a mano" }, null, null, "chore: x"), "a mano");
+  // Con US, el comportamiento de siempre.
+  assert.equal(prTitle({}, "ABC-1", "Compra", "chore: x"), "ABC-1: Compra");
+});
+
+test("composePrBody sin US dice que no hay US y no deja el placeholder ABC-###", () => {
+  const out = composePrBody(TPL, {
+    id: null, noUsReason: "'chore/' está exenta de US", commits: ["chore: archivar specs"],
+    branch: "chore/archive-specs", branchUrl: "https://git/tree/chore/archive-specs",
+  });
+  assert.match(out, /Sin US/);
+  assert.match(out, /chore\/' está exenta de US/);
+  assert.doesNotMatch(out, /ABC-###/, "el placeholder del template no puede sobrevivir");
+  assert.doesNotMatch(out, /- US `/, "sin US no hay línea de US en el bloque de links");
+  assert.match(out, /- \[x\] chore: archivar specs/);
+  assert.match(out, /branch `chore\/archive-specs`/);
+});

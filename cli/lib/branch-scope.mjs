@@ -56,17 +56,22 @@ export function trackerKeysIn(branch) {
 //   chore/, docs/, ci/…  → nunca
 //   fix/ y el resto → solo si el nombre trae un ID con pinta de key de tracker
 // `main`/`develop`/sin branch → no (no es una branch de trabajo).
+//
+// `kind` distingue POR QUÉ no se exige, que no es lo mismo para todos los comandos:
+// una `chore/` está exenta POR TIPO (el repo declara que ahí no hay producto), mientras
+// que `mi-branch` simplemente no dice nada. `dai pr` usa esa diferencia para no colgarle
+// la US viva del repo a una PR de archivado (issue #31).
 export function requiresLink(branch) {
   const t = branchType(branch);
-  if (ALWAYS.has(t)) return { required: true, reason: `'${t}/' es trabajo de producto: requiere US` };
-  if (EXEMPT.has(t)) return { required: false, reason: `'${t}/' está exenta de US (governance/branch-naming.md)` };
-  if (t === "") return { required: false, reason: "sin prefijo tipo/, no es una branch de trabajo: sin gate de link" };
+  if (ALWAYS.has(t)) return { required: true, kind: "always", reason: `'${t}/' es trabajo de producto: requiere US` };
+  if (EXEMPT.has(t)) return { required: false, kind: "exempt", reason: `'${t}/' está exenta de US (governance/branch-naming.md)` };
+  if (t === "") return { required: false, kind: "untyped", reason: "sin prefijo tipo/, no es una branch de trabajo: sin gate de link" };
   // Tipo desconocido (fix/, spike/, lo que el repo use): si nombró un ID, lo tomamos
   // como intención de implementar una US y se lo exigimos. Si no, no inventamos.
   const keyish = trackerKeysIn(branch).length > 0;
   return keyish
-    ? { required: true, reason: `'${t}/' con un ID en el nombre: se toma como trabajo de producto` }
-    : { required: false, reason: `'${t}/' sin ID en el nombre: no exige US (governance/branch-naming.md)` };
+    ? { required: true, kind: "always", reason: `'${t}/' con un ID en el nombre: se toma como trabajo de producto` }
+    : { required: false, kind: "untyped", reason: `'${t}/' sin ID en el nombre: no exige US (governance/branch-naming.md)` };
 }
 
 // Aplana los implements descubiertos a filas { path, change, repo, id, version, ac_hash },
@@ -141,4 +146,55 @@ export function stampScope({ branch, rows, allRows = rows, ids = [], all = false
     candidates: hit.length > 1 ? hit : rows,
     reason: `hay ${hit.length > 1 ? hit.length : rows.length} US vivas y la branch '${branch}' no dice cuál`,
   };
+}
+
+// La decisión de `dai pr`: ¿con qué US se titula y se linkea ESTA PR?
+//
+//   { mode, target, candidates, reason, missing }
+//
+//   mode "explicit"  → el id que pidió el usuario (dai pr --us ABC-482)
+//   mode "branch"    → la branch nombra una US viva del repo: esa
+//   mode "only"      → hay una sola US viva y la branch no está exenta: esa
+//   mode "exempt"    → branch exenta por tipo (chore/, docs/…) que no nombra US: PR SIN US
+//   mode "ambiguous" → varias candidatas y ninguna pista: NO elige, pregunta
+//   mode "none"      → la branch pide US y el repo no tiene ninguna viva
+//
+// Es la misma pregunta que resuelve stampScope, con dos diferencias que importan
+// (issues #31, #32, #33 — antes `dai pr` recorría TODOS los implements.yaml del repo,
+// archivados incluidos, y se quedaba con el último):
+//
+//   1. Una PR implementa UNA US, no cuatro: no hay modo "all", y el resultado es un
+//      único `target`.
+//   2. Una branch exenta NO hereda la US viva del repo. Una PR de `chore/archive-specs`
+//      titulada con la historia de un compañero es peor que una sin título lindo: la
+//      lista de PRs es la única superficie donde el equipo lee la trazabilidad.
+//
+// `rows` viene del discover SIN archivados; `allRows` incluye los archivados y solo se
+// usa para resolver un id explícito (reabrir la PR de un change ya archivado) y para
+// listar qué US conoce el repo cuando el id pedido no está.
+export function prScope({ branch, rows, allRows = rows, ids = [] }) {
+  if (ids.length) {
+    const want = String(ids[0]).toLowerCase();
+    const target = allRows.find((r) => String(r.id).toLowerCase() === want) || null;
+    // `missing` conserva la grafía del usuario: devolverle su ABC-404 en minúsculas lo
+    // manda a dudar del case en vez de del id.
+    return { mode: "explicit", target, candidates: allRows, missing: target ? [] : [ids[0]], reason: `pediste --us ${ids[0]}` };
+  }
+
+  const hit = matchBranchToImplements(branch, rows);
+  if (hit.length === 1) {
+    return { mode: "branch", target: hit[0], candidates: rows, reason: `la branch '${branch}' nombra ${hit[0].id}` };
+  }
+  if (hit.length > 1) {
+    return { mode: "ambiguous", target: null, candidates: hit, reason: `la branch '${branch}' nombra ${hit.length} US vivas` };
+  }
+
+  // La branch no nombra ninguna US viva.
+  const req = requiresLink(branch);
+  if (req.kind === "exempt") {
+    return { mode: "exempt", target: null, candidates: rows, reason: `${req.reason} y su nombre no nombra ninguna US` };
+  }
+  if (rows.length === 0) return { mode: "none", target: null, candidates: [], reason: "no hay implements.yaml vivo en el repo" };
+  if (rows.length === 1) return { mode: "only", target: rows[0], candidates: rows, reason: "es la única US viva del repo" };
+  return { mode: "ambiguous", target: null, candidates: rows, reason: `hay ${rows.length} US vivas y la branch '${branch}' no dice cuál` };
 }

@@ -35,7 +35,7 @@ import { parseSource } from "./lib/skills-source.mjs";
 import { skillToCursor, validateSkill, constitution, constitutionCursorRule, envFor, mergeEnv, upsertBlock, reconcileGitignore, stalePromptFiles } from "./lib/bootstrap.mjs";
 import { parseFieldsFile, parseFieldOverrides, resolveJiraFields } from "./lib/jira-fields.mjs";
 import { assertProjectKey } from "./lib/pm-jira.mjs";
-import { flattenImplements, stampScope, requiresLink, trackerKeysIn } from "./lib/branch-scope.mjs";
+import { flattenImplements, stampScope, prScope, matchBranchToImplements, requiresLink, trackerKeysIn } from "./lib/branch-scope.mjs";
 import { describeForgeError, parseForgeError } from "./lib/forge-api.mjs";
 import { validateUS, renderValidation, parseSpecVersion, bumpSpecVersion, setSpecVersion } from "./lib/us-format.mjs";
 
@@ -802,8 +802,12 @@ function cmdDone(opts) {
   }
 
   // La US que se cierra (informativo) — leerla ANTES de cambiar de branch.
-  const usIds = [];
-  for (const f of discoverImplements(process.cwd())) for (const im of f.implements || []) if (!isPlaceholderId(im.id)) usIds.push(im.id);
+  // Solo la de ESTA branch: antes listaba todas las del repo (archivadas incluidas), así
+  // que cerrar una branch anunciaba el cierre de medio sprint — el mismo defecto que
+  // `dai pr` en los issues #31/#32/#33, acá en un mensaje.
+  const usIds = matchBranchToImplements(
+    branch, flattenImplements(discoverImplements(process.cwd(), { includeArchived: false })),
+  ).map((r) => r.id);
 
   // Ir a la base y actualizar.
   info(`Cambiando a '${base}' y actualizando…`);
@@ -848,7 +852,10 @@ async function cmdPr(opts) {
   const ask = async (q) => {
     if (!process.stdin.isTTY) return null;   // no interactivo → sin preguntas
     if (!_rl) _rl = createInterface({ input: process.stdin, output: process.stdout });
-    return (await _rl.question(q)).trim();
+    // Ctrl+D (EOF) → "" = cancelar, no un crash: todas estas preguntas preceden a una
+    // acción hacia afuera (push + PR), y ahí abortar es la respuesta segura.
+    try { return (await _rl.question(q)).trim(); }
+    catch { process.stdout.write("\n"); return ""; }
   };
   const closeRl = () => { if (_rl) { _rl.close(); _rl = null; } };
 
@@ -863,19 +870,53 @@ async function cmdPr(opts) {
     fail(`no hay commits en '${branch}' por encima de '${base}'. Una PR necesita cambios: haz commit primero (git commit).`, 1);
   }
 
-  // 1. Resolver el link (US) de la branch actual.
-  const found = discoverImplements(process.cwd());
-  let entry = null;
-  for (const f of found) for (const im of f.implements || []) {
-    if (!isPlaceholderId(im.id)) { entry = { f, im }; break; }
+  // 1. Resolver el link (US) de ESTA branch (issues #31, #32, #33).
+  //    Antes se recorrían todos los implements.yaml del repo —archivados incluidos— y
+  //    ganaba el último: la branch, que es la que sabe la respuesta, no entraba en la
+  //    decisión. La PR salía titulada con la historia de otro y nadie se enteraba,
+  //    porque el `dai check ✅` del body era el de esa otra US.
+  const rows = flattenImplements(discoverImplements(process.cwd(), { includeArchived: false }));
+  const allRows = flattenImplements(discoverImplements(process.cwd()));
+  const scope = prScope({ branch, rows, allRows, ids: opts.us ? [String(opts.us)] : [] });
+  let entry = scope.target;
+
+  if (scope.mode === "explicit" && !entry) {
+    closeRl();
+    fail(`no encontré implements.yaml para '${opts.us}'.\n` +
+         `  US en este repo: ${allRows.map((r) => r.id).join(", ") || "(ninguna)"}`, 1);
   }
-  if (!entry) fail("no hay una US linkeada (implements.yaml). Si este PR implementa una US, corré `dai link-us` primero. Si es un chore/tooling (sin US), creá la PR con tu forge: `glab mr create` / `gh pr create`.", 1);
-  const { id, version, ac_hash } = entry.im;
+  if (scope.mode === "none") {
+    closeRl();
+    fail("no hay una US linkeada (implements.yaml). Si este PR implementa una US, corré `dai link-us` primero. Si es un chore/tooling (sin US), renombrá la branch a `chore/…` o creá la PR con tu forge: `glab mr create` / `gh pr create`.", 1);
+  }
+  if (scope.mode === "ambiguous") {
+    // Elegir en silencio es EL bug: la PR sale publicada con el link QUÉ↔CÓMO de otra US.
+    warn(`${scope.reason}.`);
+    const listed = scope.candidates.map((r, i) => `    ${i + 1}) ${r.id}  ${C.dim(`(${r.change})`)}`).join("\n");
+    process.stdout.write(`  US vivas en el repo:\n${listed}\n`);
+    if (opts.yes || !process.stdin.isTTY) {
+      closeRl();
+      fail("no sé con qué US titular la PR. Decilo explícitamente:  dai pr --us <ID>", 1);
+    }
+    const ans = await ask(`  ¿Con qué US titulo la PR? (número, Enter=cancelar) `);
+    if (!ans) { closeRl(); info("Cancelado — no se creó la PR."); return; }
+    const n = Number(ans);
+    if (!Number.isInteger(n) || n < 1 || n > scope.candidates.length) {
+      closeRl();
+      fail(`respuesta inválida: '${ans}'. Se esperaba un número entre 1 y ${scope.candidates.length}.`, 1);
+    }
+    entry = scope.candidates[n - 1];
+  }
+
+  // De dónde salió la US: en el preview, el título sin justificación no delata nada
+  // cuando está mal (sugerencia del issue #32).
+  const usWhy = entry ? (scope.mode === "ambiguous" ? "la elegiste vos" : scope.reason) : scope.reason;
+  const { id, version, ac_hash } = entry || {};
 
   // 2. Estado de trazabilidad (dai check) contra la US viva.
   const adapter = getAdapter(process.env);
-  const live = await Promise.resolve(adapter.fetchUS(id)).catch(() => null);
-  const status = coverageStatus(ac_hash, live?.ac_hash);
+  const live = id ? await Promise.resolve(adapter.fetchUS(id)).catch(() => null) : null;
+  const status = id ? coverageStatus(ac_hash, live?.ac_hash) : null;
   if (status === "atrasado") {
     warn(`la US ${id} está ATRASADA respecto de tu implementación (${ac_hash} ≠ ${live?.ac_hash}).`);
     warn(`resincroniza antes de abrir la PR:  dai link-us ${id} --resync`);
@@ -889,22 +930,25 @@ async function cmdPr(opts) {
   let commits = [];
   try { commits = git(["log", `${base}..HEAD`, "--pretty=%s"]).split("\n").filter(Boolean); } catch { /* base local ausente */ }
   // La canónica del tracker (live.url) gana sobre la derivada; el template gana sobre todo.
-  const usUrl = usUrlFor(id, live?.url);
-  if (!usUrl) {
+  const usUrl = id ? usUrlFor(id, live?.url) : null;
+  if (id && !usUrl) {
     warn(`no sé la URL de ${id} en el tracker: la PR va a quedar sin link a la US.`);
     warn(`configurá DAI_TRACKER_URL_TEMPLATE en el .env.dai (p. ej. https://tu-tracker/browse/{id}).`);
   }
   const body = composePrBody(readFileSync(tplPath, "utf8"), {
-    id, version, ac_hash, status, usUrl, usTitle: live?.title, commits,
+    id, version, ac_hash, status, usUrl, usTitle: live?.title, commits, noUsReason: id ? null : scope.reason,
     branch, branchUrl: branchUrl(remote, branch), commit, commitUrl: commitUrl(remote, commit),
   });
-  const title = prTitle(opts, id, live?.title);
+  // Sin US el título sale del último commit: describe lo que hay adentro, en vez de
+  // pedirle prestada la historia a otro (issue #31).
+  const title = prTitle(opts, id, live?.title, commits[0] || branch);
   const forge = detectForge(parseRemote(remote)?.host);
   const tool = forgeTool(forge);
 
   // 4. Mostrar y pedir confirmación (acción hacia afuera).
   process.stdout.write(`\n  ── Pull Request a crear ──────────────────────────────\n`);
   process.stdout.write(`  título:   ${title}\n  de:       ${branch}\n  a:        ${base}\n`);
+  process.stdout.write(`  US:       ${id || C.dim("(sin US)")}  ${C.dim(`— ${usWhy}`)}\n`);
   process.stdout.write(`  forge:    ${forge} (${tool})${opts.assignee ? `\n  asignar:  ${opts.assignee}` : ""}${opts.draft ? "\n  draft:    sí" : ""}\n`);
   process.stdout.write(`  ─────────────────────────────────────────────────────\n\n${body}\n`);
   process.stdout.write(`  ─────────────────────────────────────────────────────\n`);
@@ -1699,6 +1743,7 @@ switch (cmd) {
       "  done [--base main] [--force] cierra la US: vuelve a la base, actualiza y borra la branch local (si está mergeada)\n" +
       "  archive [<change>] [--skip-specs]   funde los delta specs del change en las specs canónicas y lo archiva (lo corre el aprobador en la PR)\n" +
       "  pr (alias mr) [--assignee u] [--base b] [--draft] [--yes]   crea TU PR/MR precargada (muestra + confirma)\n" +
+      "      [--us <ID>] [--title t]  la US la resuelve la branch; si hay varias, pregunta (sin TTY, falla)\n" +
       "  forge comment <ref> --body-file <f> · forge pr <ref>   comentar/leer una PR ajena (github/gitlab)\n" +
       "  forge review <ref> --from <review.json> [--dry-run|--yes]  review inline: resumen + comentario por línea\n" +
       "      --min-severity low|medium|high · --min-confidence 0..1 · --max-comments N · --base <branch>\n" +
