@@ -3,6 +3,66 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
+## [0.12.0] — 2026-08-13
+
+**La PR deja de robarle la US a otro. `dai pr` resolvía el link recorriendo todo el repo y
+quedándose con el último `implements.yaml`; ahora lo resuelve la rama, que es la que sabe la
+respuesta — y cuando no puede saberlo, pregunta en vez de elegir en silencio. Más el tutorial
+de setup del dev, la contraparte del que ya tenía el funcional.**
+
+### Arreglado
+- **`dai pr` armaba la PR con la US equivocada** (issues [#31](https://github.com/dforce2055/dai/issues/31),
+  [#32](https://github.com/dforce2055/dai/issues/32), [#33](https://github.com/dforce2055/dai/issues/33)).
+  Recorría **todos** los `implements.yaml` del repo —archivados incluidos, porque era el
+  único comando que no pasaba `{ includeArchived: false }`— y el `break` cortaba solo el
+  bucle interno, así que ganaba el **último** en orden de lectura. La rama, que la nombra el
+  propio `dai link-us`, no entraba en la decisión.
+  El síntoma es silencioso y por eso duele: la PR sale con el título, el link y el
+  `dai check ✅` de **otra** US. En repos reales convivieron dos PRs con el mismo título y
+  contenidos que no tenían nada que ver, y una PR de archivado apareció rotulada con la
+  historia de un compañero. Es exactamente el modo de falla que la constitución quiere
+  evitar — el link QUÉ↔CÓMO queda mal y nadie se entera, porque **nadie lee el
+  `implements.yaml` en la lista de PRs: leen el título**.
+  Ahora decide `prScope` (`cli/lib/branch-scope.mjs`), hermana de `stampScope`: la rama
+  nombra una US viva → esa; una sola US viva → esa; varias candidatas → **pregunta** con TTY
+  y **falla** sin TTY, listándolas.
+- **Una rama exenta ya no hereda la US del repo.** Un `chore/`/`docs/`/`release/` que no
+  nombra ninguna US genera la PR **sin** US —título del último commit y la sección
+  *Implementa* diciendo que no hay historia— en lugar de colgarle la de otro o dejar el
+  placeholder `ABC-###` del template.
+- **`dai done` anunciaba `US cerrada:` con todas las US del repo**, archivadas incluidas.
+  Cerrar una rama informaba el cierre de medio sprint. Mismo defecto de clase, en un mensaje.
+- **Ctrl+D en las preguntas de `dai pr`** cancela en vez de cortar con `Aborted with Ctrl+D`.
+  Todas ellas preceden a una acción hacia afuera (push + PR): ahí abortar es lo seguro.
+
+### Agregado
+- **`dai pr --us <ID>`** — el escape hatch explícito, y la única salida cuando hay ambigüedad
+  y no hay TTY (un pipeline). Acepta también un change ya archivado.
+- **El preview dice de dónde salió la US**: `US: ABC-482 — la branch '…' nombra ABC-482`.
+  Cuando el título está mal, es lo único que lo delata.
+- **[Tutorial de setup para desarrolladores (Windows)](docs/tutoriales/setup-dev.md)** — el
+  otro lado del que ya existía para el funcional: Node, dai, git + SSH + `glab`, las skills
+  en Copilot, OpenSpec, el `.env.dai` contra Jira, y el ciclo completo sobre una US real
+  (`link-us` → `check` → `mr` → `stamp` → `done`). El troubleshooting sale de lo que pasó de
+  verdad en Windows corporativo: el push HTTPS que necesita completar el credential manager,
+  el proxy con su propio certificado, el gate de CI.
+
+### Versionado
+
+**Minor → 0.12.0.** `dai pr` **cambia de comportamiento**: donde antes elegía una US en
+silencio, ahora pregunta (o falla), y una rama exenta genera la PR sin US. En el papel es
+incompatible; en la práctica el comportamiento viejo era el bug de los issues #31/#32/#33.
+Suma la flag `--us`, aditiva. El contrato del modelo (`ac_hash`, schema de `implements.yaml`)
+queda intacto.
+
+### Interno
+- **319 tests** (+12 desde 0.11.0): `prScope` ×10 —la rama manda sobre el orden de
+  directorio, los archivados no compiten, una `chore/` no hereda, la ambigüedad no se
+  resuelve sola— y el cuerpo/título de una PR sin US ×2.
+- `requiresLink()` devuelve además `kind` (`always` / `exempt` / `untyped`): es lo que separa
+  "exenta por tipo" de "la rama no dice nada", y lo que `dai pr` necesitaba para no heredar
+  la US de otro sin romper el gate de CI.
+
 ## [0.11.0] — 2026-07-22
 
 **Ronda de fixes reportados usándola, más el eslabón que faltaba: editar el QUÉ. `dai stamp`
@@ -551,6 +611,7 @@ ClickUp y Jira Cloud.
 - Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
   `files` de npm sin tests ni secretos.
 
+[0.12.0]: https://github.com/dforce2055/dai/releases/tag/v0.12.0
 [0.11.0]: https://github.com/dforce2055/dai/releases/tag/v0.11.0
 [0.10.0]: https://github.com/dforce2055/dai/releases/tag/v0.10.0
 [0.9.0]: https://github.com/dforce2055/dai/releases/tag/v0.9.0
