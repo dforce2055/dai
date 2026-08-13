@@ -7,6 +7,9 @@ Guías de **setup operativo** — lo que haces una vez por máquina para trabaja
 - [**Setup para analistas funcionales y PMs (Windows)**](./setup-funcional) — el camino
   completo sin git ni repositorio: Node, dai, las skills en Copilot, el token de Jira y una
   épica + US de prueba publicadas de verdad.
+- [**Setup para desarrolladores (Windows)**](./setup-dev) — el otro lado: Node, dai, git + SSH
+  + `glab`, las skills en Copilot, OpenSpec y el ciclo completo sobre una US real
+  (`link-us` → `check` → `mr` → `stamp`).
 
 ## Preparar el entorno
 

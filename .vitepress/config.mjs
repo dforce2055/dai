@@ -82,6 +82,7 @@ export default {
         items: [
           { text: "Todos los tutoriales", link: "/tutoriales/" },
           { text: "Setup funcional (Windows)", link: "/tutoriales/setup-funcional" },
+          { text: "Setup dev (Windows)", link: "/tutoriales/setup-dev" },
           { text: "Configurar git", link: "/tutoriales/configurar-git" },
           { text: "Claves SSH", link: "/tutoriales/claves-ssh" },
           { text: "Instalar gh / glab", link: "/tutoriales/instalar-glab" },
@@ -107,6 +108,7 @@ export default {
         link: "/tutoriales/",
         items: [
           { text: "Setup funcional (Windows)", link: "/tutoriales/setup-funcional" },
+          { text: "Setup dev (Windows)", link: "/tutoriales/setup-dev" },
           { text: "Configurar git", link: "/tutoriales/configurar-git" },
           { text: "Claves SSH", link: "/tutoriales/claves-ssh" },
           { text: "Instalar gh / glab", link: "/tutoriales/instalar-glab" },
