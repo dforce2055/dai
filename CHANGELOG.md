@@ -3,6 +3,71 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
+## [No publicado]
+
+**Un dev de backend en Windows siguió el tutorial al pie de la letra y el agente se puso a
+programar sin escribir la propuesta. No era Windows ni era su setup: le estábamos diciendo mal
+el nombre del comando.**
+
+### Arreglado
+- **Los comandos de OpenSpec se documentaban solo en la forma de Claude Code.** OpenSpec
+  genera un archivo distinto por asistente, y el nombre del comando sale del archivo:
+  `.claude/commands/opsx/<id>.md` → `/opsx:propose`, pero
+  `.github/prompts/opsx-<id>.prompt.md` → `/opsx-propose` (Copilot) y
+  `.cursor/commands/opsx-<id>.md` → `/opsx-propose` (Cursor). O sea: **solo Claude usa los
+  dos puntos**, y el tutorial de setup del dev —que es el de Windows + Copilot— mostraba los
+  dos puntos en los tres pasos.
+  El síntoma no se parece en nada a la causa, y ahí está el daño: tipear `/opsx:propose` en
+  Copilot **no da error**. No matchea ningún comando, el workflow nunca se carga, y el agente
+  toma el texto suelto como una charla — se saltea el gate propose → aprobación → apply y
+  arranca a implementar. Se lee como "el bot hace lo que quiere" y se le echa la culpa al
+  asistente, al sistema operativo o al método. Es vibe coding servido por la documentación.
+  Ahora `dai init` imprime la forma que le toca a **tu** asistente (`opsxHint`), el tutorial
+  de Windows lo dice explícito con su propia entrada en *Cuando algo falla*, y la guía del
+  dev aclara que la forma con dos puntos es la de Claude.
+- **`dai check` terminaba con código de error en Windows aunque el chequeo pasara**
+  (`Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c, line 94`).
+  Salía con `process.exit()` inmediatamente después del `fetch` al tracker, y en Windows eso
+  aborta el proceso mientras undici todavía está desarmando sus handles. Imprimía
+  `✅ al día` y devolvía distinto de cero igual: un gate verde reportado como rojo en CI o en
+  un hook de git — justo el modo de falla que apaga un gate.
+  Ahora el código de salida se fija con `process.exitCode` y el event loop drena solo. Cuesta
+  ~40 ms (los sockets keep-alive de undici están *unref'd*) y no cambia nada en macOS/Linux.
+  El mismo tratamiento va para los `.catch()` del dispatcher de **todos** los comandos que
+  salen a la red o spawnean npm (`link-us`, `stamp`, `update-us`, `edit-us`, `forge`,
+  `publish`, `pr`/`mr`, `install`, `init`), con `failSoft()`: ahí el comando ya terminó, así
+  que cortar de una no aportaba nada y podía tapar el mensaje de error con un stack de C.
+  Adentro de un comando `fail()` sigue saliendo de una — ahí sí hay que no volver.
+
+### Agregado
+- **Regla nueva en la constitución: *el diseño se aprueba antes de implementar*.** Al terminar
+  la propuesta el agente para y pide aprobación explícita; si no tiene una herramienta para
+  preguntar, pregunta en texto plano y espera. Vale para los tres asistentes. Es el borde
+  QUÉ↔CÓMO, que sí es dominio de dai: sin esa firma, la implementación no tiene contra qué
+  revisarse — y el gate no puede depender de que el asistente de turno tenga la herramienta
+  correcta. Los repos ya inicializados la reciben con `dai sync`.
+- **`dai doctor` avisa si OpenSpec está por debajo de 1.10.0.** Hasta esa versión, los prompts
+  que OpenSpec generaba para Copilot y Cursor nombraban los comandos en la forma de Claude
+  (`/opsx:apply`, que ahí no existe) e invocaban `AskUserQuestion`/`TodoWrite`, que solo tiene
+  Claude Code. El agente terminaba nombrando comandos inexistentes y salteándose el gate de
+  aprobación porque su única forma de preguntar no existía. Está arreglado upstream
+  ([#727](https://github.com/Fission-AI/OpenSpec/issues/727),
+  [#1307](https://github.com/Fission-AI/OpenSpec/issues/1307),
+  [#1103](https://github.com/Fission-AI/OpenSpec/issues/1103)), pero un equipo que instaló
+  antes se queda con la versión vieja y el síntoma no se parece a la causa.
+- **`dai doctor` reporta los comandos de OpenSpec**, con la forma que le toca a **este** repo:
+  `✓ Copilot: /opsx-explore · /opsx-propose · /opsx-apply · /opsx-archive`. Si no están
+  generados, dice el comando exacto para generarlos —con el tool id que espera OpenSpec, que
+  para Copilot es `github-copilot` y no `copilot`—. Solo mira los asistentes configurados en
+  el repo: tener las skills instaladas globalmente no dice nada de los comandos, que son
+  archivos versionados.
+
+### Cambiado
+- **`DAI_JIRA_FIELDS_FILE` sale comentada en el `.env.dai` que genera `dai init`.** Apuntaba
+  al mismo valor que ya usa el CLI por defecto, así que no aportaba nada — pero hacía creer
+  que faltaba un archivo obligatorio, y un dev terminó pidiendo los `customfield_*` de la
+  empresa para un archivo que **solo hace falta para crear** US, no para leerlas.
+
 ## [0.12.0] — 2026-08-13
 
 **La PR deja de robarle la US a otro. `dai pr` resolvía el link recorriendo todo el repo y

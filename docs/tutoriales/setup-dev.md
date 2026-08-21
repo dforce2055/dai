@@ -135,7 +135,7 @@ dai init --for copilot --pm jira
 ```
 
 Te va a preguntar si quieres instalar **OpenSpec**: responde **`s`**. Es el motor del CÓMO —
-convierte la US en `design.md` + `tasks.md` con los comandos `/opsx:*`. Un dev sí lo usa.
+convierte la US en `design.md` + `tasks.md` con los comandos `/opsx-*`. Un dev sí lo usa.
 
 Lo que deja:
 
@@ -291,10 +291,21 @@ Completa `introduces` con las capacidades técnicas nuevas del change (o bórral
 ### 2. Arma el CÓMO y programa
 
 ```
-/opsx:explore     → entender el terreno
-/opsx:propose     → design.md + tasks.md sobre la rama ya linkeada
-/opsx:apply       → el agente implementa las tareas con test primero (/tdd)
+/opsx-explore     → entender el terreno
+/opsx-propose     → design.md + tasks.md sobre la rama ya linkeada
+/opsx-apply       → el agente implementa las tareas con test primero (/tdd)
 ```
+
+> **En Copilot los comandos van con guion, no con dos puntos.** OpenSpec nombra sus comandos
+> según el asistente: en Claude Code son `/opsx:propose` (namespace anidado), y en Copilot y
+> Cursor son `/opsx-propose`, por el nombre del archivo que generan
+> (`.github/prompts/opsx-propose.prompt.md`). Mucha documentación —la de OpenSpec incluida—
+> muestra solo la forma de Claude.
+>
+> Si tipeas `/opsx:propose` en Copilot **no falla con un error**: no encuentra nada, se queda
+> con tu texto suelto y se pone a improvisar. Se ve como un agente que "hace lo que quiere",
+> que se saltea el gate y que arranca a programar sin haber escrito la propuesta. Si te pasa
+> eso, lo primero que hay que mirar es cómo escribiste el comando.
 
 Tú validas el diseño, decides qué comportamientos importa testear y **revisas lo que escribió
 el agente**: eres responsable del código, no la IA.
@@ -382,11 +393,57 @@ chat de Copilot en modo *Agent*, escribiendo `/` adelante.
 |---|---|---|
 | Los comandos de **dai** | **PowerShell**, parado en el repositorio | `dai link-us` · `dai check` · `dai mr` · `dai stamp` · `dai done` |
 | Las **skills** (empiezan con `/`) | El **chat de Copilot**, modo *Agent* | `/link-us` · `/tdd` · `/dai-review` · `/grill-intent` |
-| Los comandos de **OpenSpec** | El **chat de Copilot** | `/opsx:explore` · `/opsx:propose` · `/opsx:apply` |
+| Los comandos de **OpenSpec** | El **chat de Copilot** | `/opsx-explore` · `/opsx-propose` · `/opsx-apply` (con **guion**: ver arriba) |
 
 ---
 
 ## Cuando algo falla
+
+### El agente no respeta los pasos: implementa sin escribir la propuesta
+
+Síntoma: le pides `/opsx:explore` o `/opsx:propose` y el agente te explica el método, te pide
+que le pegues el ticket a mano, o directamente se pone a escribir código sin haber generado
+`proposal.md` / `design.md` / `tasks.md`. Hay que frenarlo a mano en cada paso.
+
+Casi siempre es **el nombre del comando**. En Copilot son `/opsx-explore`, `/opsx-propose`,
+`/opsx-apply` — **con guion**. Con los dos puntos, Copilot no encuentra ningún comando, no
+avisa, y toma tu texto como una charla suelta: el workflow nunca se cargó. Comprueba qué
+tienes disponible:
+
+```powershell
+dai doctor
+```
+
+En el apartado **OpenSpec** te dice los comandos exactos de tu asistente:
+
+```
+› OpenSpec — los comandos van en el chat del asistente, no en la terminal:
+✓ Copilot: /opsx-explore · /opsx-propose · /opsx-apply · /opsx-archive
+```
+
+Si dice que no hay comandos, falta inicializar OpenSpec:
+
+```powershell
+openspec init --tools github-copilot --force
+```
+
+Después **reinicia VS Code**: los comandos nuevos no aparecen hasta que se recarga.
+
+Con el nombre correcto el agente frena al terminar la propuesta y espera tu aprobación antes
+de implementar.
+
+Si aun así se pasa de largo —o si te nombra comandos con dos puntos que no existen—, mira la
+versión de OpenSpec: `dai doctor` te avisa si está vieja. Hasta la **1.10.0**, los prompts que
+OpenSpec generaba para Copilot pedían herramientas que Copilot no tiene, y su única forma de
+frenar a preguntarte no existía. Actualiza:
+
+```powershell
+npm i -g @fission-ai/openspec@latest
+openspec init --tools github-copilot --force
+```
+
+En cualquier caso, **la aprobación del diseño es tuya**: si ves que arrancó a programar sin
+que hayas dicho que sí, páralo y pídele la propuesta.
 
 ### `dai link-us` dice que no encontró la US en jira
 
@@ -454,6 +511,26 @@ $env:NODE_EXTRA_CA_CERTS="C:\ruta\ca-empresa.pem"
 > ⛔ **Nunca uses `NODE_TLS_REJECT_UNAUTHORIZED=0`**, aunque lo veas sugerido en internet o te
 > lo proponga un asistente. Eso no arregla nada: **apaga la verificación entera**, y por esa
 > conexión viaja tu token de Jira.
+
+### `dai check` imprime el ✅ y después tira `Assertion failed … UV_HANDLE_CLOSING`
+
+```
+✅ PROJ-125 al día (v1)
+Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c, line 94
+```
+
+El resultado que ves es el bueno: el chequeo terminó bien. Lo que revienta después es el
+**cierre del proceso** de Node en Windows, desarmando la conexión que se usó para consultar
+Jira. Es un problema de Node, no de tu configuración ni de tu US.
+
+Ya está corregido en dai. Actualiza:
+
+```powershell
+dai upgrade
+```
+
+Importaba arreglarlo porque el proceso terminaba con un código de error aunque el chequeo
+hubiera pasado: un `dai check` verde se reportaba rojo en el CI o en un hook de git.
 
 ### El CI falla con "falta el link"
 

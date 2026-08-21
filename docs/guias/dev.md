@@ -88,3 +88,10 @@ que está junto a tu `implements.yaml`.
 - `dai check` · `dai pr` · `dai stamp` · `dai done` (limpieza, opcional)
 - `dai update-us` — empuja al tracker una US que refinaste implementando
 - `definition-of-done.md`
+
+> **Ojo con el nombre de los comandos `opsx`.** Acá se escriben en la forma de Claude Code
+> (`/opsx:apply`). En **Copilot y Cursor** los mismos comandos van **con guion**:
+> `/opsx-apply`. No es un alias: es el nombre del archivo que genera OpenSpec para cada
+> asistente. Con la forma equivocada el agente no encuentra el comando, no carga el workflow
+> y se pone a improvisar sin avisar. `dai init` te dice cuál te toca.
+
