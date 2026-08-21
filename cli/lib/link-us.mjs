@@ -41,7 +41,9 @@ export function extractTitle(md) {
 
 // Render del implements.yaml (schema ADR-0004).
 export function renderImplementsYaml({ change, repo, id, version = "v1", ac_hash, autor }) {
-  return `# Link QUÉ↔CÓMO · scaffoldeado por dai link-us. El ÚNICO link autorado a mano.
+  return `# Link QUÉ↔CÓMO · scaffoldeado por dai link-us. El ÚNICO link AUTORADO del método:
+# lo escribe alguien, no se deriva. Todo lo de abajo ya está resuelto salvo 'introduces',
+# que se completa AL TERMINAR de implementar — recién ahí se sabe qué se introdujo.
 # Schema: docs/adr/0004-ubicacion-y-schema-implements.md
 change: ${change}
 repo:   ${repo}
@@ -52,7 +54,8 @@ implements:
     ac_hash: ${ac_hash}
 
 introduces:
-  - <capacidad-tecnica>   # completar: specs técnicas nuevas de este change
+  - <capacidad-tecnica>   # al cerrar la implementación: capacidades técnicas nuevas
+                          # (o borrá el bloque si no hay ninguna)
 
 autor: ${autor}
 `;

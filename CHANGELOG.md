@@ -63,6 +63,19 @@ el nombre del comando.**
   archivos versionados.
 
 ### Cambiado
+- **`introduces` se cierra al TERMINAR de implementar, y lo normal es que lo escriba el
+  agente.** El tutorial del dev pedía completarlo justo después de `dai link-us` — cuando
+  todavía no se puede saber qué capacidades técnicas va a introducir el change; al empezar
+  sería adivinar. Y la skill `link-us` decía explícito "dejar `introduces` para que el dev lo
+  liste", cargándole a mano un dato que sabe mejor quien acaba de implementar.
+  La frase "el único archivo que se autora **a mano**" empujaba el malentendido: lo que dice
+  el ADR-0004 es que es el único registro **autorado** —se escribe, no se deriva—, y `link-us`
+  ya resuelve `id`, `version`, `ac_hash`, `change`, `repo` y `autor` por construcción.
+  Ahora lo dicen igual el archivo generado, la skill, su template, el tutorial (con el paso de
+  cierre después de `/opsx-apply`), la guía del dev, el glosario y el ejemplo end-to-end. El
+  **DoD suma el ítem**: `introduces` cerrado, sin el placeholder `<capacidad-tecnica>`.
+- **El DoD nombra los comandos de OpenSpec sin atarlos a un asistente.** Decía
+  `opsx:apply` → `opsx:archive`, la forma de Claude, en un template que viaja a los tres.
 - **`DAI_JIRA_FIELDS_FILE` sale comentada en el `.env.dai` que genera `dai init`.** Apuntaba
   al mismo valor que ya usa el CLI por defecto, así que no aportaba nada — pero hacía creer
   que faltaba un archivo obligatorio, y un dev terminó pidiendo los `customfield_*` de la

@@ -7,7 +7,10 @@
 
 - El **CÓMO**: diseño técnico, modelo de datos, arquitectura de la solución.
 - Las **tareas técnicas** (las derivas tú, desde la US, con OpenSpec).
-- El **link** (`implements.yaml`): es el **único** que se autora a mano ([Art. 9](../MANIFIESTO.md#art-9)).
+- El **link** (`implements.yaml`): es el **único** que se autora, no se deriva ([Art. 9](../MANIFIESTO.md#art-9)).
+  `dai link-us` lo scaffoldea con el `id`/`version`/`ac_hash` ya resueltos; lo único que queda
+  abierto es `introduces`, y se cierra **al terminar de implementar** —normalmente lo completa
+  el agente que implementó, y tú lo revisas en la PR—.
 - El **código** y su **spec técnica**.
 
 ## Lo que NO tocas

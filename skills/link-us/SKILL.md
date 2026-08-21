@@ -25,7 +25,7 @@ Es la contraparte técnica de `grill-user-story`: donde esa produce el QUÉ (en 
    - Nombre: `feature/ABC-###-<slug>` donde `<slug>` sale del título (minúsculas, sin acentos, `-` como separador).
    - Base según convención del repo (`main` o `develop`). Verificar que la branch no exista ya.
    - No permitir crear la branch si el key no fue validado en el paso 1.
-4. **Generar el link.** Crear `openspec/changes/<change-id>/implements.yaml` a partir de [templates/implements.yaml](templates/implements.yaml), completando `id`, `version`, `ac_hash`, `repo` y `autor`. Dejar `introduces` para que el dev liste las capacidades técnicas nuevas.
+4. **Generar el link.** Crear `openspec/changes/<change-id>/implements.yaml` a partir de [templates/implements.yaml](templates/implements.yaml), completando `id`, `version`, `ac_hash`, `repo` y `autor`. Dejar `introduces` con el placeholder: **no se completa ahora**. Al arrancar no se sabe qué capacidades técnicas va a introducir el change — eso se sabe al terminar de implementarlo, y ahí lo completa quien implementó (agente o dev), con el dev revisándolo en la PR.
 5. **Hand-off.** Ofrecer seguir con `opsx:explore` → `opsx:propose` para armar el change (proposal/design/tasks) sobre la branch ya creada y linkeada.
 
 ## Guardrails (por qué esta skill existe)

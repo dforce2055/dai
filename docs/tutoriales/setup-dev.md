@@ -262,28 +262,40 @@ Trae la US de Jira, calcula el `ac_hash` de sus criterios y deja dos cosas:
 ✓ archivo: openspec/changes/finalizar-la-compra-del-carrito/implements.yaml  (ac_hash 380d814b)
 ```
 
-Ese `implements.yaml` es **el único archivo que se autora a mano** en todo el método
-([ADR-0004](../adr/0004-ubicacion-y-schema-implements.md)):
+Ese `implements.yaml` es el **único registro autorado** del método
+([ADR-0004](../adr/0004-ubicacion-y-schema-implements.md)): el resto de la trazabilidad se
+**deriva**, este se escribe. "Autorado" significa que lo escribe alguien —no que lo tipees tú
+ahora—, y `dai link-us` ya te lo dejó casi entero:
 
 ```yaml
 change: finalizar-la-compra-del-carrito
 repo:   tienda
 
 implements:
-  - id: PROJ-125
-    version: v1
-    ac_hash: 380d814b
+  - id: PROJ-125          # ← ya está: lo puso link-us desde el ID que validó
+    version: v1           # ← ya está
+    ac_hash: 380d814b     # ← ya está: calculado sobre los criterios de la US
 
 introduces:
-  - <capacidad-tecnica>   # completar: specs técnicas nuevas de este change
+  - <capacidad-tecnica>   # ← lo ÚNICO pendiente, y NO se completa ahora
 
-autor: tu.nombre
+autor: tu.nombre          # ← ya está
 ```
 
-Completa `introduces` con las capacidades técnicas nuevas del change (o bórralo si no hay).
+> **No completes `introduces` todavía.** Es lo que este change **introduce** en el repo: las
+> capacidades técnicas nuevas. Recién al terminar de implementar se sabe cuáles son —al
+> empezar sería adivinar—, así que se completa **al cerrar la implementación**, no acá.
+
+**Y normalmente no lo escribes tú: lo escribe el agente.** Cuando `/opsx-apply` termina de
+aplicar las tareas, el que implementó es el que sabe qué capacidades quedaron: pídele que
+complete `introduces` (o que borre el bloque si el change no introdujo ninguna) como último
+paso. **Tú lo revisas en la MR** — el archivo va versionado con el código justamente para que
+se lea en la revisión, igual que cualquier otro cambio.
 
 > **El key no se tipea nunca a mano.** La rama y el `implements.yaml` salen los dos del mismo
-> ID validado: por eso el link no puede quedar mal escrito.
+> ID validado: por eso el link no puede quedar mal escrito. El campo que sí requiere criterio
+> humano —`introduces`— es el único que queda abierto, y no es un dato del tracker: es tu
+> lectura de lo que el change agregó.
 
 > **Si te dice que la US no tiene criterios de aceptación**, frena: no es un problema de tu
 > setup. Esa US no cumple el [DoR](../../templates/definition-of-ready.md) y vuelve al PO.
@@ -309,6 +321,17 @@ Completa `introduces` con las capacidades técnicas nuevas del change (o bórral
 
 Tú validas el diseño, decides qué comportamientos importa testear y **revisas lo que escribió
 el agente**: eres responsable del código, no la IA.
+
+Cuando `/opsx-apply` termina, cierra el link — es el momento en que ya se sabe qué introdujo
+el change:
+
+```
+Completa `introduces` en el implements.yaml con las capacidades técnicas que agregó este
+change (o borra el bloque si no agregó ninguna).
+```
+
+Revisa lo que puso. `introduces` no es un dato del tracker: es la lectura de lo que el change
+agregó al repo, y viaja versionado para que se lea en la MR.
 
 ### 3. Commitea y comprueba el link
 
