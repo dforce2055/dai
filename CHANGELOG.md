@@ -3,7 +3,7 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
-## [No publicado]
+## [0.13.0] — 2026-08-21
 
 **Un dev de backend en Windows siguió el tutorial al pie de la letra y el agente se puso a
 programar sin escribir la propuesta. No era Windows ni era su setup: le estábamos diciendo mal
@@ -67,6 +67,13 @@ el nombre del comando.**
   al mismo valor que ya usa el CLI por defecto, así que no aportaba nada — pero hacía creer
   que faltaba un archivo obligatorio, y un dev terminó pidiendo los `customfield_*` de la
   empresa para un archivo que **solo hace falta para crear** US, no para leerlas.
+
+### Interno
+- **325 tests** (+6 desde 0.12.0): `opsxCommand` y `opsxHint` —que solo Claude lleva los dos
+  puntos, y la línea combinada de `dai init` cuando el repo configura varios asistentes—, el
+  archivo y el tool id de OpenSpec por asistente (`github-copilot`, que no es `copilot`),
+  `OPENSPEC_MIN`, que `DAI_JIRA_FIELDS_FILE` salga comentada, y que la regla nueva de la
+  constitución llegue a los tres asistentes.
 
 ## [0.12.0] — 2026-08-13
 
@@ -676,6 +683,7 @@ ClickUp y Jira Cloud.
 - Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
   `files` de npm sin tests ni secretos.
 
+[0.13.0]: https://github.com/dforce2055/dai/releases/tag/v0.13.0
 [0.12.0]: https://github.com/dforce2055/dai/releases/tag/v0.12.0
 [0.11.0]: https://github.com/dforce2055/dai/releases/tag/v0.11.0
 [0.10.0]: https://github.com/dforce2055/dai/releases/tag/v0.10.0
