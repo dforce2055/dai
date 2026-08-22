@@ -1,5 +1,6 @@
 # Link QUÉ↔CÓMO · lo genera link-us / `dai link-us`, lo versiona git junto al código.
-# Es el ÚNICO link autorado a mano. La cobertura inversa la deriva `dai stamp`.
+# Es el ÚNICO link AUTORADO (se escribe, no se deriva): lo scaffoldea `link-us` y se cierra
+# al terminar de implementar. La cobertura inversa la deriva `dai stamp`.
 # Schema: docs/adr/0004-ubicacion-y-schema-implements.md
 
 change: <change-id>              # ← identidad del CÓMO (nombre local del change/spec). Auto-contenido.
@@ -11,6 +12,7 @@ implements:                      # FORWARD: qué QUÉ del negocio cumple este ch
     ac_hash: <autogenerado>      # ← lo calcula `dai ac-hash`. Dispara el ⚠️ si el QUÉ cambia.
 
 introduces:                      # capacidades TÉCNICAS nuevas que agrega este change (opcional)
-  - <capacidad-tecnica>          #   p. ej. guard-carrito-vacio
+  - <capacidad-tecnica>          #   p. ej. guard-carrito-vacio. Se completa AL TERMINAR de
+                                 #   implementar, no al crear el link: recién ahí se sabe.
 
 autor: <dev>                     # quién implementa

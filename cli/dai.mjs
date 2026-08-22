@@ -30,9 +30,9 @@ import { parseFindings, diffPositions, validateFindings, filterFindings, renderF
 import { composePrBody, prTitle, forgeTool } from "./lib/pr.mjs";
 import { dirsEqual } from "./lib/fsutil.mjs";
 import { parseFlags, parseAssistants, isAssistantToken, asList } from "./lib/args.mjs";
-import { versionDrift, planUpgrade } from "./lib/semver.mjs";
+import { versionDrift, planUpgrade, compareVersions } from "./lib/semver.mjs";
 import { parseSource } from "./lib/skills-source.mjs";
-import { skillToCursor, validateSkill, constitution, constitutionCursorRule, envFor, mergeEnv, upsertBlock, reconcileGitignore, stalePromptFiles } from "./lib/bootstrap.mjs";
+import { skillToCursor, validateSkill, constitution, constitutionCursorRule, envFor, mergeEnv, upsertBlock, reconcileGitignore, stalePromptFiles, opsxHint, opsxCommand, OPSX_COMMAND_FILE, OPENSPEC_TOOL, OPENSPEC_MIN } from "./lib/bootstrap.mjs";
 import { parseFieldsFile, parseFieldOverrides, resolveJiraFields } from "./lib/jira-fields.mjs";
 import { assertProjectKey } from "./lib/pm-jira.mjs";
 import { flattenImplements, stampScope, prScope, matchBranchToImplements, requiresLink, trackerKeysIn } from "./lib/branch-scope.mjs";
@@ -45,6 +45,13 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 process.stdout.on("error", (e) => { if (e.code === "EPIPE") process.exit(0); throw e; });
 
 function fail(msg, code = 1) { process.stderr.write("dai: " + msg + "\n"); process.exit(code); }
+
+// Igual que fail(), pero sin process.exit(). Lo usan los `.catch()` del dispatcher: ahí el
+// comando YA terminó, así que cortar de una no aporta nada y en Windows cuesta caro — salir
+// de golpe después de un fetch (o de un spawn de npm) aborta el proceso con un assert de
+// libuv y tapa el mensaje de error con un stack de C. Ver la nota en cmdCheckCi.
+// Adentro de un comando `fail()` sigue siendo lo correcto: ahí sí hay que no volver.
+function failSoft(msg, code = 1) { process.stderr.write("dai: " + msg + "\n"); process.exitCode = code; }
 const ok = (m) => process.stdout.write(`✓ ${m}\n`);
 const info = (m) => process.stdout.write(`› ${m}\n`);
 const warn = (m) => process.stdout.write(`⚠ ${m}\n`);
@@ -219,6 +226,13 @@ function gitCommit() { try { return git(["rev-parse", "HEAD"]); } catch { return
 // Quién decide es requiresLink(), leyendo el nombre de la branch.
 //
 // Salidas:  0 = pasa · 1 = falta el link · 2 = hay link pero el QUÉ cambió (atrasado)
+//
+// El código de salida se fija con `process.exitCode`, NO con `process.exit()`. En Windows,
+// salir de golpe justo después de un fetch aborta el proceso con un assert de libuv
+// (`!(handle->flags & UV_HANDLE_CLOSING)`, src\win\async.c) mientras undici todavía está
+// desarmando sus handles. El gate imprimía "al día" y devolvía distinto de cero igual: un
+// verde reportado como rojo en CI o en un hook. Dejar que el loop drene solo cuesta ~40ms
+// (los sockets keep-alive de undici están unref'd) y no cambia nada en macOS/Linux.
 async function cmdCheckCi(opts = {}) {
   const branch = opts.branch || process.env.DAI_CI_BRANCH || ciBranch() || gitBranch();
   const { required, reason } = requiresLink(branch);
@@ -227,7 +241,7 @@ async function cmdCheckCi(opts = {}) {
   info(`branch '${branch || "(desconocida)"}' — ${reason}`);
   if (!required) {
     if (rows.length) info(`igual declara ${rows.length} US (${rows.map((r) => r.id).join(", ")}) — se chequea su cobertura.`);
-    else { ok("gate OK — esta branch no requiere US."); process.exit(0); }
+    else { ok("gate OK — esta branch no requiere US."); return; }
   }
   if (required && rows.length === 0) {
     const ids = trackerKeysIn(branch);
@@ -236,7 +250,7 @@ async function cmdCheckCi(opts = {}) {
       `    Crealo:  dai link-us ${ids[0] || "<ID-DE-LA-US>"}\n` +
       "    Si NO implementa una US (tooling, deps, docs), renombrá la branch con un\n" +
       "    prefijo exento — chore/, docs/, ci/ — según governance/branch-naming.md.\n");
-    process.exit(1);
+    process.exitCode = 1; return;
   }
 
   // Hay link: que además esté al día contra la US viva. Sin token/backend eso no se
@@ -244,7 +258,7 @@ async function cmdCheckCi(opts = {}) {
   // con --no-network (o sin adaptador utilizable) valida el link y no más.
   if (opts.noNetwork) {
     ok(`gate OK — ${rows.length} US linkeada(s): ${rows.map((r) => r.id).join(", ")} (--no-network: no se comparó contra la US viva).`);
-    process.exit(0);
+    process.exitCode = 0; return;
   }
   loadDaiEnv();
   let adapter;
@@ -252,7 +266,7 @@ async function cmdCheckCi(opts = {}) {
   catch (e) {
     warn(`no puedo comparar contra la US viva: ${e.message}`);
     ok(`gate OK igual — el link existe (${rows.map((r) => r.id).join(", ")}). Configurá el backend para chequear también el atraso.`);
-    process.exit(0);
+    process.exitCode = 0; return;
   }
   let worst = 0;
   for (const r of rows) {
@@ -271,7 +285,7 @@ async function cmdCheckCi(opts = {}) {
     }
   }
   if (worst === 0) ok(`gate OK — ${rows.length} US linkeada(s) y al día.`);
-  process.exit(worst);
+  process.exitCode = worst;
 }
 
 // La branch real en CI: en una PR, HEAD es un merge commit detached, así que
@@ -285,6 +299,7 @@ function ciBranch() {
 }
 
 // ── check ──────────────────────────────────────────────────────────────────
+// `process.exitCode` en vez de `process.exit()`: ver la nota en cmdCheckCi.
 async function cmdCheck() {
   loadDaiEnv();
   const adapter = getAdapter(process.env);
@@ -312,7 +327,7 @@ async function cmdCheck() {
     for (const id of atrasadas) process.stdout.write(`    dai link-us ${id} --resync     # re-estampa el ac_hash contra la US viva\n`);
     process.stdout.write("  Después, revisa si tu implementación cubre el criterio nuevo.\n");
   }
-  process.exit(worst);
+  process.exitCode = worst;
 }
 
 // ── stamp ──────────────────────────────────────────────────────────────────
@@ -1263,7 +1278,7 @@ async function cmdInit(repo, opts) {
   let installOpenspec = opts.openspec === true;
   if (!hasOpenspec && opts.openspec === undefined && rl) {
     process.stdout.write("\n  OpenSpec es el motor recomendado del CÓMO: convierte la US en design + tasks\n");
-    process.stdout.write("  (comandos /opsx:*). No está en este repo — la trazabilidad de dai anda igual sin\n");
+    process.stdout.write(`  (${opsxHint(want)}). No está en este repo — la trazabilidad de dai anda igual sin\n`);
     process.stdout.write("  él, pero para el flujo completo conviene tenerlo.\n");
     installOpenspec = await askYesNo(rl, "¿Instalar el CLI de OpenSpec ahora? (después ejecutas `openspec init` tú)", false);
   }
@@ -1366,7 +1381,7 @@ async function cmdInit(repo, opts) {
     .filter(Boolean).join(",") || "claude,github-copilot,cursor";
   const osHint = "para sumarlo después:  npm i -g @fission-ai/openspec@latest  &&  openspec init --tools " + osTools;
   if (hasOpenspec) {
-    ok("OpenSpec:     ya inicializado en el repo");
+    ok(`OpenSpec:     ya inicializado en el repo — ${opsxHint(want)}`);
   } else if (openspecPartial) {
     warn("OpenSpec:     hay una carpeta openspec/ a medias. Reinicializa: rm -rf openspec && openspec init --tools " + osTools + " --force");
   } else if (installOpenspec) {
@@ -1379,7 +1394,7 @@ async function cmdInit(repo, opts) {
       try {
         info(`OpenSpec:     inicializando en el repo (--tools ${osTools})…`);
         runNpmTool("openspec", ["init", "--tools", osTools, "--force"], { stdio: "inherit", cwd: repo === "." ? process.cwd() : repo });
-        ok("OpenSpec:     instalado e inicializado — genera design/tasks con /opsx:*");
+        ok(`OpenSpec:     instalado e inicializado — genera design/tasks con ${opsxHint(want)}`);
       } catch {
         warn("OpenSpec:     el CLI está pero falló `openspec init`. Ejecuta a mano en el repo:");
         process.stdout.write(`                  openspec init --tools ${osTools} --force\n`);
@@ -1645,6 +1660,43 @@ function cmdDoctor() {
     else warn("falta constitución Cursor (dai-constitution.mdc)");
   }
 
+  // OpenSpec: los comandos que arman el CÓMO. Se reportan acá porque su nombre CAMBIA
+  // según el asistente, y con la forma equivocada el agente no falla — no encuentra nada,
+  // no avisa, y se pone a improvisar salteándose el gate. Verlo escrito ahorra la tarde.
+  const OPSX_IDS = ["explore", "propose", "apply", "archive"];
+  const opsxPath = (kind, id) => join(cwd, ...OPSX_COMMAND_FILE[kind].replace("<id>", id).split("/"));
+  // Solo los asistentes configurados EN ESTE REPO: los comandos opsx son archivos del
+  // repo, así que tener las skills globales no dice nada sobre ellos. Avisar por los otros
+  // dos le pone dos warnings falsos a quien configuró uno solo, que es el caso normal.
+  const localActive = ASSISTANTS.filter((a) => skillNames.some((n) => existsSync(join(a.local, n))));
+  if (localActive.length && existsSync(join(cwd, "openspec"))) {
+    info("OpenSpec — los comandos van en el chat del asistente, no en la terminal:");
+    for (const a of localActive) {
+      const faltan = OPSX_IDS.filter((id) => !existsSync(opsxPath(a.kind, id)));
+      if (faltan.length === OPSX_IDS.length) {
+        warn(`${a.label}: no hay comandos opsx. Generalos:  openspec init --tools ${OPENSPEC_TOOL[a.kind]} --force`);
+      } else {
+        const hay = OPSX_IDS.filter((id) => existsSync(opsxPath(a.kind, id)));
+        ok(`${a.label}: ${hay.map((id) => opsxCommand(a.kind, id)).join(" · ")}`);
+        if (faltan.length) warn(`${a.label}: faltan ${faltan.join(", ")} — regenerá con \`openspec init --tools ${OPENSPEC_TOOL[a.kind]} --force\``);
+      }
+    }
+    process.stdout.write("    (el nombre sale del archivo que genera OpenSpec: solo Claude usa los dos puntos)\n");
+    // La versión importa para algo más que features: hasta OPENSPEC_MIN, los prompts que
+    // OpenSpec genera para Copilot/Cursor decían `/opsx:apply` (la forma de Claude, que ahí
+    // no existe) e invocaban herramientas que solo tiene Claude Code. El agente terminaba
+    // nombrando comandos inexistentes y salteándose el gate de aprobación sin avisar.
+    let osV = null;
+    try { osV = String(runNpmTool("openspec", ["--version"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }) ?? "").trim(); } catch { /* sin CLI */ }
+    if (!osV) info("el CLI de OpenSpec no está en el PATH (los comandos igual viven en el repo)");
+    else if (compareVersions(osV, OPENSPEC_MIN) === -1) {
+      warn(`OpenSpec ${osV} — actualiza a ${OPENSPEC_MIN} o mayor:  npm i -g @fission-ai/openspec@latest`);
+      process.stdout.write("    Hasta esa versión, los prompts de Copilot y Cursor nombraban los comandos en la\n");
+      process.stdout.write("    forma de Claude y pedían herramientas que esos asistentes no tienen: el agente se\n");
+      process.stdout.write("    saltea el gate de aprobación y se pone a implementar sin avisar.\n");
+    } else ok(`OpenSpec ${osV}`);
+  }
+
   info("adaptador de PM:");
   const pm = process.env.DAI_PM || "md";
   ok(`DAI_PM=${pm}`);
@@ -1693,23 +1745,23 @@ const { opts, pos } = parseFlags(rest);
 switch (cmd) {
   case "ac-hash": cmdAcHash(pos[0]); break;
   case "ls":      cmdLs(opts); break;
-  case "link-us": cmdLinkUs(pos[0], opts).catch((e) => fail(String(e.message))); break;
-  case "check":   (opts.ci ? cmdCheckCi(opts) : cmdCheck()).catch((e) => fail(String(e.message))); break;
-  case "stamp":   cmdStamp(pos, opts).catch((e) => fail(String(e.message))); break;
-  case "update-us": cmdUpdateUs(pos[0], opts).catch((e) => fail(String(e.message))); break;
-  case "edit-us": cmdEditUs(pos[0], opts).catch((e) => fail(String(e.message))); break;
-  case "forge":   cmdForge(pos[0], pos[1], opts).catch((e) => fail(String(e.message))); break;
-  case "publish": cmdPublish(pos[0], opts).catch((e) => fail(String(e.message))); break;
+  case "link-us": cmdLinkUs(pos[0], opts).catch((e) => failSoft(String(e.message))); break;
+  case "check":   (opts.ci ? cmdCheckCi(opts) : cmdCheck()).catch((e) => failSoft(String(e.message))); break;
+  case "stamp":   cmdStamp(pos, opts).catch((e) => failSoft(String(e.message))); break;
+  case "update-us": cmdUpdateUs(pos[0], opts).catch((e) => failSoft(String(e.message))); break;
+  case "edit-us": cmdEditUs(pos[0], opts).catch((e) => failSoft(String(e.message))); break;
+  case "forge":   cmdForge(pos[0], pos[1], opts).catch((e) => failSoft(String(e.message))); break;
+  case "publish": cmdPublish(pos[0], opts).catch((e) => failSoft(String(e.message))); break;
   case "pr":
-  case "mr":      cmdPr(opts).catch((e) => fail(String(e.message))); break;   // `mr` = alias para GitLab (merge request)
+  case "mr":      cmdPr(opts).catch((e) => failSoft(String(e.message))); break;   // `mr` = alias para GitLab (merge request)
   case "done":    cmdDone(opts); break;
   case "archive": cmdArchive(pos[0], opts); break;
-  case "install": cmdInstall(opts).catch((e) => fail(String(e.message))); break;   // alias de `dai skills install`
+  case "install": cmdInstall(opts).catch((e) => failSoft(String(e.message))); break;   // alias de `dai skills install`
   case "skills":
-    if (pos[0] === "install" || pos[0] === undefined) cmdInstall(opts).catch((e) => fail(String(e.message)));
+    if (pos[0] === "install" || pos[0] === undefined) cmdInstall(opts).catch((e) => failSoft(String(e.message)));
     else fail(`subcomando de skills desconocido: '${pos[0]}' (por ahora: install)`, 2);
     break;
-  case "init":    cmdInit(pos[0], opts).catch((e) => fail(String(e.message))); break;
+  case "init":    cmdInit(pos[0], opts).catch((e) => failSoft(String(e.message))); break;
   case "sync":    cmdSync(pos[0], opts); break;
   case "upgrade":
   case "update":  cmdUpgrade(opts); break;

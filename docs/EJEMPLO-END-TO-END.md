@@ -157,7 +157,7 @@ $ dai link-us ABC-482 --us us.md --change finalizar-compra
 ```
 
 ```yaml
-# implements.yaml — el ÚNICO link autorado a mano (schema ADR-0004)
+# implements.yaml — el ÚNICO link AUTORADO: se escribe, no se deriva (schema ADR-0004)
 change: finalizar-compra
 repo:   frontend
 

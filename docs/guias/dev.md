@@ -7,7 +7,10 @@
 
 - El **CÓMO**: diseño técnico, modelo de datos, arquitectura de la solución.
 - Las **tareas técnicas** (las derivas tú, desde la US, con OpenSpec).
-- El **link** (`implements.yaml`): es el **único** que se autora a mano ([Art. 9](../MANIFIESTO.md#art-9)).
+- El **link** (`implements.yaml`): es el **único** que se autora, no se deriva ([Art. 9](../MANIFIESTO.md#art-9)).
+  `dai link-us` lo scaffoldea con el `id`/`version`/`ac_hash` ya resueltos; lo único que queda
+  abierto es `introduces`, y se cierra **al terminar de implementar** —normalmente lo completa
+  el agente que implementó, y tú lo revisas en la PR—.
 - El **código** y su **spec técnica**.
 
 ## Lo que NO tocas
@@ -88,3 +91,10 @@ que está junto a tu `implements.yaml`.
 - `dai check` · `dai pr` · `dai stamp` · `dai done` (limpieza, opcional)
 - `dai update-us` — empuja al tracker una US que refinaste implementando
 - `definition-of-done.md`
+
+> **Ojo con el nombre de los comandos `opsx`.** Acá se escriben en la forma de Claude Code
+> (`/opsx:apply`). En **Copilot y Cursor** los mismos comandos van **con guion**:
+> `/opsx-apply`. No es un alias: es el nombre del archivo que genera OpenSpec para cada
+> asistente. Con la forma equivocada el agente no encuentra el comando, no carga el workflow
+> y se pone a improvisar sin avisar. `dai init` te dice cuál te toca.
+

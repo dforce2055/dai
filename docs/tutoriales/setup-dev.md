@@ -135,7 +135,7 @@ dai init --for copilot --pm jira
 ```
 
 Te va a preguntar si quieres instalar **OpenSpec**: responde **`s`**. Es el motor del CÓMO —
-convierte la US en `design.md` + `tasks.md` con los comandos `/opsx:*`. Un dev sí lo usa.
+convierte la US en `design.md` + `tasks.md` con los comandos `/opsx-*`. Un dev sí lo usa.
 
 Lo que deja:
 
@@ -262,28 +262,40 @@ Trae la US de Jira, calcula el `ac_hash` de sus criterios y deja dos cosas:
 ✓ archivo: openspec/changes/finalizar-la-compra-del-carrito/implements.yaml  (ac_hash 380d814b)
 ```
 
-Ese `implements.yaml` es **el único archivo que se autora a mano** en todo el método
-([ADR-0004](../adr/0004-ubicacion-y-schema-implements.md)):
+Ese `implements.yaml` es el **único registro autorado** del método
+([ADR-0004](../adr/0004-ubicacion-y-schema-implements.md)): el resto de la trazabilidad se
+**deriva**, este se escribe. "Autorado" significa que lo escribe alguien —no que lo tipees tú
+ahora—, y `dai link-us` ya te lo dejó casi entero:
 
 ```yaml
 change: finalizar-la-compra-del-carrito
 repo:   tienda
 
 implements:
-  - id: PROJ-125
-    version: v1
-    ac_hash: 380d814b
+  - id: PROJ-125          # ← ya está: lo puso link-us desde el ID que validó
+    version: v1           # ← ya está
+    ac_hash: 380d814b     # ← ya está: calculado sobre los criterios de la US
 
 introduces:
-  - <capacidad-tecnica>   # completar: specs técnicas nuevas de este change
+  - <capacidad-tecnica>   # ← lo ÚNICO pendiente, y NO se completa ahora
 
-autor: tu.nombre
+autor: tu.nombre          # ← ya está
 ```
 
-Completa `introduces` con las capacidades técnicas nuevas del change (o bórralo si no hay).
+> **No completes `introduces` todavía.** Es lo que este change **introduce** en el repo: las
+> capacidades técnicas nuevas. Recién al terminar de implementar se sabe cuáles son —al
+> empezar sería adivinar—, así que se completa **al cerrar la implementación**, no acá.
+
+**Y normalmente no lo escribes tú: lo escribe el agente.** Cuando `/opsx-apply` termina de
+aplicar las tareas, el que implementó es el que sabe qué capacidades quedaron: pídele que
+complete `introduces` (o que borre el bloque si el change no introdujo ninguna) como último
+paso. **Tú lo revisas en la MR** — el archivo va versionado con el código justamente para que
+se lea en la revisión, igual que cualquier otro cambio.
 
 > **El key no se tipea nunca a mano.** La rama y el `implements.yaml` salen los dos del mismo
-> ID validado: por eso el link no puede quedar mal escrito.
+> ID validado: por eso el link no puede quedar mal escrito. El campo que sí requiere criterio
+> humano —`introduces`— es el único que queda abierto, y no es un dato del tracker: es tu
+> lectura de lo que el change agregó.
 
 > **Si te dice que la US no tiene criterios de aceptación**, frena: no es un problema de tu
 > setup. Esa US no cumple el [DoR](../../templates/definition-of-ready.md) y vuelve al PO.
@@ -291,13 +303,35 @@ Completa `introduces` con las capacidades técnicas nuevas del change (o bórral
 ### 2. Arma el CÓMO y programa
 
 ```
-/opsx:explore     → entender el terreno
-/opsx:propose     → design.md + tasks.md sobre la rama ya linkeada
-/opsx:apply       → el agente implementa las tareas con test primero (/tdd)
+/opsx-explore     → entender el terreno
+/opsx-propose     → design.md + tasks.md sobre la rama ya linkeada
+/opsx-apply       → el agente implementa las tareas con test primero (/tdd)
 ```
+
+> **En Copilot los comandos van con guion, no con dos puntos.** OpenSpec nombra sus comandos
+> según el asistente: en Claude Code son `/opsx:propose` (namespace anidado), y en Copilot y
+> Cursor son `/opsx-propose`, por el nombre del archivo que generan
+> (`.github/prompts/opsx-propose.prompt.md`). Mucha documentación —la de OpenSpec incluida—
+> muestra solo la forma de Claude.
+>
+> Si tipeas `/opsx:propose` en Copilot **no falla con un error**: no encuentra nada, se queda
+> con tu texto suelto y se pone a improvisar. Se ve como un agente que "hace lo que quiere",
+> que se saltea el gate y que arranca a programar sin haber escrito la propuesta. Si te pasa
+> eso, lo primero que hay que mirar es cómo escribiste el comando.
 
 Tú validas el diseño, decides qué comportamientos importa testear y **revisas lo que escribió
 el agente**: eres responsable del código, no la IA.
+
+Cuando `/opsx-apply` termina, cierra el link — es el momento en que ya se sabe qué introdujo
+el change:
+
+```
+Completa `introduces` en el implements.yaml con las capacidades técnicas que agregó este
+change (o borra el bloque si no agregó ninguna).
+```
+
+Revisa lo que puso. `introduces` no es un dato del tracker: es la lectura de lo que el change
+agregó al repo, y viaja versionado para que se lea en la MR.
 
 ### 3. Commitea y comprueba el link
 
@@ -382,11 +416,57 @@ chat de Copilot en modo *Agent*, escribiendo `/` adelante.
 |---|---|---|
 | Los comandos de **dai** | **PowerShell**, parado en el repositorio | `dai link-us` · `dai check` · `dai mr` · `dai stamp` · `dai done` |
 | Las **skills** (empiezan con `/`) | El **chat de Copilot**, modo *Agent* | `/link-us` · `/tdd` · `/dai-review` · `/grill-intent` |
-| Los comandos de **OpenSpec** | El **chat de Copilot** | `/opsx:explore` · `/opsx:propose` · `/opsx:apply` |
+| Los comandos de **OpenSpec** | El **chat de Copilot** | `/opsx-explore` · `/opsx-propose` · `/opsx-apply` (con **guion**: ver arriba) |
 
 ---
 
 ## Cuando algo falla
+
+### El agente no respeta los pasos: implementa sin escribir la propuesta
+
+Síntoma: le pides `/opsx:explore` o `/opsx:propose` y el agente te explica el método, te pide
+que le pegues el ticket a mano, o directamente se pone a escribir código sin haber generado
+`proposal.md` / `design.md` / `tasks.md`. Hay que frenarlo a mano en cada paso.
+
+Casi siempre es **el nombre del comando**. En Copilot son `/opsx-explore`, `/opsx-propose`,
+`/opsx-apply` — **con guion**. Con los dos puntos, Copilot no encuentra ningún comando, no
+avisa, y toma tu texto como una charla suelta: el workflow nunca se cargó. Comprueba qué
+tienes disponible:
+
+```powershell
+dai doctor
+```
+
+En el apartado **OpenSpec** te dice los comandos exactos de tu asistente:
+
+```
+› OpenSpec — los comandos van en el chat del asistente, no en la terminal:
+✓ Copilot: /opsx-explore · /opsx-propose · /opsx-apply · /opsx-archive
+```
+
+Si dice que no hay comandos, falta inicializar OpenSpec:
+
+```powershell
+openspec init --tools github-copilot --force
+```
+
+Después **reinicia VS Code**: los comandos nuevos no aparecen hasta que se recarga.
+
+Con el nombre correcto el agente frena al terminar la propuesta y espera tu aprobación antes
+de implementar.
+
+Si aun así se pasa de largo —o si te nombra comandos con dos puntos que no existen—, mira la
+versión de OpenSpec: `dai doctor` te avisa si está vieja. Hasta la **1.10.0**, los prompts que
+OpenSpec generaba para Copilot pedían herramientas que Copilot no tiene, y su única forma de
+frenar a preguntarte no existía. Actualiza:
+
+```powershell
+npm i -g @fission-ai/openspec@latest
+openspec init --tools github-copilot --force
+```
+
+En cualquier caso, **la aprobación del diseño es tuya**: si ves que arrancó a programar sin
+que hayas dicho que sí, páralo y pídele la propuesta.
 
 ### `dai link-us` dice que no encontró la US en jira
 
@@ -454,6 +534,26 @@ $env:NODE_EXTRA_CA_CERTS="C:\ruta\ca-empresa.pem"
 > ⛔ **Nunca uses `NODE_TLS_REJECT_UNAUTHORIZED=0`**, aunque lo veas sugerido en internet o te
 > lo proponga un asistente. Eso no arregla nada: **apaga la verificación entera**, y por esa
 > conexión viaja tu token de Jira.
+
+### `dai check` imprime el ✅ y después tira `Assertion failed … UV_HANDLE_CLOSING`
+
+```
+✅ PROJ-125 al día (v1)
+Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c, line 94
+```
+
+El resultado que ves es el bueno: el chequeo terminó bien. Lo que revienta después es el
+**cierre del proceso** de Node en Windows, desarmando la conexión que se usó para consultar
+Jira. Es un problema de Node, no de tu configuración ni de tu US.
+
+Ya está corregido en dai. Actualiza:
+
+```powershell
+dai upgrade
+```
+
+Importaba arreglarlo porque el proceso terminaba con un código de error aunque el chequeo
+hubiera pasado: un `dai check` verde se reportaba rojo en el CI o en un hook de git.
 
 ### El CI falla con "falta el link"
 

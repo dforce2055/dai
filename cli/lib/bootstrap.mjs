@@ -106,6 +106,44 @@ export function validateSkill(md) {
 // cada `/comando` con una copia vieja y sin templates.
 export const stalePromptFiles = (skills) => skills.map((n) => `${n}.prompt.md`);
 
+// OpenSpec nombra sus comandos DISTINTO según el asistente, y no es cosmético:
+//   Claude  .claude/commands/opsx/<id>.md         → /opsx:propose   (namespace anidado)
+//   Copilot .github/prompts/opsx-<id>.prompt.md   → /opsx-propose   (nombre aplanado)
+//   Cursor  .cursor/commands/opsx-<id>.md         → /opsx-propose
+// Tipear `/opsx:propose` en Copilot no matchea NADA: el agente no carga el workflow y se
+// pone a improvisar — se saltea el gate propose → aprobación → apply sin avisarle a nadie.
+// Decirle la forma correcta al dev es la diferencia entre el método y vibe coding.
+export function opsxCommand(kind, name = "propose") {
+  return kind === "claude" ? `/opsx:${name}` : `/opsx-${name}`;
+}
+
+// El archivo del que sale ese nombre — lo que hay que mirar cuando el comando "no existe".
+export const OPSX_COMMAND_FILE = {
+  claude:  ".claude/commands/opsx/<id>.md",
+  copilot: ".github/prompts/opsx-<id>.prompt.md",
+  cursor:  ".cursor/commands/opsx-<id>.md",
+};
+
+// Desde esta versión, OpenSpec escribe el nombre del comando que ENTIENDE cada asistente
+// dentro del cuerpo del prompt (antes todos decían `/opsx:apply`, la forma de Claude) y no
+// invoca herramientas que solo existen en Claude Code (`AskUserQuestion`, `TodoWrite`).
+// Con una anterior, un dev de Copilot ve un agente que le nombra comandos inexistentes y
+// que se pasa de largo el gate de aprobación porque su única forma de preguntar no existe.
+export const OPENSPEC_MIN = "1.10.0";
+
+// El id con el que OpenSpec conoce a cada asistente en `openspec init --tools`.
+export const OPENSPEC_TOOL = { claude: "claude", copilot: "github-copilot", cursor: "cursor" };
+
+// La misma info, resumida para una sola línea de `dai init` (que puede haber configurado
+// varios asistentes a la vez).
+export function opsxHint(want, name = "propose") {
+  const dash = [want?.copilot && "Copilot", want?.cursor && "Cursor"].filter(Boolean).join(" y ");
+  const forms = [];
+  if (want?.claude) forms.push(`${opsxCommand("claude", name)} (Claude)`);
+  if (dash) forms.push(`${opsxCommand("copilot", name)} (${dash})`);
+  return forms.join(" · ") || opsxCommand("claude", name);
+}
+
 // Transforma un SKILL.md (Claude) en un SKILL.md de Cursor.
 // Conserva name/description/body y ajusta solo el frontmatter.
 export function skillToCursor(md) {
@@ -140,8 +178,10 @@ export function envFor(pm) {
       "# La clave del PROYECTO (p. ej. PROJ), no la de un ticket (PROJ-123).\n" +
       "DAI_JIRA_PROJECT=\n" +
       "DAI_JIRA_ISSUETYPE=Story\n" +
-      "# Campos propios que tu Jira exige al crear. Si el archivo no existe, se ignora.\n" +
-      "DAI_JIRA_FIELDS_FILE=.dai/jira-fields.json\n";
+      "# Solo si tu Jira exige campos propios AL CREAR una US (lo usa grill-user-story,\n" +
+      "# no hace falta para leerlas). El default ya es .dai/jira-fields.json; descomentá\n" +
+      "# solo para apuntar a otra ruta. Si el archivo no existe, se ignora.\n" +
+      "# DAI_JIRA_FIELDS_FILE=.dai/jira-fields.json\n";
   }
   return head + "DAI_PM=md\nDAI_MD_US_DIR=.dai/us\n";
 }
@@ -230,6 +270,7 @@ export function constitution(kind) {
 ## Reglas
 
 - **No vibe coding:** toda implementación arranca de una US con criterios testeables.
+- **El diseño se aprueba antes de implementar:** cuando termines la propuesta (proposal / design / tasks), **para y pide aprobación explícita**. No sigas de largo porque "ya está claro": el CÓMO lo firma la persona, y una implementación que empieza antes de esa firma no tiene contra qué revisarse. Si no tienes una herramienta para preguntar, pregunta en texto plano y espera la respuesta.
 - **TDD:** test primero, por la interfaz pública; sobrevive a un refactor.
 - **El link se autora una vez** (\`implements.yaml\`); la cobertura se **deriva** (nunca a mano).
 - **Verifica el comportamiento, no solo que compile:** que pase el chequeo estático o el build no prueba que funcione; ejercita el flujo real antes de darlo por hecho.

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseFrontmatter, validateSkill, yamlScalarIssue, stalePromptFiles, skillToCursor, constitution, constitutionCursorRule, envFor, mergeEnv, upsertBlock, reconcileGitignore } from "../lib/bootstrap.mjs";
+import { parseFrontmatter, validateSkill, yamlScalarIssue, stalePromptFiles, skillToCursor, constitution, constitutionCursorRule, envFor, mergeEnv, upsertBlock, reconcileGitignore, opsxHint, opsxCommand, OPSX_COMMAND_FILE, OPENSPEC_TOOL, OPENSPEC_MIN } from "../lib/bootstrap.mjs";
 
 test("validateSkill exige name y description en el frontmatter (ADR-0013)", () => {
   assert.equal(validateSkill("---\nname: x\ndescription: y\n---\n\nbody"), null);
@@ -26,6 +26,55 @@ description: Interroga a un PO para producir una US testeable. Invocar como /gri
 
 El cuerpo con la lógica de la skill.
 `;
+
+test("envFor deja DAI_JIRA_FIELDS_FILE comentada: es el default, y descomentada hace creer que falta un archivo", () => {
+  const jira = envFor("jira");
+  assert.match(jira, /^# DAI_JIRA_FIELDS_FILE=/m);
+  assert.doesNotMatch(jira, /^DAI_JIRA_FIELDS_FILE=/m);
+});
+
+// Solo Claude usa los dos puntos: los demás sacan el nombre del archivo aplanado. Este
+// test existe porque el que se equivocaba era el tutorial, no el dev.
+test("opsxCommand: los dos puntos son de Claude; Copilot y Cursor van con guion", () => {
+  assert.equal(opsxCommand("claude", "propose"), "/opsx:propose");
+  assert.equal(opsxCommand("copilot", "propose"), "/opsx-propose");
+  assert.equal(opsxCommand("cursor", "apply"), "/opsx-apply");
+  assert.equal(opsxCommand("claude"), "/opsx:propose");     // 'propose' es el default
+});
+
+// 1.10.0 es la primera que reescribe el nombre del comando al que entiende cada asistente
+// y saca las herramientas Claude-only de los prompts (OpenSpec #727, #1307, #1403, #1464).
+// Con una anterior el gate de aprobación se pasa de largo en Copilot y Cursor.
+test("OPENSPEC_MIN es la primera versión de OpenSpec que no rompe el gate fuera de Claude", () => {
+  assert.equal(OPENSPEC_MIN, "1.10.0");
+});
+
+test("el archivo del que sale cada comando y el tool id de OpenSpec", () => {
+  assert.equal(OPSX_COMMAND_FILE.claude, ".claude/commands/opsx/<id>.md");
+  assert.equal(OPSX_COMMAND_FILE.copilot, ".github/prompts/opsx-<id>.prompt.md");
+  assert.equal(OPSX_COMMAND_FILE.cursor, ".cursor/commands/opsx-<id>.md");
+  // Copilot NO se llama 'copilot' para OpenSpec: `openspec init --tools copilot` no existe.
+  assert.equal(OPENSPEC_TOOL.copilot, "github-copilot");
+  assert.equal(OPENSPEC_TOOL.claude, "claude");
+  assert.equal(OPENSPEC_TOOL.cursor, "cursor");
+});
+
+// El nombre del comando NO es cosmético: con la forma equivocada el asistente no encuentra
+// nada, no avisa, y se saltea el gate propose → aprobación → apply improvisando.
+test("opsxHint da la forma del comando que entiende cada asistente", () => {
+  assert.equal(opsxHint({ claude: true }), "/opsx:propose (Claude)");
+  assert.equal(opsxHint({ copilot: true }), "/opsx-propose (Copilot)");
+  assert.equal(opsxHint({ cursor: true }), "/opsx-propose (Cursor)");
+  assert.equal(opsxHint({ copilot: true, cursor: true }), "/opsx-propose (Copilot y Cursor)");
+  assert.equal(opsxHint({ claude: true, copilot: true, cursor: true }),
+    "/opsx:propose (Claude) · /opsx-propose (Copilot y Cursor)");
+});
+
+test("opsxHint acepta otro comando y cae en la forma de Claude si no sabe el asistente", () => {
+  assert.equal(opsxHint({ copilot: true }, "apply"), "/opsx-apply (Copilot)");
+  assert.equal(opsxHint({}), "/opsx:propose");
+  assert.equal(opsxHint(undefined), "/opsx:propose");
+});
 
 test("parseFrontmatter extrae name, description y body", () => {
   const p = parseFrontmatter(SKILL);
@@ -63,7 +112,7 @@ test("constitution difiere el encabezado por asistente pero comparte el núcleo"
   assert.match(c, /Constitución del proyecto/);
   assert.match(p, /Instrucciones de Copilot/);
   assert.match(r, /\.cursor\/skills\//);
-  for (const core of [/No vibe coding/, /TDD/, /link se autora una vez/, /SSH/]) {
+  for (const core of [/No vibe coding/, /El diseño se aprueba antes de implementar/, /TDD/, /link se autora una vez/, /SSH/]) {
     assert.match(c, core);
     assert.match(p, core);
     assert.match(r, core);

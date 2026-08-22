@@ -24,6 +24,9 @@
 - [ ] Existe `implements.yaml` con `id`, `version` y `ac_hash`. *(Art. 9)*
 - [ ] El **`ac_hash` coincide** con el de la US vigente (no se implementó una versión atrasada). *(Art. 11)*
 - [ ] La rama sigue la convención (`feature/ABC-###-<slug>`) → ver `governance/branch-naming.md`.
+- [ ] **`introduces` está cerrado**: lista las capacidades técnicas que el change agregó, o el
+      bloque se borró porque no agregó ninguna. No queda el placeholder `<capacidad-tecnica>`:
+      es el único campo que se completa **al terminar**, y sin cerrarlo el link queda a medias.
 
 ### Revisión
 - [ ] Pasó el **primer pase de IA** (`dai-review`): sin problemas de correctitud.
@@ -31,7 +34,9 @@
 - [ ] Cumple los estándares del repo (lint, tipos, convenciones).
 
 ### Cierre
-- [ ] El change se promovió (`opsx:apply` → `opsx:archive`) si aplica.
+- [ ] El change se promovió (los comandos `apply` → `archive` de OpenSpec) si aplica.
+      *(Se escriben `/opsx:apply` en Claude Code y `/opsx-apply` en Copilot y Cursor —
+      `dai doctor` te dice cuál usa este repo.)*
 - [ ] El **CI estampó la cobertura** en el gestor (no la escribió una persona). *(Art. 10)*
 - [ ] La US quedó en estado **implementada**.
 

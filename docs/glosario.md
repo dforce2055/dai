@@ -20,7 +20,7 @@
 | Término | Qué es |
 |---|---|
 | **Link (QUÉ↔CÓMO)** | La relación entre un requerimiento y su implementación. |
-| **`implements`** | La declaración `implements: <id>@<version>` en el código. El **único** link autorado a mano. |
+| **`implements`** | La declaración `implements: <id>@<version>` en el código. El **único** link autorado (se escribe, no se deriva): lo scaffoldea `dai link-us` y se cierra al terminar de implementar. |
 | **`implements.yaml`** | El archivo, en el change del repo, que contiene ese link. Lo genera `link-us`. Ejemplo lleno + árbol de dónde vive entre los artefactos de OpenSpec: [ADR-0004](adr/0004-ubicacion-y-schema-implements.md). |
 | **Trazabilidad inversa / cobertura** | El mapa "quién implementó este QUÉ". **Se genera, nunca se escribe.** |
 | **Índice / router** | La tabla central que dice qué ID vive en qué repos. Es un router, **no un almacén**: no guarda el detalle. |
