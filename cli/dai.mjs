@@ -28,6 +28,7 @@ import { parsePrRef, getPR, postComment, postReview } from "./lib/forge-api.mjs"
 import { trackerUrl } from "./lib/tracker-url.mjs";
 import { parseFindings, diffPositions, validateFindings, filterFindings, renderFindingBody, renderReviewSummary } from "./lib/review-findings.mjs";
 import { composePrBody, prTitle, forgeTool } from "./lib/pr.mjs";
+import { diagnoseGitSsh, pushFailureHint, WINDOWS_OPENSSH } from "./lib/git-ssh.mjs";
 import { dirsEqual } from "./lib/fsutil.mjs";
 import { parseFlags, parseAssistants, isAssistantToken, asList } from "./lib/args.mjs";
 import { versionDrift, planUpgrade, compareVersions } from "./lib/semver.mjs";
@@ -990,11 +991,21 @@ async function cmdPr(opts) {
     // stdin heredado + GIT_TERMINAL_PROMPT=1: la PRIMERA vez contra un remoto HTTPS
     // corporativo, git/credential-manager necesita poder pedir la credencial. Con stdin
     // ignorado (el default de git()) el login no completaba y el push fallaba en seco.
-    git(["push", "-u", "origin", branch], { stdio: ["inherit", "pipe", "pipe"], env: { ...process.env, GIT_TERMINAL_PROMPT: "1" } });
+    //
+    // stderr heredado, y esto no es cosmético: git y ssh PREGUNTAN por stderr. Con
+    // stderr en 'pipe' el prompt de una clave con passphrase ("Enter passphrase for
+    // key …") caía en el pipe, invisible: el dev veía un cuelgue sin explicación, ssh
+    // se rendía y terminaba cayendo a autenticación por password, y lo único que se
+    // llegaba a leer era un "Permission denied (publickey…)" que acusa a la clave
+    // cuando la clave estaba bien. Que pregunte a la vista.
+    git(["push", "-u", "origin", branch], { stdio: ["inherit", "pipe", "inherit"], env: { ...process.env, GIT_TERMINAL_PROMPT: "1" } });
   } catch (e) {
-    const err = String(e.stderr || e.message || "").trim();
+    // git ya imprimió su error en vivo (stderr heredado); acá solo va la pista, y esa
+    // pista depende del transporte: "pushea a mano una vez" arregla HTTPS y no arregla
+    // nada en SSH, donde el push a mano falla igual (lib/git-ssh.mjs).
+    const err = String(e.stderr || "").trim();
     if (err) process.stderr.write("  " + err.split("\n").join("\n  ") + "\n");
-    process.stdout.write(`  Si es la primera vez contra este remoto, autenticá pusheando a mano una vez:\n    git push -u origin ${branch}\n  y volvé a correr:  dai pr\n`);
+    for (const l of pushFailureHint(remote, branch)) process.stdout.write(`  ${l}\n`);
     fail(`no pude pushear la branch '${branch}'.`, 1);
   }
 
@@ -1726,6 +1737,44 @@ function cmdDoctor() {
     if (!process.env.DAI_CLICKUP_TOKEN) warn("falta DAI_CLICKUP_TOKEN en .env.dai"); else ok("token de ClickUp presente");
     process.env.DAI_CLICKUP_LIST_ID ? ok(`lista=${process.env.DAI_CLICKUP_LIST_ID} (para dai publish)`)
       : warn("DAI_CLICKUP_LIST_ID vacío — solo hace falta para `dai publish` (crear tareas)");
+  }
+
+  // ── forge: el CÓMO sale del repo por acá ─────────────────────────────────────
+  // Si el push no sale, no hay PR; sin PR no hay link QUÉ↔CÓMO. El chequeo del cliente
+  // ssh existe porque su modo de fallar miente: ver lib/git-ssh.mjs.
+  const remote = gitRemote();
+  info("forge:");
+  if (!remote) warn("no hay remoto 'origin' — `dai pr` no tiene dónde publicar la branch");
+  else {
+    const p = parseRemote(remote);
+    ok(`remoto origin: ${remote}${p ? `  (${detectForge(p.host)})` : ""}`);
+    let sshConfig = null;
+    try { sshConfig = git(["config", "--get", "core.sshCommand"]) || null; } catch { /* sin valor: git sale 1 */ }
+    const d = diagnoseGitSsh({
+      platform: process.platform,
+      remote,
+      config: sshConfig,
+      env: { GIT_SSH_COMMAND: process.env.GIT_SSH_COMMAND, GIT_SSH: process.env.GIT_SSH },
+      hasWindowsOpenSsh: existsSync(WINDOWS_OPENSSH),
+    });
+    if (d.status === "ok") ok(`git usa el OpenSSH de Windows (ve al ssh-agent)`);
+    if (d.status === "ok-por-env") {
+      ok(`git usa el OpenSSH de Windows (ve al ssh-agent)`);
+      warn(`pero viene de ${d.source}, no del config: se pierde al cerrar la terminal.`);
+      process.stdout.write(`    Para que quede:  git config --global core.sshCommand "${WINDOWS_OPENSSH}"\n`);
+    }
+    if (d.status === "bundled" || d.status === "otro-ssh") {
+      warn(d.status === "bundled"
+        ? "git usa su propio ssh (Git for Windows), que NO ve al ssh-agent de Windows."
+        : `git usa ${d.bin} (por ${d.source}), que probablemente no vea al ssh-agent de Windows.`);
+      process.stdout.write(`    Si tu clave tiene passphrase, cada push te la va a pedir — y si el prompt no llega,\n`);
+      process.stdout.write(`    ssh cae a password y falla con "Permission denied (publickey…)", que acusa a la clave.\n`);
+      if (d.fix) process.stdout.write(`    → git config --global core.sshCommand "${d.fix}"\n`);
+      if (d.shadowed) process.stdout.write(`    Ojo: ${d.source} está seteada y pisa tu core.sshCommand. Límpiala primero.\n`);
+    }
+    if (d.status === "bundled-sin-openssh") {
+      warn("git usa su propio ssh y no encontré el OpenSSH de Windows: si el push pide passphrase, instálalo (Configuración → Características opcionales → Cliente OpenSSH).");
+    }
   }
 
   // ── version-drift del scaffold vs el CLI (ADR-0010) ──────────────────────────

@@ -3,6 +3,47 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
+## [0.13.1] — 2026-08-24
+
+**Un dev en Windows no podía pushear contra el GitLab de su empresa. `ssh -T` le autenticaba
+perfecto, `git push` moría con `Permission denied (publickey…)`. Dos días buscando el problema
+en la clave, en el token y en los permisos del server: no estaba en ninguno de los tres, y dai
+tapaba la única línea que lo decía.**
+
+Su clave tenía passphrase. En Windows conviven dos `ssh.exe` — el de OpenSSH for Windows, que
+habla con el servicio `ssh-agent`, y el que trae Git for Windows, que no lo ve. `ssh -T` usaba
+el primero (la firma la hacía el agente, passphrase nunca), `git push` usaba el segundo y pedía
+la passphrase por stderr. Ese prompt caía en un pipe de dai: el dev veía un cuelgue sin
+explicación, ssh se rendía, caía a autenticación por password y lo único legible al final era
+un error que acusa a la clave. Todo lo que hacía falta para resolverlo estaba en pantalla, y no
+llegaba.
+
+### Arreglado
+- **`dai pr` se tragaba lo que git y ssh preguntan.** El push corría con `stderr` en `pipe`
+  para no ensuciar la salida, pero git y ssh **preguntan por stderr**: la passphrase de una
+  clave, la confirmación de un host nuevo, el aviso del credential manager. Con el prompt
+  invisible el comando no se cuelga por un bug, se cuelga esperando una respuesta que nadie
+  sabe que tiene que dar. Ahora `stderr` va heredado y el push pregunta a la vista. El error de
+  git se lee en vivo, cuando todavía sirve, en vez de aparecer resumido después del fracaso.
+- **La pista al fallar el push asumía que el remoto era HTTPS.** Decía siempre *"si es la
+  primera vez contra este remoto, autenticá pusheando a mano una vez"*. Eso arregla HTTPS,
+  donde el credential manager pide la credencial la primera vez. Contra un remoto **SSH** el
+  push a mano falla exactamente igual — así que la pista mandaba a repetir un comando condenado
+  y a seguir buscando en el lugar equivocado. Ahora el consejo depende del transporte: en SSH
+  aclara que el token de `gh`/`glab` no interviene en el push, que lo que hay que mirar es la
+  clave, y deriva a `dai doctor`.
+
+### Agregado
+- **`dai doctor` — sección `forge`.** Reporta el remoto `origin` con su forge detectado y, en
+  Windows con remoto SSH, **qué `ssh.exe` va a usar git**: si es el suyo (el de Git for
+  Windows, que no llega al `ssh-agent`), lo advierte, explica el modo de falla y da el fix
+  (`git config --global core.sshCommand "C:/Windows/System32/OpenSSH/ssh.exe"`). Respeta la
+  precedencia real de git —`GIT_SSH_COMMAND` > `GIT_SSH` > `core.sshCommand`— y avisa cuando
+  una variable de entorno está pisando un `core.sshCommand` que ya estaba bien: ese caso es
+  particularmente cruel, porque el dev arregla el config, no funciona, y mirando el
+  `.gitconfig` no hay nada que ver. Fuera de Windows, o con un remoto HTTPS, no opina.
+  Núcleo puro y testeado en `cli/lib/git-ssh.mjs` (14 tests); en `dai.mjs` queda solo el I/O.
+
 ## [0.13.0] — 2026-08-21
 
 **Un dev de backend en Windows siguió el tutorial al pie de la letra y el agente se puso a
@@ -696,6 +737,7 @@ ClickUp y Jira Cloud.
 - Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
   `files` de npm sin tests ni secretos.
 
+[0.13.1]: https://github.com/dforce2055/dai/releases/tag/v0.13.1
 [0.13.0]: https://github.com/dforce2055/dai/releases/tag/v0.13.0
 [0.12.0]: https://github.com/dforce2055/dai/releases/tag/v0.12.0
 [0.11.0]: https://github.com/dforce2055/dai/releases/tag/v0.11.0
