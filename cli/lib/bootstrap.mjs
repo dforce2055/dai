@@ -277,6 +277,7 @@ export function constitution(kind) {
 - **La IA confirma antes de construir:** el asistente declara que entendió esta constitución y la va a obedecer antes de generar código.
 - **Secretos:** en \`.env.dai\` (NO versionado; el \`.env\` del equipo no se toca). git por **SSH**, APIs por **token scopeado**.
 - **No bajes la seguridad para avanzar:** si una llamada falla por el certificado, declara la CA (\`NODE_EXTRA_CA_CERTS\`). **Nunca** \`NODE_TLS_REJECT_UNAUTHORIZED=0\`, \`verify=False\`, \`-k\` ni equivalentes: apagan la verificación de toda la conexión, y por ahí viajan los tokens.
+- **La PR la escribe quien la crea:** \`dai pr\` precarga la US, el estado del check, los commits y los links, pero **la Descripción la escribes tú**: \`dai pr --description "qué resuelve y por qué"\` (o \`--description-file <archivo.md>\` para markdown multilínea, y \`--changes\` si los commits no cuentan bien la historia). dai **no inventa** el propósito de un cambio: si la Descripción o los Cambios realizados quedarían con el molde del template, no publica la PR. Una PR sin descripción no se puede revisar.
 - **Si el CLI no llega, para y dilo:** cuando \`dai\` no cubre un caso, repórtalo — no improvises una llamada a la API por fuera. El atajo publica igual, pero rompe el link QUÉ↔CÓMO en silencio y nadie se entera hasta que la trazabilidad ya está mal.
 - **Docs vivas:** una constitución o arquitectura desactualizada es un defecto, no documentación.
 - Separa el QUÉ (funcional) del CÓMO (técnico); no mezcles.
@@ -293,7 +294,7 @@ export function constitution(kind) {
 
 - **Skills (el QUÉ):** \`doc-to-backlog\` (un doc → backlog) · \`grill-intent\` (Gate 0) · \`grill-epic\` (épicas) · \`grill-user-story\` (la US)
 - **Skills (el CÓMO):** \`link-us\`, \`tdd\`, \`dai-review\`
-- **CLI:** \`dai link-us <ID>\` · \`dai check\` · \`dai stamp\` · \`dai pr\` · \`dai ls\`
+- **CLI:** \`dai link-us <ID>\` · \`dai check\` · \`dai stamp\` · \`dai pr --description "…"\` · \`dai ls\`
 - **Formatos:** \`.dai/templates/\` · **Governance:** \`.dai/governance/\`
 
 Detalle completo de la metodología: ${REPO_URL}

@@ -27,7 +27,8 @@ import { branchUrl, commitUrl, parseRemote, detectForge } from "./lib/forge-url.
 import { parsePrRef, getPR, postComment, postReview } from "./lib/forge-api.mjs";
 import { trackerUrl } from "./lib/tracker-url.mjs";
 import { parseFindings, diffPositions, validateFindings, filterFindings, renderFindingBody, renderReviewSummary } from "./lib/review-findings.mjs";
-import { composePrBody, prTitle, forgeTool } from "./lib/pr.mjs";
+import { composePrBody, prTitle, forgeTool, bodyGaps } from "./lib/pr.mjs";
+import { absolutizeSiteLinks } from "./lib/docs-links.mjs";
 import { diagnoseGitSsh, pushFailureHint, WINDOWS_OPENSSH } from "./lib/git-ssh.mjs";
 import { dirsEqual } from "./lib/fsutil.mjs";
 import { parseFlags, parseAssistants, isAssistantToken, asList } from "./lib/args.mjs";
@@ -216,6 +217,27 @@ function gitUser() {
 function gitRemote() { try { return git(["remote", "get-url", "origin"]); } catch { return null; } }
 function gitBranch() { try { return git(["rev-parse", "--abbrev-ref", "HEAD"]); } catch { return null; } }
 function gitCommit() { try { return git(["rev-parse", "HEAD"]); } catch { return null; } }
+// ¿Existe esta ref como commit? Devuelve la ref si sí, null si no. Sirve para caer de
+// `main` a `origin/main` sin adivinar: en muchos repos la base solo existe en el remoto.
+function resolveRev(ref) {
+  try { git(["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]); return ref; } catch { return null; }
+}
+// Un texto que se puede pasar inline (`--description "…"`) o por archivo
+// (`--description-file notas.md`). Un agente casi siempre quiere el archivo: markdown
+// multilínea no sobrevive entero a la línea de comandos.
+function textOpt(opts, name) {
+  const file = opts[`${name}File`];
+  if (file !== undefined) {
+    if (file === true) fail(`--${name}-file necesita la ruta de un archivo.`, 1);
+    const path = Array.isArray(file) ? file[file.length - 1] : file;
+    try { return readFileSync(path, "utf8"); }
+    catch { fail(`no pude leer --${name}-file '${path}'.`, 1); }
+  }
+  const v = opts[name];
+  if (v === true) fail(`--${name} necesita un texto (o usá --${name}-file <archivo>).`, 1);
+  if (Array.isArray(v)) return v.join("\n");
+  return typeof v === "string" ? v : null;
+}
 
 // ── check --ci: el gate de governance/ci-rules.md, ejecutable ────────────────
 //
@@ -879,9 +901,16 @@ async function cmdPr(opts) {
   let base = opts.base;
   if (!base) { const ans = await ask("  ¿Contra qué branch va la PR? (main) "); base = ans || "main"; }
 
+  // La base puede no existir LOCAL (clones con --single-branch, repos donde el dev
+  // trabaja sobre develop y la base es main, corporativos con la base solo en origin).
+  // Antes el catch vacío se comía el error y seguía de largo: ni se contaban los commits
+  // (→ "Cambios realizados" salía con el molde) ni frenaba el chequeo de abajo.
+  const baseRev = resolveRev(base) || resolveRev(`origin/${base}`);
+  if (!baseRev) warn(`no encuentro la branch base '${base}' (ni local ni en origin/${base}). Trae la base primero:  git fetch origin ${base}`);
+
   // Sin commits sobre la base no hay PR.
   let ahead = null;
-  try { ahead = Number(git(["rev-list", "--count", `${base}..HEAD`])); } catch { /* base no existe local */ }
+  try { ahead = Number(git(["rev-list", "--count", `${baseRev}..HEAD`])); } catch { /* base ausente */ }
   if (ahead === 0) {
     fail(`no hay commits en '${branch}' por encima de '${base}'. Una PR necesita cambios: haz commit primero (git commit).`, 1);
   }
@@ -944,7 +973,13 @@ async function cmdPr(opts) {
     : join(ROOT, "templates", "pull-request.md");
   // Commits de la branch (para precargar "Cambios realizados").
   let commits = [];
-  try { commits = git(["log", `${base}..HEAD`, "--pretty=%s"]).split("\n").filter(Boolean); } catch { /* base local ausente */ }
+  if (baseRev) {
+    try { commits = git(["log", `${baseRev}..HEAD`, "--pretty=%s"]).split("\n").filter(Boolean); } catch { /* rango inválido */ }
+  }
+  // El texto que escribe quien crea la PR (el dev o su agente). Es la ÚNICA fuente de
+  // una descripción de verdad: dai lee git y el tracker, no el porqué del cambio.
+  const description = textOpt(opts, "description");
+  const changes = textOpt(opts, "changes");
   // La canónica del tracker (live.url) gana sobre la derivada; el template gana sobre todo.
   const usUrl = id ? usUrlFor(id, live?.url) : null;
   if (id && !usUrl) {
@@ -952,7 +987,8 @@ async function cmdPr(opts) {
     warn(`configurá DAI_TRACKER_URL_TEMPLATE en el .env.dai (p. ej. https://tu-tracker/browse/{id}).`);
   }
   const body = composePrBody(readFileSync(tplPath, "utf8"), {
-    id, version, ac_hash, status, usUrl, usTitle: live?.title, commits, noUsReason: id ? null : scope.reason,
+    id, version, ac_hash, status, usUrl, usTitle: live?.title, commits, description, changes,
+    noUsReason: id ? null : scope.reason,
     branch, branchUrl: branchUrl(remote, branch), commit, commitUrl: commitUrl(remote, commit),
   });
   // Sin US el título sale del último commit: describe lo que hay adentro, en vez de
@@ -968,6 +1004,27 @@ async function cmdPr(opts) {
   process.stdout.write(`  forge:    ${forge} (${tool})${opts.assignee ? `\n  asignar:  ${opts.assignee}` : ""}${opts.draft ? "\n  draft:    sí" : ""}\n`);
   process.stdout.write(`  ─────────────────────────────────────────────────────\n\n${body}\n`);
   process.stdout.write(`  ─────────────────────────────────────────────────────\n`);
+
+  // 4b. Gate: una PR con el molde del template sin llenar no se puede revisar.
+  // Pasaba en repos reales — "Descripción" con el comentario HTML (que no se renderiza:
+  // la sección se ve VACÍA) y "Cambios realizados" con `Cambio 1/Cambio 2` — cada vez
+  // que el tracker no respondía o la base no estaba local. dai NO inventa la descripción:
+  // la pide. Sin TTY (el camino del agente) frena; en terminal avisa y decidís vos.
+  const gaps = bodyGaps(body);
+  if (gaps.length) {
+    const how =
+      `  Escribí el texto y pasáselo a dai:\n` +
+      `    dai pr --description "Qué resuelve este cambio y por qué (2–4 líneas)."\n` +
+      `    dai pr --description-file notas.md --changes-file cambios.md   (markdown multilínea)\n` +
+      `  El detalle de "Cambios realizados" sale de los commits si no pasás --changes.\n`;
+    if (opts.yes || !process.stdin.isTTY) {
+      closeRl();
+      fail(`la PR saldría con el molde del template sin llenar: ${gaps.join(", ")}.\n` +
+           `  Una PR sin descripción no se puede revisar, así que no la publico.\n${how}`, 1);
+    }
+    warn(`la PR va a salir con el molde sin llenar: ${gaps.join(", ")}.`);
+    process.stdout.write(how);
+  }
 
   // Archivo de paso para gh/glab: en el temp del sistema, NO en el repo (no lo ensucia).
   const bodyFile = join(mkdtempSync(join(tmpdir(), "dai-pr-")), "body.md");
@@ -1431,8 +1488,28 @@ async function cmdInit(repo, opts) {
 function cmdDocs(dest) {
   if (!dest) fail("uso: dai docs <destino>");
   mkdirSync(dest, { recursive: true });
-  cpSync(join(ROOT, "docs"), dest, { recursive: true });
+  // `public/` son los assets del sitio (VitePress), no documentación para leer desde el
+  // repo de nadie: las capturas de los tutoriales ni siquiera viajan en el paquete npm
+  // (issue #37). Se saltea, y los links que las nombran se absolutizan contra el sitio.
+  cpSync(join(ROOT, "docs"), dest, { recursive: true, filter: (src) => !/[/\\]public([/\\]|$)/.test(src) });
+  let reescritos = 0;
+  for (const f of walkMd(dest)) {
+    const md = readFileSync(f, "utf8");
+    const out = absolutizeSiteLinks(md);
+    if (out !== md) { writeFileSync(f, out); reescritos++; }
+  }
   ok(`documentación copiada a ${dest}`);
+  if (reescritos) info(`${reescritos} documento(s) con capturas: los links apuntan al sitio publicado.`);
+}
+
+// Los .md de un árbol, para la reescritura de links de cmdDocs.
+function walkMd(dir, out = []) {
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name);
+    if (statSync(p).isDirectory()) walkMd(p, out);
+    else if (name.endsWith(".md")) out.push(p);
+  }
+  return out;
 }
 
 // ── archive: funde los delta specs del change en los specs canónicos y lo archiva ─
@@ -1845,6 +1922,10 @@ switch (cmd) {
       "  archive [<change>] [--skip-specs]   funde los delta specs del change en las specs canónicas y lo archiva (lo corre el aprobador en la PR)\n" +
       "  pr (alias mr) [--assignee u] [--base b] [--draft] [--yes]   crea TU PR/MR precargada (muestra + confirma)\n" +
       "      [--us <ID>] [--title t]  la US la resuelve la branch; si hay varias, pregunta (sin TTY, falla)\n" +
+      "      --description <texto>    QUÉ resuelve la PR y por qué → sección 'Descripción' (o --description-file <f>)\n" +
+      "      --changes <texto>        detalle de 'Cambios realizados' (default: los commits) (o --changes-file <f>)\n" +
+      "                               sin descripción y sin commits, con --yes o sin TTY, dai NO publica: la PR\n" +
+      "                               saldría con el molde del template y no se podría revisar\n" +
       "  forge comment <ref> --body-file <f> · forge pr <ref>   comentar/leer una PR ajena (github/gitlab)\n" +
       "  forge review <ref> --from <review.json> [--dry-run|--yes]  review inline: resumen + comentario por línea\n" +
       "      --min-severity low|medium|high · --min-confidence 0..1 · --max-comments N · --base <branch>\n" +

@@ -21,9 +21,18 @@
 
 ## Descripción
 
-<!-- Breve propósito de este PR, en términos de negocio (2–4 líneas). -->
+<!--
+  Breve propósito de este PR, en términos de negocio (2–4 líneas).
+  Lo precarga `dai pr --description "…"` (o `--description-file <archivo.md>`).
+  dai NO lo inventa: si esta sección queda sin llenar, `dai pr` no publica la PR.
+-->
 
 ## Cambios realizados
+
+<!--
+  Lo precarga `dai pr` con los commits de la branch; `--changes` / `--changes-file`
+  lo reemplazan por el detalle que quieras contar.
+-->
 
 - [ ] Cambio 1
 - [ ] Cambio 2

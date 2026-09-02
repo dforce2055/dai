@@ -103,7 +103,8 @@ dai link-us <ID>                # trae la US del tracker → branch + implements
 ```bash
 dai check                       # ¿tu código sigue al día con la US?  ✅ / ⚠️ atrasado
 # revisas tu propio código + smoke test local antes de la PR
-dai pr --assignee <compañero>   # crea la PR precargada y se la asigna a un compañero
+dai pr --assignee <compañero> \
+  --description "Qué resuelve y por qué"   # crea la PR precargada y se la asigna a un compañero
 ```
 ```text
 /dai-review <PR>                # tu compañero deja un review inline (comentario por línea); un humano aprueba
@@ -201,14 +202,14 @@ flowchart TD
 | `dai link-us <ID> --resync` | re-estampa el `ac_hash` contra la US viva (tras un ⚠️ de check) |
 | `dai check` | compara tu código vs la US viva → ✅ al día / ⚠️ atrasado (exit code = gate de PR) |
 | `dai ls [--json]` | lista las US que implementa el repo + su link al tracker |
-| `dai pr [--assignee u] [--base b] [--draft] [--yes] [--us ID] [--title t]` · alias **`dai mr`** | crea TU PR/MR precargada: pregunta la branch base (default `main`), muestra el texto y confirma antes de publicar. Detecta el forge (GitHub→PR con `gh` · GitLab→MR con `glab`); `mr` es el mismo comando, más natural en GitLab. **La US la resuelve la branch** (la nombra `dai link-us`): si hay varias vivas y ninguna coincide, **pregunta** en vez de elegir por vos (sin TTY falla pidiendo `--us <ID>`), y una branch `chore/`/`docs/` sale **sin US** en lugar de heredar la de otro |
+| `dai pr [--assignee u] [--base b] [--draft] [--yes] [--us ID] [--title t] [--description t\|--description-file f] [--changes t\|--changes-file f]` · alias **`dai mr`** | crea TU PR/MR precargada: pregunta la branch base (default `main`), muestra el texto y confirma antes de publicar. Detecta el forge (GitHub→PR con `gh` · GitLab→MR con `glab`); `mr` es el mismo comando, más natural en GitLab. **La US la resuelve la branch** (la nombra `dai link-us`): si hay varias vivas y ninguna coincide, **pregunta** en vez de elegir por vos (sin TTY falla pidiendo `--us <ID>`), y una branch `chore/`/`docs/` sale **sin US** en lugar de heredar la de otro. **La descripción la escribís vos (o tu agente) con `--description`**: dai llena la US, los commits y los links, pero no inventa el propósito de un cambio — si "Descripción" o "Cambios realizados" quedarían con el molde del template, con `--yes` o sin TTY **no publica** y te dice qué falta |
 | `dai stamp` | estampa la cobertura inversa en el tracker (branch + commit-ancla) |
 | `dai done [--base main] [--force]` | cierra la US: vuelve a la base, `fetch --prune` + `pull`, y borra la branch local **si está mergeada** (chequeo estricto; `--force` la borra igual). Redes: no estar en la base, sin cambios sueltos, sin commits sin pushear |
 | `dai archive [<change>] [--skip-specs]` | **funde los delta specs del change en las specs canónicas** (`openspec/specs/`) y lo archiva. Lo corre el **aprobador** de la PR (gate de aprobación, [ADR-0011](docs/adr/0011-archive-gate-de-aprobacion.md)); detecta el change activo o le pasás el nombre. Envuelve `openspec archive` |
 | `dai forge review <ref> --from <review.json>` `[--dry-run\|--yes]` | **review inline**: un resumen + un comentario anclado a cada `archivo:línea`, clasificado low/medium/high. **Valida cada posición contra el diff** (descarta lo que el modelo inventó) antes de postear; sin `--yes` muestra el preview y no postea nada. Modo desatendido: `--min-severity`/`--min-confidence`/`--max-comments`. El review sale con `event: COMMENT`, nunca `APPROVE` ([ADR-0016](docs/adr/0016-review-inline.md)) |
 | `dai forge comment <ref> --body-file <f>` · `dai forge pr <ref>` | comentar / leer una PR/MR (GitHub/GitLab) — el fallback simple, sin anclar |
 | `dai ac-hash <us.md>` | calcula el hash de los criterios de aceptación de una US |
-| `dai doctor` · `dai docs <dest>` · `dai version` | diagnóstico del entorno (incluye **version-drift** del scaffold) · copiar la doc · versión (`dai version` avisa si tu repo quedó atrás) |
+| `dai doctor` · `dai docs <dest>` · `dai version` | diagnóstico del entorno (incluye **version-drift** del scaffold) · copiar la doc (sin los assets del sitio; los links a las capturas apuntan al sitio publicado) · versión (`dai version` avisa si tu repo quedó atrás) |
 
 > **🆕 Mantené tu repo al día — `dai sync`.** Las skills, la constitución y los templates son un
 > *caché derivable* del CLI. Cuando actualizás `dai` (`dai upgrade`), **`dai doctor` y

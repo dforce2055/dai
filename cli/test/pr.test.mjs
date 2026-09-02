@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { composePrBody, prTitle, forgeTool, replaceSection, upsertLinksBlock, renderLinks } from "../lib/pr.mjs";
+import { composePrBody, prTitle, forgeTool, replaceSection, upsertLinksBlock, renderLinks, bodyGaps, isPlaceholder, sectionBody } from "../lib/pr.mjs";
 
 const TPL = `## 🔗 Implementa
 
@@ -160,4 +160,111 @@ test("composePrBody sin US dice que no hay US y no deja el placeholder ABC-###",
   assert.doesNotMatch(out, /- US `/, "sin US no hay línea de US en el bloque de links");
   assert.match(out, /- \[x\] chore: archivar specs/);
   assert.match(out, /branch `chore\/archive-specs`/);
+});
+
+// ── El molde del template no puede llegar a la PR publicada ──────────────────
+// Bug real: la PR salía con "Descripción" vacía (el comentario HTML no se renderiza)
+// y "Cambios realizados" con `Cambio 1/Cambio 2`. Pasaba cada vez que el tracker no
+// respondía (sin usTitle) o la base no estaba local (sin commits) — en silencio.
+
+test("--description gana sobre el título de la US", () => {
+  const b = composePrBody(TPL, {
+    id: "ABC-7", version: "v1", ac_hash: "aaa", status: "al-dia",
+    usTitle: "Checkout sin cuenta",
+    description: "Corrige el 500 al pagar con carrito vacío: ahora valida antes de cobrar.",
+    commits: ["fix: valida carrito"],
+  });
+  assert.match(b, /Corrige el 500 al pagar con carrito vacío/);
+  assert.doesNotMatch(b, /Implementa la US \*\*Checkout sin cuenta\*\*/);
+  assert.deepEqual(bodyGaps(b), []);
+});
+
+test("--changes gana sobre los commits", () => {
+  const b = composePrBody(TPL, {
+    id: "ABC-7", version: "v1", ac_hash: "aaa", status: "al-dia", usTitle: "X",
+    changes: "- Valida el carrito en el borde\n- Test de regresión del 500",
+    commits: ["wip", "fixup"],
+  });
+  assert.match(b, /- Valida el carrito en el borde/);
+  assert.doesNotMatch(b, /- \[x\] wip/);
+});
+
+test("sin título de la US ni --description, la Descripción queda sin llenar y bodyGaps lo dice", () => {
+  const b = composePrBody(TPL, {
+    id: "ABC-7", version: "v1", ac_hash: "aaa", status: "al-dia",
+    usTitle: null, commits: ["fix: algo"],
+  });
+  assert.deepEqual(bodyGaps(b), ["Descripción"]);
+});
+
+test("sin commits ni --changes, 'Cambios realizados' queda con el molde y bodyGaps lo dice", () => {
+  const b = composePrBody(TPL, {
+    id: "ABC-7", version: "v1", ac_hash: "aaa", status: "al-dia",
+    usTitle: "Checkout sin cuenta", commits: [],
+  });
+  assert.deepEqual(bodyGaps(b), ["Cambios realizados"]);
+});
+
+test("el peor caso (sin tracker y sin commits) reporta las dos secciones", () => {
+  const b = composePrBody(TPL, { id: "ABC-7", version: "v1", ac_hash: "aaa", status: "al-dia" });
+  assert.deepEqual(bodyGaps(b), ["Descripción", "Cambios realizados"]);
+});
+
+test("una PR sin US también exige descripción (antes ni siquiera se llenaba)", () => {
+  const solo = composePrBody(TPL, { noUsReason: "branch chore/", commits: ["chore: bump deps"] });
+  assert.deepEqual(bodyGaps(solo), ["Descripción"]);
+  const con = composePrBody(TPL, {
+    noUsReason: "branch chore/", commits: ["chore: bump deps"],
+    description: "Sube las dependencias de dev; sin cambios de comportamiento.",
+  });
+  assert.deepEqual(bodyGaps(con), []);
+});
+
+test("isPlaceholder: un comentario HTML no es contenido (en la PR se ve vacío)", () => {
+  assert.equal(isPlaceholder("<!-- Breve propósito de este PR -->"), true);
+  assert.equal(isPlaceholder("\n\n"), true);
+  assert.equal(isPlaceholder("- [ ] Cambio 1\n- [ ] Cambio 2"), true);
+  assert.equal(isPlaceholder("<!-- hint -->\nResuelve el 500 del checkout."), false);
+});
+
+test("bodyGaps delata los placeholders de la cabecera (ABC-###, <hash>, vX)", () => {
+  const b = "## Descripción\n\nalgo real\n\n## Cambios realizados\n\n- [x] x\n\n- **US:** `ABC-###`\n";
+  assert.ok(bodyGaps(b).includes("🔗 Implementa"));
+});
+
+test("reconoce la sección aunque el repo tenga su propio heading (emoji, acentos, sufijo)", () => {
+  const tpl = "## 📝 Descripción del cambio\n\n<!-- ... -->\n\n### CAMBIOS REALIZADOS\n\n- [ ] Cambio 1\n";
+  const b = composePrBody(tpl, {
+    id: "ABC-7", version: "v1", ac_hash: "aaa", status: "al-dia",
+    usTitle: "Checkout sin cuenta", commits: ["fix: valida carrito"],
+  });
+  assert.match(b, /## 📝 Descripción del cambio\n\nImplementa la US/);
+  assert.match(b, /- \[x\] fix: valida carrito/);
+  assert.deepEqual(bodyGaps(b), []);
+});
+
+test("si el template del repo no tiene la sección, upsertSection la agrega", () => {
+  const b = composePrBody("## Checklist\n\n- [ ] tests\n", {
+    id: "ABC-7", version: "v1", ac_hash: "aaa", status: "al-dia",
+    description: "Arregla el checkout.", commits: ["fix: carrito"],
+  });
+  assert.match(b, /## Descripción\n\nArregla el checkout\./);
+  assert.match(b, /## Cambios realizados\n\n- \[x\] fix: carrito/);
+  assert.match(b, /## Checklist/);           // no se comió lo del repo
+  assert.deepEqual(bodyGaps(b), []);
+});
+
+test("un heading dentro de un bloque de código no se confunde con una sección", () => {
+  const tpl = "## Descripción\n\n<!-- x -->\n\n## Notas\n\n```md\n## Cambios realizados\n- [ ] Cambio 1\n```\n";
+  const b = composePrBody(tpl, {
+    id: "ABC-7", version: "v1", ac_hash: "aaa", status: "al-dia",
+    usTitle: "X", commits: ["fix: y"],
+  });
+  assert.match(b, /```md\n## Cambios realizados\n- \[ \] Cambio 1\n```/);   // el fence intacto
+  assert.match(b, /## Cambios realizados\n\n- \[x\] fix: y/);               // la sección real, agregada
+});
+
+test("sectionBody devuelve null cuando la sección no existe", () => {
+  assert.equal(sectionBody("## Otra\n\ntexto\n", "Descripción"), null);
+  assert.match(sectionBody("## Descripción\n\ntexto\n", "Descripción"), /texto/);
 });
