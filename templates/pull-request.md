@@ -5,19 +5,23 @@
   Lo puede pre-llenar `dai`/una skill a partir del implements.yaml y el diff.
 -->
 
-> **Un PR en dai entrega dos activos, y el review cubre los dos:**
-> 1. **La implementación** — el código que resuelve la US.
-> 2. **El spec trazable** — el `implements.yaml` con el link a la US y el `@version`
->    (`ac_hash`) verificado con `dai check` ✅. Sin esto, el código no sabe *a qué QUÉ*
->    responde, y el CI bloquea el PR (ver `governance/ci-rules.md`).
-
 ## 🔗 Implementa
 
 - **US:** `ABC-###` @ `vX`  ·  ac_hash: `<hash>`  ·  verificado con `dai check` ✅
-- **Link:** este PR está atado a la US vía `implements.yaml`.
 
-> Si este PR no implementa una US (chore/fix sin ticket), borra esta sección y
-> aclara el motivo — no se le exige link.
+<!--
+  Un PR en dai entrega DOS activos, y el review cubre los dos: la implementación (el código
+  que resuelve la US) y el spec trazable (el `implements.yaml` con el link a la US y el
+  `@version`/`ac_hash` verificado). Sin el link, el código no sabe a qué QUÉ responde y el
+  CI bloquea el PR — ver `governance/ci-rules.md`.
+
+  ¿Chore o fix sin ticket? No hay nada que borrar: `dai pr` lo detecta por el nombre de la
+  branch y escribe "Sin US" con el motivo. No se le exige link.
+
+  Esto es un comentario a propósito: es doctrina del método, igual en las 500 PRs del repo.
+  Repetirla a la vista en cada una entrena a saltear el principio del cuerpo, que es
+  justamente donde va la descripción.
+-->
 
 ## Descripción
 
