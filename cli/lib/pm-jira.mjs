@@ -139,6 +139,7 @@ export function jiraAdapter(env) {
   if (!base) throw new Error("falta DAI_JIRA_BASE_URL en el .env.dai (backend jira).");
   return {
     kind: "jira",
+    endpoint: trim(base),
     async fetchUS(id) {
       const res = await daiFetch(jiraIssueUrl(base, id), { headers: jiraAuthHeaders(env) });
       if (res.status === 404) return null;

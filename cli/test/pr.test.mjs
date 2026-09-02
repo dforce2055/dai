@@ -268,3 +268,32 @@ test("sectionBody devuelve null cuando la sección no existe", () => {
   assert.equal(sectionBody("## Otra\n\ntexto\n", "Descripción"), null);
   assert.match(sectionBody("## Descripción\n\ntexto\n", "Descripción"), /texto/);
 });
+
+// ── El relleno no toca la prosa ──────────────────────────────────────────────
+// "verificado con `dai check` ✅" aparecía dos veces en el template: en el dato y en la
+// prosa que explica el método. El replace global le metía el estado de ESTA PR a la
+// oración general, y quedaba publicado en cada PR del repo.
+
+test("el estado se rellena en la sección, no en la prosa que explica el método", () => {
+  const tpl = "> El `implements.yaml` verificado con `dai check` ✅ ata el código a la US.\n\n" +
+              "## 🔗 Implementa\n\n- **US:** `ABC-###` @ `vX`  ·  verificado con `dai check` ✅\n\n" +
+              "## Descripción\n\nx\n\n## Cambios realizados\n\n- [x] y\n";
+  const b = composePrBody(tpl, { id: "ACME-1", version: "v2", ac_hash: "abc", status: "al-dia", description: "x", commits: ["y"] });
+  assert.match(b, /> El `implements\.yaml` verificado con `dai check` ✅ ata el código/);  // prosa intacta
+  assert.match(b, /\*\*US:\*\* `ACME-1` @ `v2`  ·  verificado con `dai check`: ✅ al día/); // dato relleno
+});
+
+test("sin sección '🔗 Implementa' se rellena igual: mejor de más que publicar ABC-###", () => {
+  const tpl = "- **US:** `ABC-###` @ `vX` · ac_hash: `<hash>`\n\n## Descripción\n\nx\n\n## Cambios realizados\n\n- [x] y\n";
+  const b = composePrBody(tpl, { id: "ACME-1", version: "v2", ac_hash: "abc", status: "al-dia", description: "x", commits: ["y"] });
+  assert.doesNotMatch(b, /ABC-###/);
+  assert.deepEqual(bodyGaps(b), []);
+});
+
+test("cuando el tracker no responde, la PR dice que no se pudo verificar — no que no hay US", () => {
+  const tpl = "## 🔗 Implementa\n\n- **US:** `ABC-###` @ `vX`  ·  verificado con `dai check` ✅\n\n" +
+              "## Descripción\n\nx\n\n## Cambios realizados\n\n- [x] y\n";
+  const b = composePrBody(tpl, { id: "ACME-1", version: "v2", ac_hash: "abc", status: "sin-respuesta", description: "x", commits: ["y"] });
+  assert.match(b, /no verificado \(el tracker no respondió\)/);
+  assert.doesNotMatch(b, /sin US/);
+});
