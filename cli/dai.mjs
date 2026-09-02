@@ -28,6 +28,7 @@ import { parsePrRef, getPR, postComment, postReview } from "./lib/forge-api.mjs"
 import { trackerUrl } from "./lib/tracker-url.mjs";
 import { parseFindings, diffPositions, validateFindings, filterFindings, renderFindingBody, renderReviewSummary } from "./lib/review-findings.mjs";
 import { composePrBody, prTitle, forgeTool, bodyGaps } from "./lib/pr.mjs";
+import { absolutizeSiteLinks } from "./lib/docs-links.mjs";
 import { diagnoseGitSsh, pushFailureHint, WINDOWS_OPENSSH } from "./lib/git-ssh.mjs";
 import { dirsEqual } from "./lib/fsutil.mjs";
 import { parseFlags, parseAssistants, isAssistantToken, asList } from "./lib/args.mjs";
@@ -1487,8 +1488,28 @@ async function cmdInit(repo, opts) {
 function cmdDocs(dest) {
   if (!dest) fail("uso: dai docs <destino>");
   mkdirSync(dest, { recursive: true });
-  cpSync(join(ROOT, "docs"), dest, { recursive: true });
+  // `public/` son los assets del sitio (VitePress), no documentación para leer desde el
+  // repo de nadie: las capturas de los tutoriales ni siquiera viajan en el paquete npm
+  // (issue #37). Se saltea, y los links que las nombran se absolutizan contra el sitio.
+  cpSync(join(ROOT, "docs"), dest, { recursive: true, filter: (src) => !/[/\\]public([/\\]|$)/.test(src) });
+  let reescritos = 0;
+  for (const f of walkMd(dest)) {
+    const md = readFileSync(f, "utf8");
+    const out = absolutizeSiteLinks(md);
+    if (out !== md) { writeFileSync(f, out); reescritos++; }
+  }
   ok(`documentación copiada a ${dest}`);
+  if (reescritos) info(`${reescritos} documento(s) con capturas: los links apuntan al sitio publicado.`);
+}
+
+// Los .md de un árbol, para la reescritura de links de cmdDocs.
+function walkMd(dir, out = []) {
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name);
+    if (statSync(p).isDirectory()) walkMd(p, out);
+    else if (name.endsWith(".md")) out.push(p);
+  }
+  return out;
 }
 
 // ── archive: funde los delta specs del change en los specs canónicos y lo archiva ─

@@ -209,7 +209,7 @@ flowchart TD
 | `dai forge review <ref> --from <review.json>` `[--dry-run\|--yes]` | **review inline**: un resumen + un comentario anclado a cada `archivo:línea`, clasificado low/medium/high. **Valida cada posición contra el diff** (descarta lo que el modelo inventó) antes de postear; sin `--yes` muestra el preview y no postea nada. Modo desatendido: `--min-severity`/`--min-confidence`/`--max-comments`. El review sale con `event: COMMENT`, nunca `APPROVE` ([ADR-0016](docs/adr/0016-review-inline.md)) |
 | `dai forge comment <ref> --body-file <f>` · `dai forge pr <ref>` | comentar / leer una PR/MR (GitHub/GitLab) — el fallback simple, sin anclar |
 | `dai ac-hash <us.md>` | calcula el hash de los criterios de aceptación de una US |
-| `dai doctor` · `dai docs <dest>` · `dai version` | diagnóstico del entorno (incluye **version-drift** del scaffold) · copiar la doc · versión (`dai version` avisa si tu repo quedó atrás) |
+| `dai doctor` · `dai docs <dest>` · `dai version` | diagnóstico del entorno (incluye **version-drift** del scaffold) · copiar la doc (sin los assets del sitio; los links a las capturas apuntan al sitio publicado) · versión (`dai version` avisa si tu repo quedó atrás) |
 
 > **🆕 Mantené tu repo al día — `dai sync`.** Las skills, la constitución y los templates son un
 > *caché derivable* del CLI. Cuando actualizás `dai` (`dai upgrade`), **`dai doctor` y
