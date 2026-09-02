@@ -25,6 +25,7 @@ export function clickupAdapter(env) {
   if (!env.DAI_CLICKUP_TOKEN) throw new Error("falta DAI_CLICKUP_TOKEN en el .env.dai (backend clickup).");
   return {
     kind: "clickup",
+    endpoint: "api.clickup.com",
     async fetchUS(id) {
       const res = await fetch(clickupTaskUrl(id), { headers: clickupAuthHeaders(env) });
       if (res.status === 404) return null;

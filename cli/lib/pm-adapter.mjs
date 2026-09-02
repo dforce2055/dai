@@ -21,19 +21,36 @@
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
-import { parseUS, renderCoverage } from "./us.mjs";
+import { parseUS, renderCoverage, explainFetchError } from "./us.mjs";
 import { slugify } from "./link-us.mjs";
 import { jiraAdapter } from "./pm-jira.mjs";
 import { clickupAdapter } from "./pm-clickup.mjs";
 
 // Re-export para compatibilidad (tests y CLI importan estos desde acá).
-export { parseUS, coverageStatus, statusLabel, renderCoverage } from "./us.mjs";
+export { parseUS, coverageStatus, statusLabel, renderCoverage, explainFetchError } from "./us.mjs";
+
+// Consulta la US preservando la diferencia entre "no existe" y "no pude preguntar". Los
+// adaptadores ya la hacen —404 → null, cualquier otro error → throw— pero se perdía en cada
+// caller: `dai pr` la borraba con un `.catch(() => null)` y publicaba "sin US" en la PR, y
+// los demás morían con el `fetch failed` pelado de undici. El gate de CI era el único que la
+// respetaba, con su try/catch propio; esto es ese criterio, compartido.
+//
+//   → { us, unreachable, reason }   ·  unreachable: no hubo respuesta, no sabemos nada
+export async function fetchLiveUS(adapter, id) {
+  if (!id) return { us: null, unreachable: false, reason: null };
+  try {
+    return { us: await adapter.fetchUS(id), unreachable: false, reason: null };
+  } catch (e) {
+    return { us: null, unreachable: true, reason: explainFetchError(e, { kind: adapter.kind, endpoint: adapter.endpoint, id }) };
+  }
+}
 
 // ── backend md (local, offline) ───────────────────────────────────────────────
 function mdAdapter(env) {
   const dir = env.DAI_MD_US_DIR || ".dai/us";
   return {
     kind: "md",
+    endpoint: dir,
     fetchUS(id) {
       const p = join(dir, `${id}.md`);
       if (!existsSync(p)) return null;

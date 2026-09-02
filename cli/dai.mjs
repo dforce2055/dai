@@ -22,7 +22,7 @@ import { acHash } from "./lib/ac-hash.mjs";
 import { discoverImplements, isPlaceholderId } from "./lib/implements.mjs";
 import { isValidKey, slugify, branchName, extractTitle, renderImplementsYaml } from "./lib/link-us.mjs";
 import { loadDaiEnv } from "./lib/env.mjs";
-import { getAdapter, coverageStatus, statusLabel } from "./lib/pm-adapter.mjs";
+import { getAdapter, coverageStatus, statusLabel, fetchLiveUS } from "./lib/pm-adapter.mjs";
 import { branchUrl, commitUrl, parseRemote, detectForge } from "./lib/forge-url.mjs";
 import { parsePrRef, getPR, postComment, postReview } from "./lib/forge-api.mjs";
 import { trackerUrl } from "./lib/tracker-url.mjs";
@@ -332,13 +332,18 @@ async function cmdCheck() {
   for (const f of found) for (const im of f.implements || []) {
     if (isPlaceholderId(im.id)) continue;   // plantilla sin completar, no es una US real
     n++;
-    const live = await adapter.fetchUS(im.id);
-    const status = coverageStatus(im.ac_hash, live?.ac_hash);
+    const { us: live, unreachable, reason } = await fetchLiveUS(adapter, im.id);
+    const status = coverageStatus(im.ac_hash, live?.ac_hash, { unreachable });
     if (status === "al-dia") process.stdout.write(`✅ ${im.id} al día (${im.version})\n`);
     else if (status === "atrasado") {
       process.stdout.write(`⚠️  ${im.id} ATRASADO: implementaste ${im.ac_hash}, la US viva es ${live.ac_hash}${live.spec_version ? ` (${live.spec_version})` : ""}\n`);
       atrasadas.push(im.id);
       worst = Math.max(worst, 1);
+    } else if (status === "sin-respuesta") {
+      // No es "no hay US": es "no pude preguntar". Antes moría acá con `fetch failed` y sin
+      // chequear las demás; ahora lo dice, sigue, y sale ≠ 0 porque no pudo verificar nada.
+      process.stdout.write(`⚠️  ${reason}\n`);
+      worst = Math.max(worst, 2);
     } else {
       process.stdout.write(`❓ ${im.id}: no encontré la US (backend ${adapter.kind}). ¿Falta el .md o el token?\n`);
       worst = Math.max(worst, 2);
@@ -395,7 +400,11 @@ async function cmdStamp(ids = [], opts = {}) {
   }
 
   for (const r of targets) {
-    const live = await adapter.fetchUS(r.id);
+    // Estampar es ESCRIBIR en el tracker de todo el equipo, y no se deshace: si no se pudo
+    // verificar el estado, no se estampa. (Hoy ya frenaba, por la excepción sin atrapar; acá
+    // queda explícito, con el motivo, y cubierto por un test.)
+    const { us: live, unreachable, reason } = await fetchLiveUS(adapter, r.id);
+    if (unreachable) fail(`${reason}\n  No estampo un estado que no pude verificar.`, 2);
     const status = coverageStatus(r.ac_hash, live?.ac_hash);
     const record = {
       repo: r.repo, change: r.change, version: r.version, ac_hash: r.ac_hash, status,
@@ -960,8 +969,14 @@ async function cmdPr(opts) {
 
   // 2. Estado de trazabilidad (dai check) contra la US viva.
   const adapter = getAdapter(process.env);
-  const live = id ? await Promise.resolve(adapter.fetchUS(id)).catch(() => null) : null;
-  const status = id ? coverageStatus(ac_hash, live?.ac_hash) : null;
+  // El `.catch(() => null)` que había acá convertía "el tracker no contestó" en "no hay US",
+  // y esa afirmación se PUBLICABA en el cuerpo de la PR, al lado del id de la US que sí está.
+  const { us: live, unreachable, reason } = await fetchLiveUS(adapter, id);
+  if (unreachable) {
+    warn(reason);
+    warn("la PR va a decir que no se pudo verificar contra el tracker — no que no hay US.");
+  }
+  const status = id ? coverageStatus(ac_hash, live?.ac_hash, { unreachable }) : null;
   if (status === "atrasado") {
     warn(`la US ${id} está ATRASADA respecto de tu implementación (${ac_hash} ≠ ${live?.ac_hash}).`);
     warn(`resincroniza antes de abrir la PR:  dai link-us ${id} --resync`);
