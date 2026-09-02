@@ -7,7 +7,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado se
 
 **Una PR se publicaba con la descripción vacía y la lista de cambios diciendo "Cambio 1,
 Cambio 2". No siempre: a veces salía perfecta. Lo raro es que "Enlaces relacionados", que
-vive en el mismo template, nunca falló — y ahí estaba la pista.**
+vive en el mismo template, nunca falló — y ahí estaba la pista. Y de yapa, el paquete de npm
+adelgaza de 3.7 MB a 703 kB: cargaba las capturas del sitio.**
 
 `dai pr` rellenaba cada sección **solo si tenía el dato** y, si no lo tenía, devolvía el
 molde del template intacto, en silencio. La "Descripción" quedaba en su comentario HTML, que
@@ -52,10 +53,26 @@ quisieran.
   es justamente lo que publicaba las PRs vacías. El molde también se detecta en la cabecera
   (`ABC-###`), la misma familia de los issues #31/#33.
 
+### Arreglado — el paquete de npm
+- **`npm i -g @dforce2055/dai` bajaba las capturas del sitio.** `files[]` lista `docs`
+  entero, y ahí adentro viven las de los tutoriales (`docs/public/tutoriales/*.png`): **2.9 MB
+  de los 3.7 MB del paquete**, que el CLI no abre nunca. El test de higiene que ya cubría el
+  sitio (`index.html`, `onboarding.html`) no las veía porque entraban por otra puerta.
+  **3.7 MB → 703 kB**, 130 → 117 archivos, cero PNG en el tarball ([#37](https://github.com/dforce2055/dai/issues/37)).
+- **`dai docs` copiaba imágenes que no se veían.** Los `.md` referencian las capturas con la
+  ruta absoluta del sitio (`![…](/tutoriales/x.png)`, que VitePress resuelve contra
+  `docs/public/`); fuera del sitio esa ruta apunta a la raíz del filesystem, así que en la
+  copia **ya estaban rotas**, con los 2.9 MB adentro y todo. Ahora `dai docs` no copia
+  `public/` —son assets del sitio, no documentación para leer desde un repo— y **absolutiza**
+  esos links contra el sitio publicado: la doc copiada por fin muestra las capturas.
+
 ### Interno
-- **351 tests** (+12). Uno por cada camino que dejaba pasar el molde: tracker caído, sin
-  commits, branch sin US, template propio del repo, headings dentro de un fence, y el caso
-  peor (sin tracker y sin commits a la vez).
+- **358 tests** (+19). Uno por cada camino que dejaba pasar el molde del template —tracker
+  caído, sin commits, branch sin US, template propio del repo, headings dentro de un fence, y
+  el caso peor (sin tracker y sin commits a la vez)— más los de la reescritura de links y dos
+  de higiene que fijan la regla del paquete: que `files[]` declare la exclusión, y que no
+  aparezcan imágenes versionadas bajo `docs/` fuera de esa carpeta. Si mañana una captura
+  aterriza en otro lado, el test obliga a decidir ahí, no midiendo el tarball.
 
 ## [0.13.1] — 2026-08-24
 
