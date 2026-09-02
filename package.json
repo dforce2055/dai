@@ -27,6 +27,7 @@
     "cli/dai.mjs",
     "cli/lib",
     "docs",
+    "!docs/public/tutoriales",
     "templates",
     "governance",
     "skills",
