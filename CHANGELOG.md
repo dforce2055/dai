@@ -3,6 +3,60 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
+## [0.13.2] — 2026-09-02
+
+**Una PR se publicaba con la descripción vacía y la lista de cambios diciendo "Cambio 1,
+Cambio 2". No siempre: a veces salía perfecta. Lo raro es que "Enlaces relacionados", que
+vive en el mismo template, nunca falló — y ahí estaba la pista.**
+
+`dai pr` rellenaba cada sección **solo si tenía el dato** y, si no lo tenía, devolvía el
+molde del template intacto, en silencio. La "Descripción" quedaba en su comentario HTML, que
+no se renderiza: en GitHub y en GitLab la sección se ve **vacía**. El bloque de enlaces nunca
+falló porque su código siempre escribe — si no encuentra la sección, la agrega. Esa
+disciplina ahora vale para todo el cuerpo de la PR.
+
+Detrás del bug había algo más de fondo: **no existía forma de escribir la descripción**.
+`dai pr` no aceptaba ningún texto, así que el propósito de la PR solo podía salir del título
+de la US y de los subjects de los commits. Ni el dev ni su agente podían hacerlo bien aunque
+quisieran.
+
+### Arreglado
+- **La PR salía con el molde del template sin llenar.** Tres caminos llevaban al mismo
+  resultado, los tres silenciosos: (1) el tracker no contestaba —sin token, sin red, `DAI_PM`
+  mal seteado— y sin el título de la US no se llenaba "Descripción"; (2) la branch base no
+  existía **en local** —clones `--single-branch`, repos donde se trabaja sobre `develop` y la
+  base es `main`— y `git log base..HEAD` fallaba dentro de un `catch` vacío, dejando "Cambios
+  realizados" con `Cambio 1 / Cambio 2`; (3) una branch exenta (`chore/`, `docs/`) nunca
+  llenaba "Descripción", ni siquiera pudiendo. Ese mismo `catch` vacío también se comía el
+  chequeo de *"sin commits sobre la base no hay PR"*.
+- **La branch base ahora se resuelve** a `main` o, si no está en local, a `origin/main`.
+- **Las secciones se reconocen aunque el repo tenga su propio molde** (`## 📝 Descripción del
+  cambio`, `### CAMBIOS REALIZADOS`): antes el match era exacto, no encontraba la sección y
+  devolvía el body sin tocar — otra vez, sin decir nada. Ignora los `##` que estén dentro de
+  un bloque de código y, si la sección no existe, la agrega.
+
+### Agregado
+- **`dai pr --description "…"` y `--description-file <archivo.md>`** — el propósito de un
+  cambio no se deriva de git ni del tracker. dai llena la US, el estado del check, los commits
+  y los links; el porqué lo escribe quien crea la PR. **dai no lo inventa: lo pide.**
+- **`--changes` y `--changes-file`** — reemplazan el detalle de "Cambios realizados" cuando los
+  commits no cuentan bien la historia. Sin ellos, siguen saliendo de los commits de la branch.
+- **La constitución que escriben `dai init` y `dai sync` lo dice**, para que el agente que
+  corre `dai pr` sepa que la descripción es suya. Los repos ya inicializados la reciben con
+  `dai sync`.
+
+### Cambiado
+- ⚠️ **`dai pr` no publica una PR que saldría con el molde sin llenar.** Con `--yes` o sin TTY
+  —el camino de un agente o de CI— **aborta** y dice qué flag pasar; en terminal avisa y decide
+  la persona. **Si tenés automatización con `dai pr --yes` sin `--description`, se va a frenar**:
+  es justamente lo que publicaba las PRs vacías. El molde también se detecta en la cabecera
+  (`ABC-###`), la misma familia de los issues #31/#33.
+
+### Interno
+- **351 tests** (+12). Uno por cada camino que dejaba pasar el molde: tracker caído, sin
+  commits, branch sin US, template propio del repo, headings dentro de un fence, y el caso
+  peor (sin tracker y sin commits a la vez).
+
 ## [0.13.1] — 2026-08-24
 
 **Un dev en Windows no podía pushear contra el GitLab de su empresa. `ssh -T` le autenticaba
@@ -737,6 +791,7 @@ ClickUp y Jira Cloud.
 - Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
   `files` de npm sin tests ni secretos.
 
+[0.13.2]: https://github.com/dforce2055/dai/releases/tag/v0.13.2
 [0.13.1]: https://github.com/dforce2055/dai/releases/tag/v0.13.1
 [0.13.0]: https://github.com/dforce2055/dai/releases/tag/v0.13.0
 [0.12.0]: https://github.com/dforce2055/dai/releases/tag/v0.12.0
