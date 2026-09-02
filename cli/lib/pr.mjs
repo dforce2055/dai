@@ -2,7 +2,12 @@
 // Parte pura y testeable: rellena el template con los datos del link + git + check.
 // Los efectos (git push, gh/glab create) viven en dai.mjs.
 
-const EMOJI = { "al-dia": "✅ al día", atrasado: "⚠️ atrasado", "sin-us": "❓ sin US" };
+// Más explícito que el label del CLI a propósito: esto queda PUBLICADO en la PR, donde
+// quien lee no tiene el contexto de la corrida que la creó.
+const EMOJI = {
+  "al-dia": "✅ al día", atrasado: "⚠️ atrasado", "sin-us": "❓ sin US",
+  "sin-respuesta": "⚠️ no verificado (el tracker no respondió)",
+};
 
 // Las secciones que dai se compromete a entregar llenas. Si alguna sale con el molde
 // del template, la PR se publica vacía y el review no tiene qué mirar (era el bug:
@@ -115,12 +120,21 @@ export function composePrBody(template, d) {
   return upsertLinksBlock(b, d);
 }
 
+// Los placeholders se rellenan DENTRO de la sección, no en todo el body: la misma frase
+// ("verificado con `dai check` ✅") aparecía en la prosa que explica el método, así que un
+// replace global le metía el estado de ESTA PR a una oración general y quedaba
+// "verificado con dai check: ✅ al día. Sin esto, el código no sabe…". dai reescribiendo
+// la prosa de otro es justo lo que el bloque de links ya evitaba con sus marcadores.
+// Sin la sección (un template ajeno con otra forma) se cae al body entero: rellenar de más
+// es recuperable, no rellenar deja la PR con `ABC-###` publicado.
 function fillUsHeader(template, d) {
-  let b = template;
-  b = b.replace(/`ABC-###`/g, `\`${d.id}\``);
-  b = b.replace(/@ `vX`/g, `@ \`${d.version}\``);
-  b = b.replace(/`<hash>`/g, `\`${d.ac_hash}\``);
-  return b.replace(/verificado con `dai check` ✅/g, `verificado con \`dai check\`: ${EMOJI[d.status] || d.status}`);
+  const fill = (t) => t
+    .replace(/`ABC-###`/g, `\`${d.id}\``)
+    .replace(/@ `vX`/g, `@ \`${d.version}\``)
+    .replace(/`<hash>`/g, `\`${d.ac_hash}\``)
+    .replace(/verificado con `dai check` ✅/g, `verificado con \`dai check\`: ${EMOJI[d.status] || d.status}`);
+  const sec = sectionBody(template, "🔗 Implementa");
+  return sec == null ? fill(template) : replaceSection(template, "🔗 Implementa", fill(sec).trim());
 }
 
 // PR de una branch exenta (chore/, docs/, release/…): no implementa una US y no se le
