@@ -3,6 +3,55 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
+## [0.13.3] — 2026-09-02
+
+**Una PR de dai se abría diciendo, en el mismo párrafo, dos cosas que no encajaban: que el
+spec estaba "verificado con dai check: ✅ al día", y a continuación una explicación general
+del método. Tirando de ese hilo aparecieron dos bugs distintos, y los dos eran dai afirmando
+cosas que no le constaban.**
+
+### Arreglado
+- **El relleno del estado reescribía la prosa del template.** `dai pr` hacía un replace
+  **global** de `verificado con `dai check` ✅`, y esa frase estaba dos veces en el molde: en
+  el dato (`## 🔗 Implementa`) y en la prosa que explica el método. Así que a una oración
+  general —igual en todas las PRs— dai le insertaba el estado de *esta* PR, y quedaba
+  publicado: *"verificado con `dai check`: ✅ al día. Sin esto, el código no sabe a qué QUÉ
+  responde…"*. Ni doctrina ni dato. Ahora el relleno se acota a la sección; sin la sección
+  (un template ajeno con otra forma) cae al body entero, porque rellenar de más es
+  recuperable y publicar `ABC-###` no.
+- **`dai pr` decía "❓ sin US" cuando el tracker no contestaba** — dos líneas debajo del id de
+  la US que sí existe. `coverageStatus` colapsaba en un mismo `sin-us` dos cosas que no
+  significan lo mismo: *el tracker contestó y la US no está* y *no hubo respuesta* (sin red,
+  sin token, 5xx, certificado corporativo). Los adaptadores ya distinguían los dos casos
+  (`404 → null`, cualquier otro error → `throw`), y el gate de CI también con su try/catch
+  propio; lo que rompía la distinción era un `.catch(() => null)` en `dai pr`. Hay un estado
+  nuevo, **`sin-respuesta`** (`⚠️ no verificado`), y la PR dice *"no verificado (el tracker no
+  respondió)"*, que es lo único cierto ([#43](https://github.com/dforce2055/dai/issues/43)).
+- **`dai: fetch failed` era todo lo que se llegaba a leer.** Es el mensaje pelado de undici
+  cuando no hay red, el host no resuelve o el certificado no valida: no dice qué se estaba
+  consultando, ni contra qué, ni qué mirar — indistinguible de un bug de dai, el mismo modo de
+  falla que el push por SSH de la 0.13.1. Ahora el error nombra la US, el backend y el host, y
+  distingue red / credencial / error del tracker, con el próximo paso en cada caso.
+- **`dai check` ya no se detenía en la primera US** que no pudiera consultar: lo reporta, sigue
+  con las demás y sale ≠ 0. **`dai stamp`** explicita que no estampa un estado que no pudo
+  verificar — escribir en el tracker de todo el equipo no se deshace.
+
+### Cambiado
+- **El molde de PR adelgaza: la doctrina pasa a comentario HTML.** El encabezado tenía cuatro
+  bloques y un solo dato — la doctrina de los dos activos, una línea que repetía la de arriba
+  (*"este PR está atado a la US vía implements.yaml"*) y la instrucción de borrar la sección si
+  no hay US, que `dai pr` resuelve solo desde la 0.13.2. Nada de eso decía algo sobre *esa* PR,
+  y repetirlo a la vista en cada una entrena a saltear el principio del cuerpo, que es
+  justamente donde va la descripción. Sigue estando para quien edite el molde, invisible al
+  renderizar; y la doctrina vive donde se lee una vez y no quinientas: `docs/glosario.md`,
+  `docs/guias/dev.md`, `governance/ci-rules.md`. Los repos ya inicializados lo reciben con
+  `dai sync`.
+
+### Interno
+- **367 tests** (+9): los dos caminos de la consulta (la US que no está y la que no se pudo
+  consultar), el mensaje de error por tipo de falla, y que el relleno del estado no toque la
+  prosa que lo rodea.
+
 ## [0.13.2] — 2026-09-02
 
 **Una PR se publicaba con la descripción vacía y la lista de cambios diciendo "Cambio 1,
@@ -808,6 +857,7 @@ ClickUp y Jira Cloud.
 - Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
   `files` de npm sin tests ni secretos.
 
+[0.13.3]: https://github.com/dforce2055/dai/releases/tag/v0.13.3
 [0.13.2]: https://github.com/dforce2055/dai/releases/tag/v0.13.2
 [0.13.1]: https://github.com/dforce2055/dai/releases/tag/v0.13.1
 [0.13.0]: https://github.com/dforce2055/dai/releases/tag/v0.13.0
