@@ -94,3 +94,27 @@ test("package.json no publica el sitio ni archivos de entorno", () => {
     assert.ok(!/^\.env$|^\.env$/.test(pat), `files[] no debería incluir el .env: ${pat}`);
   }
 });
+
+// Las capturas de los tutoriales (docs/public/tutoriales/*.png) son material del SITIO,
+// igual que index.html: 2.9 MB de los 3.7 MB del paquete, que el CLI no abre nunca y que
+// cada `npm i -g` bajaba. Entraban por otra puerta —`files[]` lista `docs` entero— así que
+// el test de los *.html no las veía (issue #37). Los .md que las nombran usan la ruta
+// absoluta del sitio (`/tutoriales/x.png`), que fuera del sitio no resuelve: `dai docs` las
+// reescribe contra el sitio publicado al copiar.
+test("package.json no publica las capturas del sitio", () => {
+  const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
+  assert.ok((pkg.files || []).includes("!docs/public/tutoriales"),
+    "files[] debería excluir docs/public/tutoriales (assets del sitio, 2.9 MB)");
+});
+
+// La exclusión de arriba cubre una sola carpeta. Si mañana una captura aterriza en otro
+// lado de docs/, vuelve a viajar en el paquete sin que nadie se entere: este test obliga a
+// tomar la decisión en ese momento, en vez de descubrirlo midiendo el tarball.
+test("no hay imágenes versionadas bajo docs/ fuera de docs/public/tutoriales", () => {
+  const files = trackedFiles();
+  if (!files) return;
+  const IMG = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp"]);
+  const fuera = files.filter((f) =>
+    f.startsWith("docs/") && IMG.has(extname(f).toLowerCase()) && !f.startsWith("docs/public/tutoriales/"));
+  assert.deepEqual(fuera, [], `imágenes en docs/ que se publicarían: ${fuera.join(", ")}`);
+});
