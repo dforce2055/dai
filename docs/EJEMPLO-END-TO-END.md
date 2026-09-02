@@ -239,7 +239,9 @@ código + spec trazable) — y la asigna a un partner:
 ```
 $ dai check
 ✅ ABC-482 al día (v1)
-$ dai pr --assignee mgomez
+$ dai pr --assignee mgomez \
+    --description "Permite comprar sin crear cuenta: el checkout acepta un email de
+                   contacto y genera la orden como invitado. Baja el abandono del paso 2."
 ✓ PR #123 creada → …/pull/123   (base: main · US: ABC-482 @ v1 · dai check ✅)
 ```
 

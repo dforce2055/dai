@@ -35,8 +35,11 @@
    (anti vibe-coding). Ajustas y **commiteas** lo que haga falta.
 6. **Creas la PR** → con el smoke verde y **todo commiteado** (lo que quede sin commitear
    **no entra** en la PR), corres `dai check` (gate: ¿al día con la US?) y en verde `dai pr`
-   arma la PR **precargada** (US + estado del check + links; los **dos activos**: código +
-   spec trazable) y la asignas a un partner.
+   arma la PR **precargada** (US + estado del check + commits + links; los **dos activos**:
+   código + spec trazable) y la asignas a un partner. **La descripción la escribes tú**
+   (`--description "…"`, o `--description-file notas.md`): dai llena lo que puede derivar,
+   pero no inventa el propósito de un cambio — y si esa sección quedaría con el molde del
+   template, **no publica la PR**. Una PR sin descripción no se puede revisar.
 7. **Review de un partner** → un compañero revisa tu PR y **firma** aprobación/rechazo
    (Art. 5). Se apoya en la skill `/dai-review` para un primer pase: un **review inline**
    (resumen + un comentario por línea), que le muestra el preview y espera su OK antes de postear.
