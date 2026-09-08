@@ -42,6 +42,7 @@ import { assertProjectKey } from "./lib/pm-jira.mjs";
 import { flattenImplements, stampScope, prScope, matchBranchToImplements, requiresLink, trackerKeysIn } from "./lib/branch-scope.mjs";
 import { describeForgeError, parseForgeError } from "./lib/forge-api.mjs";
 import { validateUS, renderValidation, parseSpecVersion, bumpSpecVersion, setSpecVersion, PENDING_VERSION } from "./lib/us-format.mjs";
+import { isHelpToken, wantsHelp, helpTopic, helpFor, globalUsage } from "./lib/help.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -1996,6 +1997,20 @@ function cmdDoctor() {
     }
   }
 
+  // ── flujo de branches: contra qué integra este repo, y qué rama es producción ──
+  // Sin esto declarado, `dai pr` adivina la base — y en un repo con ramas de ambiente
+  // adivinar significa proponer un merge a producción sin que nada lo destaque (issue #46).
+  info("flujo de branches (dai pr · dai done):");
+  const flow = branchFlow(process.env);
+  if (flow.dev) ok(`integración: ${flow.dev}  (DAI_BRANCH_DEV) — ahí van las PR de feature/ y fix/`);
+  else {
+    const { base: adivinada, source: src } = resolveBase({ env: process.env, originHead: originHeadBranch() });
+    warn(`sin DAI_BRANCH_DEV: las PR van a '${adivinada}', que sale de ${src}, no de tu config.`);
+    process.stdout.write("    Declaralo una vez en el .env.dai:  DAI_BRANCH_DEV=<rama-que-integra>\n");
+  }
+  if (flow.prod) ok(`producción: ${flow.prod}  (DAI_BRANCH_PROD) — ahí van release/ y hotfix/, con confirmación explícita`);
+  else info("sin DAI_BRANCH_PROD: dai no marca ninguna rama como producción (no adivina cuál es)");
+
   // ── version-drift del scaffold vs el CLI (ADR-0010) ──────────────────────────
   if (existsSync(join(process.cwd(), ".dai", "VERSION"))) { info("versión del scaffold:"); reportDrift(); }
 }
@@ -2008,8 +2023,21 @@ function cmdVersion() {
 
 let [cmd, ...rest] = process.argv.slice(2);
 if (cmd === "--version" || cmd === "-v") cmd = "version";
-if (cmd === "--help" || cmd === "-h") cmd = "help";
 const { opts, pos } = parseFlags(rest);
+
+// ── Convención de ayuda (vale para TODOS los comandos) ────────────────────────
+// Pedir ayuda nunca ejecuta nada: sale por stdout y termina con 0. Antes el `--help`
+// caía en `opts` y el comando corría igual — `dai stamp --help` dejaba un comentario en
+// el tracker y `dai pr --help` publicaba una branch. Los agentes lo pisan seguido, porque
+// probar `<cmd> --help` antes de usar un comando es exactamente lo que hay que hacer.
+if (isHelpToken(cmd) || cmd === undefined || wantsHelp({ opts, pos })) {
+  const { text, known } = helpFor(helpTopic(isHelpToken(cmd) ? null : cmd, pos));
+  if (known) { process.stdout.write(text); process.exit(0); }
+  process.stderr.write(`dai: no conozco el comando '${helpTopic(isHelpToken(cmd) ? null : cmd, pos)}'.\n\n`);
+  process.stderr.write(text);
+  process.exit(1);
+}
+
 switch (cmd) {
   case "ac-hash": cmdAcHash(pos[0]); break;
   case "ls":      cmdLs(opts); break;
@@ -2037,53 +2065,10 @@ switch (cmd) {
   case "doctor":  cmdDoctor(); break;
   case "version": cmdVersion(); break;
   default:
-    process.stderr.write(
-      "Uso: dai <comando> [args]\n\n" +
-      "Trazabilidad:\n" +
-      "  ac-hash <us.md>              calcula el ac_hash (ADR-0001)\n" +
-      "  ls [--json]                  lista lo que implementa el repo (ADR-0005)\n" +
-      "  publish <us.md>              crea la US en el tracker (Jira/ClickUp/md) y devuelve el key\n" +
-      "      [--parent KEY]           la cuelga de su épica · [--issuetype T] p. ej. Epic\n" +
-      "      [--field alias=valor]    campos propios que exige tu Jira (.dai/jira-fields.json); repetible\n" +
-      "  link-us <KEY> [--us <md>]    crea branch + implements.yaml; sin --us trae la US del tracker (ADR-0004)\n" +
-      "  link-us <KEY> --resync       re-estampa el ac_hash contra la US viva (tras un ⚠️ de check)\n" +
-      "  edit-us <KEY>                trae la US del tracker, la abrís en tu editor, valida el formato,\n" +
-      "                               muestra qué cambia y la guarda (para el PO)\n" +
-      "      [--no-editor]            no abre $EDITOR (para skills/scripts que ya escribieron el .md)\n" +
-      "      [--bump | --no-bump]     decide el spec_version sin preguntar (sin TTY no se toca y avisa)\n" +
-      "  update-us <KEY> [--us <md>]  empuja al tracker un .md que ya escribiste + re-estampa el ac_hash\n" +
-      "      [--dry-run] [--yes]      sin --yes muestra el diff y pide confirmación · [--no-resync]\n" +
-      "      [--strict]               las advertencias de formato también frenan · [--no-bump] no toca spec_version\n" +
-      "  check                        compara vs la US viva → atrasado (ADR-0003)\n" +
-      "  check --ci                   gate de CI: exige el link según branch-naming (chore/ y docs/ exentas)\n" +
-      "      [--branch b]             la branch a evaluar (en CI se detecta sola) · [--no-network]\n" +
-      "                               salidas: 0 pasa · 1 falta el link · 2 el QUÉ cambió\n" +
-      "  stamp [<ID>…] [--all]        estampa la cobertura en el tracker (ADR-0005)\n" +
-      "                               sin ID: la US de esta branch; si hay varias, pregunta\n" +
-      "  done [--base main] [--force] cierra la US: vuelve a la base, actualiza y borra la branch local (si está mergeada)\n" +
-      "  archive [<change>] [--skip-specs]   funde los delta specs del change en las specs canónicas y lo archiva (lo corre el aprobador en la PR)\n" +
-      "  pr (alias mr) [--assignee u] [--base b] [--draft] [--yes]   crea TU PR/MR precargada (muestra + confirma)\n" +
-      "      [--us <ID>] [--title t]  la US la resuelve la branch; si hay varias, pregunta (sin TTY, falla)\n" +
-      "      --description <texto>    QUÉ resuelve la PR y por qué → sección 'Descripción' (o --description-file <f>)\n" +
-      "      --changes <texto>        detalle de 'Cambios realizados' (default: los commits) (o --changes-file <f>)\n" +
-      "                               sin descripción y sin commits, con --yes o sin TTY, dai NO publica: la PR\n" +
-      "                               saldría con el molde del template y no se podría revisar\n" +
-      "  forge comment <ref> --body-file <f> · forge pr <ref>   comentar/leer una PR ajena (github/gitlab)\n" +
-      "  forge review <ref> --from <review.json> [--dry-run|--yes]  review inline: resumen + comentario por línea\n" +
-      "      --min-severity low|medium|high · --min-confidence 0..1 · --max-comments N · --base <branch>\n" +
-      "      Sin --yes no postea nada: muestra el preview y valida que cada hallazgo apunte al diff.\n\n" +
-      "Instalación:\n" +
-      "  skills install [--global | --local <repo>] [--force] [--dry-run] [--for <asistentes>]   instala las skills de dai (alias: `install`)\n" +
-      "  skills install --from <git-url|npm:pkg|path>[#ref] [--for <asistentes>]   instala skills EXTERNAS (por-stack), convertidas para los 3 asistentes (ADR-0013)\n" +
-      "  init [<repo>]                scaffolder interactivo del repo (asistente, gestor, OpenSpec)\n" +
-      "       --for <asistentes>      claude|copilot|cursor (combinables con coma) · o both|all (default all)\n" +
-      "                               ej: --for claude,cursor · --for copilot · --for all\n" +
-      "       --pm md|jira|clickup · --openspec   (con flags salteas las preguntas)\n" +
-      "  sync [<repo>] [--dry-run] [--for <asistentes>]   refresca skills/constitución/templates a la versión del CLI (aditivo; no toca .env.dai ni OpenSpec)\n" +
-      "  upgrade [--check] [--dry-run]   (alias: update) actualiza el CLI global a la última (npm i -g …@latest) y avisa si el repo quedó atrasado (ADR-0012)\n" +
-      "  docs <destino>               documentación conceptual → <destino>\n" +
-      "  doctor                       diagnóstico del entorno\n\n" +
-      "  (config: .env.dai — ver .env.dai.example)\n"
-    );
-    process.exit(cmd && cmd !== "help" ? 1 : 0);
+    // Comando desconocido: la ayuda global por stderr y salida ≠ 0 (la ayuda PEDIDA sale
+    // por stdout y con 0, arriba). Distinguirlos es lo que deja `dai foo --help` usable
+    // en un script sin tener que adivinar de dónde leer.
+    process.stderr.write(`dai: no conozco el comando '${cmd}'.\n\n`);
+    process.stderr.write(globalUsage());
+    process.exit(1);
 }
