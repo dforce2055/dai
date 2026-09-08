@@ -108,8 +108,19 @@ export function validateUS(md) {
 // (METODOLOGIA §4). Sube cuando el cambio es material, y eso lo sabe el PO: dai
 // mirando el hash no puede distinguir un criterio nuevo de un typo corregido.
 
+// La US se escribe a mano en un tracker, así que el nombre del campo llega como salga:
+// `spec_version`, `spec version`, `spec-version` y —visto en un Jira real— `specversion`
+// pegado. Con el `[_ ]` obligatorio de antes, `| specversion | v4 |` no matcheaba y el
+// link se estampaba en `v1` sin que nada avisara (issue #46). El separador es opcional.
+export const SPEC_VERSION_RE = /spec[\s_-]*version[^\n]*?\b(v\d+)\b/i;
+
+// El valor que se escribe cuando la US NO declara versión. Un placeholder VISIBLE es
+// mejor que un `v1` que parece correcto: el `v1` se publica en la PR y se estampa en el
+// tracker como si fuera un dato, cuando es una suposición de dai.
+export const PENDING_VERSION = "pendiente";
+
 export const parseSpecVersion = (md) => {
-  const m = String(md || "").match(/spec[_ ]version[^\n]*?\b(v\d+)\b/i);
+  const m = String(md || "").match(SPEC_VERSION_RE);
   return m ? m[1] : null;
 };
 
@@ -123,8 +134,8 @@ export const bumpSpecVersion = (v) => {
 // al final, donde nadie lo ve, ni en una tabla que no existe.
 export function setSpecVersion(md, version) {
   const text = String(md || "");
-  if (/spec[_ ]version[^\n]*?\bv\d+\b/i.test(text)) {
-    return text.replace(/(spec[_ ]version[^\n]*?\b)v\d+\b/i, `$1${version}`);
+  if (SPEC_VERSION_RE.test(text)) {
+    return text.replace(/(spec[\s_-]*version[^\n]*?\b)v\d+\b/i, `$1${version}`);
   }
   const lines = text.split(/\r?\n/);
   const i = lines.findIndex((l) => /^#\s+\S/.test(l));

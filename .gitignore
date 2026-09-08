@@ -6,9 +6,13 @@ node_modules/
 # scaffolding que genera `dai init` en repos target (no acá)
 .dai/
 
-# SECRETOS del adaptador de PM. Solo se versiona .env.example
+# SECRETOS del adaptador de PM. Solo se versiona .env.dai.example
+# `.env.dai` es el archivo que `dai init` deja en los repos target, y este repo también
+# lo usa para dogfoodear su propio flujo de branches. `reconcileGitignore` lo agrega en
+# todos lados menos acá, que es donde más caro sale olvidarlo (ADR-0017).
 .env
 .env.local
+.env.dai
 
 # tarball de `npm pack`
 *.tgz
