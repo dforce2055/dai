@@ -28,6 +28,8 @@ import { parsePrRef, getPR, postComment, postReview } from "./lib/forge-api.mjs"
 import { trackerUrl } from "./lib/tracker-url.mjs";
 import { parseFindings, diffPositions, validateFindings, filterFindings, renderFindingBody, renderReviewSummary } from "./lib/review-findings.mjs";
 import { composePrBody, prTitle, forgeTool, bodyGaps } from "./lib/pr.mjs";
+import { resolveBase, isProdBranch, branchFlow, baseHint, parseOriginHead } from "./lib/branch-flow.mjs";
+import { listPrCmd, parsePrList, updatePrCmd, isAlreadyExistsError, describeUpdate } from "./lib/pr-remote.mjs";
 import { absolutizeSiteLinks } from "./lib/docs-links.mjs";
 import { diagnoseGitSsh, pushFailureHint, WINDOWS_OPENSSH } from "./lib/git-ssh.mjs";
 import { dirsEqual } from "./lib/fsutil.mjs";
@@ -39,7 +41,7 @@ import { parseFieldsFile, parseFieldOverrides, resolveJiraFields } from "./lib/j
 import { assertProjectKey } from "./lib/pm-jira.mjs";
 import { flattenImplements, stampScope, prScope, matchBranchToImplements, requiresLink, trackerKeysIn } from "./lib/branch-scope.mjs";
 import { describeForgeError, parseForgeError } from "./lib/forge-api.mjs";
-import { validateUS, renderValidation, parseSpecVersion, bumpSpecVersion, setSpecVersion } from "./lib/us-format.mjs";
+import { validateUS, renderValidation, parseSpecVersion, bumpSpecVersion, setSpecVersion, PENDING_VERSION } from "./lib/us-format.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -150,13 +152,14 @@ function cmdLs(opts) {
 async function cmdLinkUs(key, opts) {
   if (!isValidKey(key)) fail(`key inválido: '${key}'. Sin espacios ni barras (ej.: ABC-482 o 86cxyz).`, 1);
 
-  let title, hash, version = "v1";
+  let title, hash, version = null;
   if (opts.us) {
     // Fuente local: un .md con la US.
     const md = readFileSync(opts.us, "utf8");
     hash = acHash(md);
     if (hash == null) fail(`la US en ${opts.us} no tiene una sección 'Criterios de aceptación' con criterios testeables → sin ac_hash.\n  Agregá los criterios bajo '## Criterios de aceptación', o corré /grill-user-story para pulir la US.`, 2);
     title = opts.title || extractTitle(md);
+    version = parseSpecVersion(md);
   } else {
     // Fuente tracker: traer la US del adaptador (mismo hash que usará `dai check`).
     loadDaiEnv();
@@ -166,7 +169,16 @@ async function cmdLinkUs(key, opts) {
     hash = us.ac_hash;
     if (hash == null) fail(`la US ${key} no tiene una sección 'Criterios de aceptación' con criterios testeables → sin ac_hash, no se puede linkear.\n  Agregá la sección en el tracker, o corré /grill-user-story ${key} para pulir la US (te interroga y la re-publica).`, 2);
     title = opts.title || us.title;
-    version = us.spec_version || "v1";
+    version = us.spec_version;
+  }
+
+  // Sin spec_version NO se inventa un `v1`: ese número se publica en la PR y se estampa en
+  // el tracker como si fuera un dato, y `dai check` lo reporta con un ✅ que da por buena
+  // una versión que no existe (issue #46). Un placeholder visible dice la verdad.
+  if (!version) {
+    version = PENDING_VERSION;
+    warn(`la US ${key} no declara spec_version — el link queda con 'version: ${PENDING_VERSION}'.`);
+    process.stdout.write(`    Agregá la fila 'spec_version | v1' a la metadata de la US y re-estampá:  dai link-us ${key} --resync\n`);
   }
 
   // ── modo resync: re-estampar el ac_hash en el implements.yaml existente ──────
@@ -222,6 +234,14 @@ function gitCommit() { try { return git(["rev-parse", "HEAD"]); } catch { return
 function resolveRev(ref) {
   try { git(["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]); return ref; } catch { return null; }
 }
+// La rama default del remoto (`origin/HEAD`). Es mejor fallback que un `main` fijo, pero
+// sigue siendo un fallback: en un repo con ramas de ambiente, la default del remoto suele
+// ser justo la de producción. Por eso el preview siempre dice de dónde salió la base.
+function originHeadBranch() {
+  try { return parseOriginHead(git(["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"])); }
+  catch { return null; }
+}
+
 // Un texto que se puede pasar inline (`--description "…"`) o por archivo
 // (`--description-file notas.md`). Un agente casi siempre quiere el archivo: markdown
 // multilínea no sobrevive entero a la línea de comandos.
@@ -297,7 +317,7 @@ async function cmdCheckCi(opts = {}) {
     try { live = await adapter.fetchUS(r.id); } catch (e) { netErr = String(e.message).split("\n")[0]; }
     if (netErr) { warn(`${r.id}: no pude leer la US (${netErr}) — no bloqueo por un problema de red/credencial.`); continue; }
     const status = coverageStatus(r.ac_hash, live?.ac_hash);
-    if (status === "al-dia") ok(`${r.id} al día (${r.version})`);
+    if (status === "al-dia") { ok(`${r.id} al día (${r.version})`); versionDriftHint(r, live); }
     else if (status === "atrasado") {
       process.stderr.write(`✗ gate: ${r.id} ATRASADO — implementaste ${r.ac_hash}, la US viva es ${live.ac_hash}.\n` +
         `    El QUÉ cambió. Resincronizá y revisá que lo cubras:  dai link-us ${r.id} --resync\n`);
@@ -321,6 +341,18 @@ function ciBranch() {
     (e.GITHUB_REF_NAME && !/^\d+\/merge$/.test(e.GITHUB_REF_NAME) ? e.GITHUB_REF_NAME : null) || null;
 }
 
+// El ac_hash dice si el QUÉ cambió; el `version` del link es el número que se PUBLICA
+// (en el body de la PR, en el stamp del tracker). Que coincidan no es cosmético: un link
+// al día con `version: v1` contra una US en v4 estampa una versión que no existe, y el ✅
+// lo hace pasar por verificado (issue #46). No cambia el exit code — el hash manda.
+function versionDriftHint(im, live) {
+  const declared = String(im?.version ?? "").trim();
+  const real = String(live?.spec_version ?? "").trim();
+  if (!real || declared === real) return;
+  warn(`${im.id}: el link declara version '${declared || "(vacío)"}' y la US viva dice '${real}'.`);
+  process.stdout.write(`    Ese número se publica en la PR y se estampa en el tracker. Corregilo:  dai link-us ${im.id} --resync\n`);
+}
+
 // ── check ──────────────────────────────────────────────────────────────────
 // `process.exitCode` en vez de `process.exit()`: ver la nota en cmdCheckCi.
 async function cmdCheck() {
@@ -334,7 +366,10 @@ async function cmdCheck() {
     n++;
     const { us: live, unreachable, reason } = await fetchLiveUS(adapter, im.id);
     const status = coverageStatus(im.ac_hash, live?.ac_hash, { unreachable });
-    if (status === "al-dia") process.stdout.write(`✅ ${im.id} al día (${im.version})\n`);
+    if (status === "al-dia") {
+      process.stdout.write(`✅ ${im.id} al día (${im.version})\n`);
+      versionDriftHint(im, live);
+    }
     else if (status === "atrasado") {
       process.stdout.write(`⚠️  ${im.id} ATRASADO: implementaste ${im.ac_hash}, la US viva es ${live.ac_hash}${live.spec_version ? ` (${live.spec_version})` : ""}\n`);
       atrasadas.push(im.id);
@@ -833,8 +868,13 @@ async function cmdUpdateUs(id, opts = {}) {
 
 // ── done: cierra una US — vuelve a la base, actualiza y borra la branch local ──
 function cmdDone(opts) {
-  const base = opts.base || "main";
+  loadDaiEnv();
+  // Misma resolución que `dai pr`: el `main` fijo mandaba a checkout+pull a la rama
+  // equivocada en cualquier repo que integre contra develop/testing (issue #46).
+  if (opts.base === true) fail("--base necesita el nombre de una branch (ej: --base develop).", 1);
+  const baseFlag = Array.isArray(opts.base) ? opts.base[opts.base.length - 1] : (typeof opts.base === "string" ? opts.base : null);
   const branch = gitBranch();
+  const { base, source: baseSource } = resolveBase({ flag: baseFlag, branch, env: process.env, originHead: originHeadBranch() });
   if (!branch || branch === "HEAD") fail("no estás en una branch.", 1);
   if (branch === base) fail(`ya estás en '${base}' — nada que cerrar.`, 1);
 
@@ -857,7 +897,7 @@ function cmdDone(opts) {
   ).map((r) => r.id);
 
   // Ir a la base y actualizar.
-  info(`Cambiando a '${base}' y actualizando…`);
+  info(`Cambiando a '${base}' y actualizando… ${C.dim(`(base: ${baseSource})`)}`);
   try { git(["checkout", base]); } catch (e) { fail(`no pude cambiar a '${base}': ${String(e.message).split("\n")[0]}`, 1); }
   try { git(["fetch", "--prune"]); } catch { /* sin remoto */ }
   try { git(["pull", "--ff-only"]); } catch { warn(`no pude hacer 'pull --ff-only' en '${base}' (¿divergió?). Revisa a mano.`); }
@@ -877,6 +917,23 @@ function cmdDone(opts) {
 
   ok(`Listo — en '${base}', actualizado${usIds.length ? `. US cerrada: ${usIds.join(", ")}` : ""}.`);
   info("La branch remota (si existe) la maneja el forge (auto-delete on merge) o bórrala tú.");
+}
+
+// El comando del forge, listo para copiar y pegar. Cuando dai no llega, deja al dev
+// parado exactamente donde estaba, no un paso atrás.
+function shellHint(tool, cmd) {
+  return `  Comando listo para correr a mano:\n    ${tool} ${cmd.map((c) => /\s/.test(c) ? `'${c}'` : c).join(" ")}\n`;
+}
+
+// La PR/MR abierta de esta branch, si la hay.
+//   { number, url, title, base } → existe · null → no hay · undefined → no se pudo saber
+// El `undefined` importa: sin binario, sin auth o con un glab viejo, dai no puede afirmar
+// que NO existe, así que sigue por el camino de crear (que también sabe reconocerla).
+function findExistingPr(tool, branch) {
+  try {
+    const out = execFileSync(tool, listPrCmd(tool, branch), { encoding: "utf8", cwd: process.cwd(), stdio: ["ignore", "pipe", "pipe"] });
+    return parsePrList(tool, out);
+  } catch { return undefined; }
 }
 
 // ── pr: crea TU PROPIA PR/MR precargada desde el template + el link ────────────
@@ -906,9 +963,18 @@ async function cmdPr(opts) {
   };
   const closeRl = () => { if (_rl) { _rl.close(); _rl = null; } };
 
-  // Elegir la branch base (default main). Se pregunta justo después del aviso de cambios.
-  let base = opts.base;
-  if (!base) { const ans = await ask("  ¿Contra qué branch va la PR? (main) "); base = ans || "main"; }
+  // Elegir la branch base. El default NO es `main` fijo: sale de la config del repo
+  // (DAI_BRANCH_DEV / DAI_BRANCH_PROD) o de la rama default del remoto, y el preview lo dice.
+  // Con `main` hardcodeado, en un repo donde main DESPLIEGA A PRODUCCIÓN la MR quedaba
+  // proponiendo un merge a PRO y nada lo destacaba (issue #46).
+  if (opts.base === true) { closeRl(); fail("--base necesita el nombre de una branch (ej: --base develop).", 1); }
+  const baseFlag = Array.isArray(opts.base) ? opts.base[opts.base.length - 1] : (typeof opts.base === "string" ? opts.base : null);
+  let { base, source: baseSource, reason: baseWhy } = resolveBase({ flag: baseFlag, branch, env: process.env, originHead: originHeadBranch() });
+  if (!baseFlag) {
+    const ans = await ask(`  ¿Contra qué branch va la PR? (${base}) `);
+    if (ans) { base = ans; baseSource = "lo respondiste vos"; baseWhy = null; }
+  }
+  const toProd = isProdBranch(base, process.env);
 
   // La base puede no existir LOCAL (clones con --single-branch, repos donde el dev
   // trabaja sobre develop y la base es main, corporativos con la base solo en origin).
@@ -1012,13 +1078,40 @@ async function cmdPr(opts) {
   const forge = detectForge(parseRemote(remote)?.host);
   const tool = forgeTool(forge);
 
+  // ¿Ya hay una PR/MR abierta para esta branch? Si la hay, esto es una ACTUALIZACIÓN, y
+  // hay que decirlo ANTES de confirmar: el bug del issue #46 era pushear (el diff quedaba
+  // al día), fallar al crear, y dejar la MR con la descripción vieja sin avisar.
+  //   null → no hay ninguna abierta · undefined → no se pudo saber (sin binario, sin auth)
+  const existing = findExistingPr(tool, branch);
+
   // 4. Mostrar y pedir confirmación (acción hacia afuera).
-  process.stdout.write(`\n  ── Pull Request a crear ──────────────────────────────\n`);
-  process.stdout.write(`  título:   ${title}\n  de:       ${branch}\n  a:        ${base}\n`);
+  const accion = existing ? `a ACTUALIZAR (#${existing.number})` : "a crear";
+  process.stdout.write(`\n  ── Pull Request ${accion} ──────────────────────────────\n`);
+  process.stdout.write(`  título:   ${title}\n  de:       ${branch}\n`);
+  process.stdout.write(`  a:        ${base}  ${C.dim(`(${baseSource}${baseWhy ? ` — ${baseWhy}` : ""})`)}${toProd ? `   ${C.b("⚠️  DESPLIEGA A PRODUCCIÓN")}` : ""}\n`);
   process.stdout.write(`  US:       ${id || C.dim("(sin US)")}  ${C.dim(`— ${usWhy}`)}\n`);
   process.stdout.write(`  forge:    ${forge} (${tool})${opts.assignee ? `\n  asignar:  ${opts.assignee}` : ""}${opts.draft ? "\n  draft:    sí" : ""}\n`);
   process.stdout.write(`  ─────────────────────────────────────────────────────\n\n${body}\n`);
   process.stdout.write(`  ─────────────────────────────────────────────────────\n`);
+  const hint = baseHint(baseSource, base);
+  if (hint) info(hint);
+  if (existing) for (const l of describeUpdate(existing, { base, tool })) warn(l);
+
+  // 4a. Gate de producción: proponer un merge a la rama que despliega a PRO no puede salir
+  // de un default ni colarse con un `--yes` puesto por costumbre. Que lo diga alguien.
+  if (toProd) {
+    warn(`'${base}' está declarada como rama de PRODUCCIÓN (DAI_BRANCH_PROD).`);
+    if (!opts.toProd) {
+      if (opts.yes || !process.stdin.isTTY) {
+        closeRl();
+        fail(`no publico una PR contra producción sin que lo digas explícitamente.\n` +
+             `  Si es a propósito:            dai pr --base ${base} --to-prod --yes\n` +
+             `  Si era otra la base:          dai pr --base <rama-de-integracion>`, 1);
+      }
+      const a = await ask(`  Escribí '${base}' para confirmar que esta PR va a PRODUCCIÓN (Enter = cancelar): `);
+      if (String(a ?? "").trim() !== base) { closeRl(); info("Cancelado — no se creó la PR."); return; }
+    }
+  }
 
   // 4b. Gate: una PR con el molde del template sin llenar no se puede revisar.
   // Pasaba en repos reales — "Descripción" con el comentario HTML (que no se renderiza:
@@ -1044,8 +1137,8 @@ async function cmdPr(opts) {
   // Archivo de paso para gh/glab: en el temp del sistema, NO en el repo (no lo ensucia).
   const bodyFile = join(mkdtempSync(join(tmpdir(), "dai-pr-")), "body.md");
   if (!opts.yes) {
-    if (!process.stdin.isTTY) { closeRl(); writeFileSync(bodyFile, body); info(`Body guardado en ${bodyFile}. Revisa y re-ejecuta con --yes para crear.`); return; }
-    const a = (await ask(`  ¿Publico la branch y creo el PR con ${tool}? (s/N) `) || "").toLowerCase();
+    if (!process.stdin.isTTY) { closeRl(); writeFileSync(bodyFile, body); info(`Body guardado en ${bodyFile}. Revisa y re-ejecuta con --yes para ${existing ? "actualizar" : "crear"}.`); return; }
+    const a = (await ask(`  ¿Publico la branch y ${existing ? `actualizo la PR/MR #${existing.number}` : `creo el PR`} con ${tool}? (s/N) `) || "").toLowerCase();
     closeRl();
     if (!["s", "si", "sí", "y", "yes"].includes(a)) {
       writeFileSync(bodyFile, body);
@@ -1081,6 +1174,29 @@ async function cmdPr(opts) {
     fail(`no pude pushear la branch '${branch}'.`, 1);
   }
 
+  // Actualizar la PR/MR que ya está abierta: mismo body, misma disciplina. La alternativa
+  // —fallar y dejarla con la descripción vieja— es la que rompía el issue #46.
+  const doUpdate = (number) => {
+    const ucmd = updatePrCmd(tool, { number, title, body, bodyFile });
+    try {
+      info(`Actualizando la PR/MR #${number} con ${tool}…`);
+      const out = execFileSync(tool, ucmd, { encoding: "utf8", cwd: process.cwd() });
+      process.stdout.write(out);
+      ok(`PR/MR #${number} actualizada: título + descripción${existing?.url ? ` — ${existing.url}` : ""}.`);
+      try { rmSync(bodyFile); } catch { /* noop */ }
+      return true;
+    } catch (e) {
+      const msg = String(e.stderr || e.message || "");
+      warn(`no pude actualizar la PR/MR #${number} con ${tool}. El body quedó en ${bodyFile}.`);
+      if (msg.trim()) process.stdout.write(`  ${tool} dijo:\n  ${msg.trim().split("\n").join("\n  ")}\n`);
+      process.stdout.write(shellHint(tool, ucmd));
+      process.stdout.write(`  Si preferís no editarla: cerrá la PR/MR y volvé a correr \`dai pr\`.\n`);
+      process.exitCode = 1;
+      return false;
+    }
+  };
+  if (existing) { doUpdate(existing.number); return; }
+
   const cmd = tool === "gh"
     ? ["pr", "create", "--title", title, "--body-file", bodyFile, "--base", base,
        ...(opts.assignee ? ["--assignee", opts.assignee] : []), ...(opts.draft ? ["--draft"] : [])]
@@ -1094,7 +1210,18 @@ async function cmdPr(opts) {
     try { rmSync(bodyFile); } catch { /* noop */ }
   } catch (e) {
     const msg = String(e.stderr || e.message || "");
-    const manual = `  Comando listo para correr a mano:\n    ${tool} ${cmd.map((c) => /\s/.test(c) ? `'${c}'` : c).join(" ")}\n`;
+    const manual = shellHint(tool, cmd);
+    if (isAlreadyExistsError(msg) || isAlreadyExistsError(String(e.stdout || ""))) {
+      // La detección de arriba no la vio (glab viejo, `--output json` no soportado, sin
+      // permiso de lectura). El forge sí sabe que existe: se busca de nuevo y se actualiza.
+      warn("el forge dice que YA hay una PR/MR abierta para esta branch, así que no se creó otra.");
+      const found = findExistingPr(tool, branch);
+      if (found) { doUpdate(found.number); return; }
+      warn(`tampoco pude averiguar su número con ${tool}, así que NO toqué su descripción: quedó la vieja.`);
+      process.stdout.write(`  Abrila y pegá el body de ${bodyFile}, o cerrala y volvé a correr \`dai pr\`.\n`);
+      process.exitCode = 1;
+      return;
+    }
     if (e.code === "ENOENT") {
       // El binario del forge no está instalado (el caso más común detrás de "no salió la MR").
       const doc = tool === "glab" ? "https://gitlab.com/gitlab-org/cli/-/releases" : "https://cli.github.com";

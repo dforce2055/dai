@@ -182,3 +182,26 @@ test("setSpecVersion: sin título tampoco pierde el contenido", () => {
   assert.equal(parseSpecVersion(out), "v2");
   assert.match(out, /texto suelto/);
 });
+
+// ── issue #46: la US real declaraba `specversion` (sin separador) en una tabla de Jira,
+// el regex exigía `spec_version` y el link se estampaba en v1 sin avisar.
+test("parseSpecVersion tolera specversion pegado, con guion, y dentro de una tabla", () => {
+  assert.equal(parseSpecVersion("| **specversion**  | v4 |"), "v4");
+  assert.equal(parseSpecVersion("| spec-version | `v12` |"), "v12");
+  assert.equal(parseSpecVersion("| spec_version | v3 |"), "v3");
+  assert.equal(parseSpecVersion("| SpecVersion | V9 |"), "V9");
+  assert.equal(parseSpecVersion("| ID | ACME-306139 |\n| specversion | v4 |"), "v4");
+});
+
+test("parseSpecVersion no inventa versión cuando la US no la declara", () => {
+  assert.equal(parseSpecVersion("# Una US\n\n## Criterios de aceptación\n- Dado x"), null);
+  assert.equal(parseSpecVersion(""), null);
+});
+
+test("setSpecVersion reescribe la variante que la US ya usa, sin duplicar", () => {
+  const md = "# US\n\n| **specversion** | v4 |\n";
+  const out = setSpecVersion(md, "v5");
+  assert.match(out, /\| \*\*specversion\*\* \| v5 \|/);
+  assert.doesNotMatch(out, /v4/);
+  assert.equal((out.match(/specversion/gi) || []).length, 1);
+});

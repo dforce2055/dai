@@ -166,8 +166,19 @@ export function skillToCursor(md) {
 // tapaba la de ClickUp con team_id. Queda como override manual para trackers raros.
 export function envFor(pm) {
   const head = "# Config de dai — va en .env.dai (NO versionado), no en el .env del equipo.\n# Completá lo que falte. NUNCA commitees tokens.\n";
+  // Flujo de branches: sin esto, `dai pr` tiene que adivinar la base, y en un repo con
+  // ramas de ambiente adivinar significa proponer un merge a producción (issue #46).
+  // Van vacías a propósito: vacío = "no declarada", y dai cae a la default del remoto.
+  const flujo =
+    "\n# ── Flujo de branches (dai pr · dai done) ─────────────────────────────────\n" +
+    "# Las DOS ramas de vida larga del repo. La base de una PR sale del TIPO de branch:\n" +
+    "#   feature/ · fix/     → PR contra DAI_BRANCH_DEV\n" +
+    "#   release/ · hotfix/  → PR contra DAI_BRANCH_PROD, con confirmación explícita\n" +
+    "# Vacías = no declaradas: dai cae a la rama default del remoto y avisa que adivina.\n" +
+    "DAI_BRANCH_DEV=\n" +
+    "DAI_BRANCH_PROD=\n";
   if (pm === "clickup") {
-    return head + "DAI_PM=clickup\nDAI_CLICKUP_TOKEN=\nDAI_CLICKUP_LIST_ID=\n";
+    return head + "DAI_PM=clickup\nDAI_CLICKUP_TOKEN=\nDAI_CLICKUP_LIST_ID=\n" + flujo;
   }
   if (pm === "jira") {
     return head +
@@ -181,9 +192,9 @@ export function envFor(pm) {
       "# Solo si tu Jira exige campos propios AL CREAR una US (lo usa grill-user-story,\n" +
       "# no hace falta para leerlas). El default ya es .dai/jira-fields.json; descomentá\n" +
       "# solo para apuntar a otra ruta. Si el archivo no existe, se ignora.\n" +
-      "# DAI_JIRA_FIELDS_FILE=.dai/jira-fields.json\n";
+      "# DAI_JIRA_FIELDS_FILE=.dai/jira-fields.json\n" + flujo;
   }
-  return head + "DAI_PM=md\nDAI_MD_US_DIR=.dai/us\n";
+  return head + "DAI_PM=md\nDAI_MD_US_DIR=.dai/us\n" + flujo;
 }
 
 // ── Helpers aditivos para `dai init` — no destruir la config de un repo vivo ──
