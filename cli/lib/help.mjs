@@ -227,6 +227,28 @@ Ejemplo:
   dai pr --base develop --description-file notas.md
 `,
 
+  release: `dai release — el ciclo de versión: qué entra, cortarla, cerrarla, contarla
+
+Uso:
+  dai release plan [--from <ref>] [--to <rama>] [--json] [--no-network]
+
+Qué hace:
+  \`plan\` arma el MANIFIESTO de la próxima versión: qué hay entre el último tag y la rama de
+  integración, qué User Stories entran y en qué estado, qué branches entraron sin US, y qué
+  bump PROPONE — propone, no decide: dai lee los tipos de commit y la regla del repo mira el
+  comportamiento. Un cambio que mueve un default es minor aunque todo sea \`fix:\`.
+
+Opciones:
+  --from <ref>    desde dónde contar (default: el último tag, ordenado por semver)
+  --to <rama>     hasta dónde (default: DAI_BRANCH_DEV, o la branch actual)
+  --json          el manifiesto estructurado, para scripts y para la skill
+  --no-network    no consulta el tracker: sale igual, avisando que no pudo verificar
+
+Ejemplo:
+  dai release plan
+  dai release plan --from v0.14.0 --json
+`,
+
   done: `dai done — cierra la US: vuelve a la base, actualiza y borra la branch local
 
 Uso:
@@ -411,6 +433,8 @@ export function globalUsage() {
     "  stamp [<ID>…] [--all]        estampa la cobertura en el tracker (ADR-0005)\n" +
     "                               sin ID: la US de esta branch; si hay varias, pregunta\n" +
     "  done [--base b] [--force]    cierra la US: vuelve a la base, actualiza y borra la branch local\n" +
+    "  release plan [--from r] [--to b] [--json]   el manifiesto de la próxima versión: qué US entran,\n" +
+    "                               qué entró sin US, y qué bump propone (propone: firmás vos)\n" +
     "  archive [<change>] [--skip-specs]   funde los delta specs del change en las specs canónicas y lo archiva (lo corre el aprobador en la PR)\n" +
     "  pr (alias mr) [--assignee u] [--base b] [--draft] [--yes]   crea o ACTUALIZA TU PR/MR precargada (muestra + confirma)\n" +
     "      [--us <ID>] [--title t]  la US la resuelve la branch; si hay varias, pregunta (sin TTY, falla)\n" +

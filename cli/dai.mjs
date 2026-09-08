@@ -30,6 +30,8 @@ import { parseFindings, diffPositions, validateFindings, filterFindings, renderF
 import { composePrBody, prTitle, forgeTool, bodyGaps } from "./lib/pr.mjs";
 import { resolveBase, isProdBranch, branchFlow, baseHint, parseOriginHead } from "./lib/branch-flow.mjs";
 import { listPrCmd, parsePrList, updatePrCmd, isAlreadyExistsError, describeUpdate } from "./lib/pr-remote.mjs";
+import { parseCommitLog, proposeBump, nextVersion, buildManifest, renderManifest, BUMP_CAVEAT } from "./lib/release-plan.mjs";
+import { parseImplements } from "./lib/implements.mjs";
 import { absolutizeSiteLinks } from "./lib/docs-links.mjs";
 import { diagnoseGitSsh, pushFailureHint, WINDOWS_OPENSSH } from "./lib/git-ssh.mjs";
 import { dirsEqual } from "./lib/fsutil.mjs";
@@ -1240,6 +1242,100 @@ async function cmdPr(opts) {
   }
 }
 
+// ── release plan: el manifiesto de la versión ─────────────────────────────────
+//
+// Contesta la pregunta que a un equipo sin versiones no le contesta nadie: qué User
+// Stories tiene esta release. El tag, el CHANGELOG, el comentario en cada ticket y el
+// aviso al canal son formas distintas de publicar ESTE dato, así que primero el dato.
+
+// El último tag alcanzable, ordenado por semver (no por fecha: un hotfix tagueado tarde
+// no es "el último release"). null si el repo todavía no tiene ninguno.
+function lastTag() {
+  try {
+    const out = git(["tag", "--sort=-v:refname", "--merged", "HEAD"]);
+    return out.split("\n").map((t) => t.trim()).filter(Boolean)[0] || null;
+  } catch { return null; }
+}
+
+// Las US que entraron en el rango, leyendo los implements.yaml TAL COMO ESTABAN en cada
+// commit que los tocó. El link viaja con el código, así que esto no depende de que la
+// branch siga existiendo ni de que el change no se haya archivado — que es exactamente
+// lo que pasa cuando llegás a cortar la release, días después del merge.
+function linkedInRange(range) {
+  const rows = [];
+  let raw;
+  try {
+    raw = git(["log", "--format=\x1e%H", "--name-only", "--diff-filter=AMR", range, "--", "*implements.yaml"]);
+  } catch { return rows; }
+  let order = 0;
+  for (const bloque of raw.split("\x1e")) {
+    const lineas = bloque.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (lineas.length === 0) continue;
+    const sha = lineas[0];
+    for (const path of lineas.slice(1)) {
+      if (!path.endsWith("implements.yaml")) continue;
+      let texto;
+      try { texto = git(["show", `${sha}:${path}`]); } catch { continue; }   // borrado después
+      let parsed;
+      try { parsed = parseImplements(texto); } catch { continue; }
+      for (const im of parsed.implements || []) {
+        if (isPlaceholderId(im.id)) continue;
+        rows.push({ ...im, change: parsed.change, repo: parsed.repo, path, sha, order: order++ });
+      }
+    }
+  }
+  return rows;
+}
+
+async function cmdReleasePlan(opts = {}) {
+  loadDaiEnv();
+  if (!gitBranch()) fail("esto no parece un repo git.", 1);
+
+  const from = textOpt(opts, "from") || lastTag();
+  const to = textOpt(opts, "to") || branchFlow(process.env).dev || gitBranch();
+  const toRev = resolveRev(to) || resolveRev(`origin/${to}`);
+  if (!toRev) fail(`no encuentro '${to}' (ni local ni en origin/${to}).\n  Traelo primero:  git fetch origin ${to}`, 1);
+  const range = from ? `${from}..${toRev}` : toRev;
+
+  let commits = [];
+  try { commits = parseCommitLog(git(["log", "--format=%H\x1f%s", range])); }
+  catch (e) { fail(`no pude leer el historial de '${range}': ${String(e.message).split("\n")[0]}`, 1); }
+
+  const linked = linkedInRange(range);
+
+  // Estado vivo de cada US. Sin red (o con --no-network) el manifiesto sale igual: dice
+  // qué entra y avisa que no pudo verificarlo, en vez de no salir.
+  const live = {};
+  let unreachable = false;
+  if (!opts.noNetwork && linked.length) {
+    try {
+      const adapter = getAdapter(process.env);
+      for (const id of new Set(linked.map((r) => r.id))) {
+        const { us, unreachable: nore } = await fetchLiveUS(adapter, id);
+        if (nore) { unreachable = true; break; }
+        if (us) live[id] = us;
+      }
+    } catch (e) { unreachable = true; warn(`no puedo verificar contra el tracker: ${String(e.message).split("\n")[0]}`); }
+  }
+
+  const m = buildManifest({ commits, linked, live, unreachable: unreachable || opts.noNetwork });
+  const current = readFileSync(join(process.cwd(), "VERSION"), "utf8").trim().split("\n")[0];
+  const { bump, reason } = proposeBump(commits);
+  const proposed = nextVersion(current, bump);
+
+  if (opts.json) {
+    process.stdout.write(JSON.stringify({
+      from, to, range, current, proposed, bump, reason, caveat: BUMP_CAVEAT, ...m,
+    }, null, 2) + "\n");
+    return;
+  }
+
+  process.stdout.write("\n" + renderManifest(m, { from, to, current, proposed, bump, reason }) + "\n");
+  process.stdout.write(`  ${C.dim(BUMP_CAVEAT.split("\n").join("\n  "))}\n\n`);
+  if (m.counts.commits === 0) { info("no hay nada nuevo para promover: no hace falta cortar una versión."); return; }
+  info(`Cuando lo confirmes:  dai release cut ${proposed}`);
+}
+
 // ── install: skills → ~/.claude/skills o <repo>/.claude/skills ────────────────
 async function cmdInstall(opts) {
   if (opts.from !== undefined) return cmdInstallFrom(opts);   // skills externas (ADR-0013)
@@ -2051,6 +2147,10 @@ switch (cmd) {
   case "pr":
   case "mr":      cmdPr(opts).catch((e) => failSoft(String(e.message))); break;   // `mr` = alias para GitLab (merge request)
   case "done":    cmdDone(opts); break;
+  case "release":
+    if (pos[0] === "plan") cmdReleasePlan(opts).catch((e) => failSoft(String(e.message)));
+    else fail(`subcomando de release desconocido: '${pos[0] ?? "(ninguno)"}' (por ahora: plan)`, 2);
+    break;
   case "archive": cmdArchive(pos[0], opts); break;
   case "install": cmdInstall(opts).catch((e) => failSoft(String(e.message))); break;   // alias de `dai skills install`
   case "skills":
