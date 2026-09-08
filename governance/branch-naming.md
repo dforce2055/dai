@@ -20,7 +20,21 @@ Ejemplo: `feature/ABC-482-finalizar-compra-sin-duplicado`
 - El **ID nunca se tipea a mano**: sale del argumento de `/link-us ABC-###`. Elimina
   el error de tipeo que rompe el link ([Art. 8](../docs/MANIFIESTO.md#art-8), Art. 9).
 - El **slug** deriva del título de la US: minúsculas, sin acentos ni ñ, espacios → `-`.
-- La **base** de la rama sigue la convención del repo (`main` o `develop`).
+- La **base** de una PR no se recuerda ni se configura una por una: sale del **tipo de
+  rama**, leyendo las dos ramas de vida larga que el repo declara en su `.env.dai`.
+
+  | Tipo de rama | PR contra | Variable |
+  |---|---|---|
+  | `feature/`, `fix/`, el resto | la rama que integra | `DAI_BRANCH_DEV` |
+  | `release/`, `hotfix/` | la rama que despliega a producción | `DAI_BRANCH_PROD` |
+
+  `dai pr` y `dai done` usan ese mapa; `--base` siempre gana. Si `DAI_BRANCH_DEV` no está
+  declarada, dai usa la rama default del remoto y **avisa que la está adivinando**.
+- Apuntarle a `DAI_BRANCH_PROD` pide una **confirmación explícita**: hay que escribir el
+  nombre de la rama, y con `--yes` hace falta `--to-prod`. En repos con ramas de ambiente
+  (`testing` integra, `main` va a producción) esto es lo que evita que una PR quede
+  proponiendo un despliegue que nadie pidió. Sin la variable declarada, dai no marca
+  ninguna rama como producción: no adivina cuál es.
 - Una rama, una US. Si una US toca varios repos, es una rama por repo, **todas con el
   mismo `ABC-###`** — así el índice las agrupa en una fila (federación).
 

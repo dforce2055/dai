@@ -194,7 +194,16 @@ export function prScope({ branch, rows, allRows = rows, ids = [] }) {
   if (req.kind === "exempt") {
     return { mode: "exempt", target: null, candidates: rows, reason: `${req.reason} y su nombre no nombra ninguna US` };
   }
-  if (rows.length === 0) return { mode: "none", target: null, candidates: [], reason: "no hay implements.yaml vivo en el repo" };
+  // El repo no tiene NINGUNA US viva. Exigirle un link a una branch que el propio
+  // branch-naming declara exenta es pedir algo que no existe: `fix/lo-que-sea` (sin ID en
+  // el nombre) terminaba con "corré dai link-us primero" y el consejo de renombrarla a
+  // `chore/`, que para un fix es directamente el consejo equivocado. Le pasa a cualquier
+  // repo de tooling — al de dai, sin ir más lejos, que no se trackea a sí mismo con US.
+  if (rows.length === 0) {
+    return req.required
+      ? { mode: "none", target: null, candidates: [], reason: "no hay implements.yaml vivo en el repo" }
+      : { mode: "exempt", target: null, candidates: [], reason: `${req.reason}, y el repo no declara ninguna US` };
+  }
   if (rows.length === 1) return { mode: "only", target: rows[0], candidates: rows, reason: "es la única US viva del repo" };
   return { mode: "ambiguous", target: null, candidates: rows, reason: `hay ${rows.length} US vivas y la branch '${branch}' no dice cuál` };
 }

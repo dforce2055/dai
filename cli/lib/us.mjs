@@ -3,12 +3,15 @@
 
 import { acHash } from "./ac-hash.mjs";
 import { extractTitle } from "./link-us.mjs";
+import { parseSpecVersion } from "./us-format.mjs";
 
 // Parseo puro de una US (markdown o texto) → identidad + hash vivo.
 export function parseUS(raw) {
   const title = extractTitle(raw);
-  const m = raw.match(/spec[_ ]version[^\n]*?\b(v\d+)\b/i);
-  return { title, spec_version: m ? m[1] : null, ac_hash: acHash(raw) };
+  // El regex vive en us-format.mjs: es UNO solo para leer, escribir y bumpear la versión.
+  // Duplicado acá, la variante `specversion` (sin separador) se arreglaba en un lado y
+  // seguía rota en el otro — que es exactamente como nació el issue #46.
+  return { title, spec_version: parseSpecVersion(raw), ac_hash: acHash(raw) };
 }
 
 // Compara el hash estampado (implements.yaml) con el hash vivo de la US.

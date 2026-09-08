@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   branchType, branchIdCandidates, requiresLink,
-  flattenImplements, matchBranchToImplements, stampScope,
+  flattenImplements, matchBranchToImplements, stampScope, prScope,
 } from "../lib/branch-scope.mjs";
 
 // ── branchType ───────────────────────────────────────────────────────────────
@@ -259,4 +259,19 @@ test("prScope: cada modo explica de dónde salió la US (para el preview)", asyn
     prScope({ branch: "feature/x", rows: [R("ABC-1")] }),
     prScope({ branch: "chore/deps", rows: [R("ABC-1")] }),
   ]) assert.match(s.reason, /\S/);
+});
+
+// Un repo de tooling (el de dai, sin ir más lejos) no se trackea a sí mismo con US. Ahí
+// `dai pr` desde una `fix/` sin ID moría pidiendo un link que no puede existir — y encima
+// aconsejaba renombrar la branch a `chore/`, que para un fix es el consejo equivocado.
+test("prScope: sin US en el repo, una branch que no exige link sale SIN US, no falla", () => {
+  const s = prScope({ branch: "fix/pr-base-y-ayuda", rows: [], allRows: [] });
+  assert.equal(s.mode, "exempt");
+  assert.equal(s.target, null);
+  assert.match(s.reason, /no exige US/);
+});
+
+test("prScope: sin US en el repo, una feature/ SÍ sigue fallando (ahí el link falta de verdad)", () => {
+  const s = prScope({ branch: "feature/ABC-482-checkout", rows: [], allRows: [] });
+  assert.equal(s.mode, "none");
 });

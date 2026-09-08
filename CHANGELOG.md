@@ -3,6 +3,67 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
+## [0.14.0] — 2026-09-08
+
+**`dai pr` proponía mergear a `main` en un repo donde `main` despliega a producción, y el
+preview no lo destacaba de ninguna forma. Tirando de ese hilo apareció que el problema no
+era el default: era pedirle a alguien que configure "la base", cuando la base no es una
+constante — es consecuencia del tipo de branch. Y de yapa, el hallazgo más caro de la
+versión: `dai <comando> --help` no imprimía ayuda, ejecutaba el comando.**
+
+### Cambiado
+- **La base de una PR sale del mapa de ramas del repo, no de un `main` fijo.** Se declaran
+  las **dos ramas de vida larga** en el `.env.dai` —`DAI_BRANCH_DEV` (la que integra) y
+  `DAI_BRANCH_PROD` (la que despliega a producción)— y `dai pr` deriva la base del **tipo de
+  branch**: `feature/` y `fix/` integran, `release/` y `hotfix/` van contra producción.
+  `--base` gana siempre. Sin nada declarado, dai cae a la rama default del remoto
+  (`origin/HEAD`) **y avisa que la está adivinando** — antes decía `main` sin más.
+  `dai done` usa el mismo mapa (tenía el mismo `main` hardcodeado) y `dai doctor` lo reporta.
+  El preview ahora dice **de dónde salió** la base, que era la mitad que faltaba
+  ([#46](https://github.com/dforce2055/dai/issues/46)).
+- **Apuntarle a producción pide confirmación explícita.** Si la base es `DAI_BRANCH_PROD`,
+  el preview la marca `⚠️ DESPLIEGA A PRODUCCIÓN` y hay que **escribir el nombre de la rama**
+  para seguir; con `--yes` hace falta `--to-prod`. Sin la variable declarada dai no marca
+  ninguna rama como producción: no adivina cuál es, y un gate inventado sobre una suposición
+  es peor que no tenerlo.
+- **`dai <comando> --help` imprime ayuda en vez de ejecutar el comando.** Vale para todos:
+  `dai help`, `dai --help`, `dai -h`, `dai help <cmd>`, `dai <cmd> --help`, `dai <cmd> -h` y
+  `dai <cmd> help`. Siempre por `stdout` y siempre con código 0; un comando desconocido sigue
+  saliendo por `stderr` con código ≠ 0, que es lo que deja `dai foo --help` usable dentro de
+  un script. Cada comando tiene ayuda propia (qué hace, uso, opciones, ejemplo).
+
+### Corregido
+- **`dai pr` dejaba una MR con el diff al día y la descripción vieja.** Con una MR ya abierta
+  pusheaba la branch, fallaba al crear porque la MR existía, y la única señal era el comando
+  crudo del forge. Quedaba una MR que **miente sobre lo que contiene**, que es peor que un
+  error porque parece que salió bien. Ahora la detecta **antes** de pushear
+  (`gh pr list --head` / `glab mr list --source-branch`), el preview dice
+  `── Pull Request a ACTUALIZAR (#12) ──` y actualiza título y descripción. Si la detección no
+  pudo correr y el forge responde *"already exists"*, la busca y la actualiza igual; si tampoco
+  puede, lo dice con todas las letras: *"NO toqué su descripción: quedó la vieja"*. También
+  avisa si la MR abierta apunta a otra base que la pedida ([#46](https://github.com/dforce2055/dai/issues/46)).
+- **`dai link-us` estampaba `version: v1` en una US que declaraba `v4`.** El regex del
+  `spec_version` exigía separador y la US lo escribía pegado (`specversion`) — y estaba
+  **duplicado en dos módulos**, que es exactamente por qué se podía arreglar en uno y seguir
+  roto en el otro. Ahora vive en un solo lugar y tolera `spec_version`, `spec version`,
+  `spec-version` y `specversion`. Sin `spec_version` declarado **no se inventa un `v1`**: queda
+  `pendiente` con aviso, porque ese número se publica en el cuerpo de la PR y se estampa en el
+  tracker como si fuera un dato. `dai check` además avisa cuando el número del link no coincide
+  con el de la US viva ([#46](https://github.com/dforce2055/dai/issues/46)).
+- **`dai pr` no podía abrir la PR de un repo sin US.** En un repo que no se trackea a sí mismo
+  con User Stories —el de dai, sin ir más lejos— una branch `fix/` sin ID moría pidiendo un
+  link que no puede existir, y aconsejaba renombrarla a `chore/`, que para un fix es el consejo
+  equivocado. Ahora, si la branch no exige link **y** el repo no declara ninguna US, la PR sale
+  "Sin US" con el motivo. Una `feature/` sin link sigue fallando: ahí falta de verdad.
+- **`.env.dai` no estaba en el `.gitignore` de este repo**, aunque `dai init` lo agrega en todos
+  los que scaffoldea. Faltaba justo en el que se publica en npm.
+
+### Interno
+- **408 tests** (+41): el mapa de ramas y la derivación por tipo de branch, la detección y
+  actualización de una PR existente en los dos forges, las variantes del `spec_version`, y la
+  convención de ayuda — con un test que recorre los `case` del dispatcher y **falla si alguno se
+  agrega sin ayuda**, para que la convención no dependa de acordarse.
+
 ## [0.13.3] — 2026-09-02
 
 **Una PR de dai se abría diciendo, en el mismo párrafo, dos cosas que no encajaban: que el
@@ -857,6 +918,7 @@ ClickUp y Jira Cloud.
 - Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
   `files` de npm sin tests ni secretos.
 
+[0.14.0]: https://github.com/dforce2055/dai/releases/tag/v0.14.0
 [0.13.3]: https://github.com/dforce2055/dai/releases/tag/v0.13.3
 [0.13.2]: https://github.com/dforce2055/dai/releases/tag/v0.13.2
 [0.13.1]: https://github.com/dforce2055/dai/releases/tag/v0.13.1
