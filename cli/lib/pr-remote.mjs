@@ -53,6 +53,20 @@ export function updatePrCmd(tool, { number, title, body, bodyFile }) {
   return ["mr", "update", String(number), "--title", title, "--description", body, "--yes"];
 }
 
+// Plan B para actualizar, cuando el comando de alto nivel falla por algo que no tiene que
+// ver con la edición. Pasa de verdad: `gh pr edit` consulta GraphQL y arrastra campos
+// deprecados del servidor —hoy, `projectCards` de Projects (classic)— así que devuelve un
+// error sobre proyectos cuando lo único que querías era cambiar el body. La API REST no
+// pasa por ahí, y `gh api` usa la misma autenticación: no hace falta un token nuevo.
+//
+// Devuelve null si no sabemos hacer el plan B para esa herramienta (glab actualiza por REST
+// de entrada, así que no lo necesita).
+export function updatePrApiCmd(tool, { number, title, bodyFile, projectPath }) {
+  if (tool !== "gh" || !projectPath) return null;
+  return ["api", "--method", "PATCH", `repos/${projectPath}/pulls/${number}`,
+          "-F", `body=@${bodyFile}`, "-f", `title=${title}`];
+}
+
 // ── "ya existe una PR para esta branch" ──────────────────────────────────────
 // El forge lo dice de formas distintas y en inglés. Se reconoce para poder pasar al camino
 // de actualizar en vez de morir con el comando crudo en pantalla.

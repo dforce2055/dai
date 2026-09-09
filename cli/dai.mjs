@@ -29,7 +29,7 @@ import { trackerUrl } from "./lib/tracker-url.mjs";
 import { parseFindings, diffPositions, validateFindings, filterFindings, renderFindingBody, renderReviewSummary } from "./lib/review-findings.mjs";
 import { composePrBody, prTitle, forgeTool, bodyGaps } from "./lib/pr.mjs";
 import { resolveBase, isProdBranch, branchFlow, baseHint, parseOriginHead } from "./lib/branch-flow.mjs";
-import { listPrCmd, parsePrList, updatePrCmd, isAlreadyExistsError, describeUpdate } from "./lib/pr-remote.mjs";
+import { listPrCmd, parsePrList, updatePrCmd, updatePrApiCmd, isAlreadyExistsError, describeUpdate } from "./lib/pr-remote.mjs";
 import { parseCommitLog, proposeBump, nextVersion, buildManifest, renderManifest, BUMP_CAVEAT } from "./lib/release-plan.mjs";
 import { bumpPackageJson, bumpVersionFile, changelogEntry, insertChangelogEntry, changelogSection, changelogGaps, releaseBranch, tagName, normalizeVersion } from "./lib/release-files.mjs";
 import { notifyConfig, describeTarget, renderNotice, sendNotice, formatFecha } from "./lib/notify.mjs";
@@ -1193,6 +1193,19 @@ async function cmdPr(opts) {
       return true;
     } catch (e) {
       const msg = String(e.stderr || e.message || "");
+      // Plan B por REST: el comando de alto nivel puede fallar por algo ajeno a la edición
+      // (gh consulta GraphQL y arrastra campos deprecados del servidor). Se intenta callado
+      // y solo se reporta si TAMBIÉN falla — avisar de un error que se resolvió solo es ruido.
+      const api = updatePrApiCmd(tool, { number, title, bodyFile, projectPath: parseRemote(remote)?.path });
+      if (api) {
+        try {
+          execFileSync(tool, api, { encoding: "utf8", cwd: process.cwd(), stdio: ["ignore", "pipe", "pipe"] });
+          ok(`PR/MR #${number} actualizada: título + descripción${existing?.url ? ` — ${existing.url}` : ""}.`);
+          info(`(\`${tool} pr edit\` falló por algo ajeno a la edición; se actualizó por la API REST)`);
+          try { rmSync(bodyFile); } catch { /* noop */ }
+          return true;
+        } catch (e2) { process.stdout.write(`  ${tool} api también falló: ${String(e2.stderr || e2.message).split("\n")[0]}\n`); }
+      }
       warn(`no pude actualizar la PR/MR #${number} con ${tool}. El body quedó en ${bodyFile}.`);
       if (msg.trim()) process.stdout.write(`  ${tool} dijo:\n  ${msg.trim().split("\n").join("\n  ")}\n`);
       process.stdout.write(shellHint(tool, ucmd));

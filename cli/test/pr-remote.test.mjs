@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { listPrCmd, parsePrList, updatePrCmd, isAlreadyExistsError, describeUpdate } from "../lib/pr-remote.mjs";
+import { listPrCmd, parsePrList, updatePrCmd, updatePrApiCmd, isAlreadyExistsError, describeUpdate } from "../lib/pr-remote.mjs";
 
 test("listPrCmd pregunta por las abiertas de ESA branch, en json", () => {
   const gh = listPrCmd("gh", "feature/ABC-1-x");
@@ -57,4 +57,17 @@ test("describeUpdate avisa cuando la PR abierta apunta a otra base", () => {
 test("describeUpdate no inventa un conflicto de base cuando coinciden", () => {
   const lines = describeUpdate({ number: 3, url: "u", base: "develop" }, { base: "develop", tool: "gh" }).join("\n");
   assert.doesNotMatch(lines, /apunta a/);
+});
+
+// `gh pr edit` consulta GraphQL y arrastra campos deprecados del servidor (hoy los
+// projectCards de Projects classic): devuelve un error sobre proyectos cuando lo único que
+// querías era cambiar el body. REST no pasa por ahí, y `gh api` usa la misma auth.
+test("updatePrApiCmd arma el PATCH REST para gh, leyendo el body del archivo", () => {
+  const c = updatePrApiCmd("gh", { number: 49, title: "T", bodyFile: "/tmp/b.md", projectPath: "acme/repo" });
+  assert.deepEqual(c, ["api", "--method", "PATCH", "repos/acme/repo/pulls/49", "-F", "body=@/tmp/b.md", "-f", "title=T"]);
+});
+
+test("updatePrApiCmd no inventa un plan B donde no hace falta ni se puede", () => {
+  assert.equal(updatePrApiCmd("glab", { number: 1, title: "T", bodyFile: "/tmp/b", projectPath: "acme/repo" }), null);
+  assert.equal(updatePrApiCmd("gh", { number: 1, title: "T", bodyFile: "/tmp/b" }), null);   // sin projectPath
 });
