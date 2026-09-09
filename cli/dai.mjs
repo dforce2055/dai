@@ -1330,7 +1330,11 @@ async function releaseManifest(opts = {}, { from, to } = {}) {
       }
     } catch (e) { unreachable = true; warn(`no puedo verificar contra el tracker: ${String(e.message).split("\n")[0]}`); }
   }
-  const m = buildManifest({ commits, linked, live, unreachable: unreachable || Boolean(opts.noNetwork) });
+  // ¿Este repo trabaja con User Stories? Si nunca declaró ninguna (archivadas incluidas),
+  // marcar cada branch como "entró sin link" es ruido: en un repo de tooling ninguna va a
+  // declararla nunca. Se mira el repo entero, no el rango.
+  const repoUsesStories = flattenImplements(discoverImplements(process.cwd())).length > 0;
+  const m = buildManifest({ commits, linked, live, unreachable: unreachable || Boolean(opts.noNetwork), repoUsesStories });
   return { manifest: m, commits, from: desde, to: hasta, range };
 }
 

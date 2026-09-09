@@ -146,3 +146,24 @@ test("sin US en el rango lo dice, en vez de mostrar una tabla vacía", () => {
   const m = buildManifest({ commits: [], linked: [], live: {} });
   assert.match(renderManifest(m, { to: "develop", current: "1.0.0", proposed: "1.0.1", bump: "patch" }), /Ninguna US declarada/);
 });
+
+// En un repo de tooling —el de dai, sin ir más lejos— NINGUNA branch declara una US, así
+// que marcarlas todas como "entró trabajo sin link" convierte el aviso en ruido.
+test("sin US en el repo, una branch sin link no es un hallazgo", () => {
+  const commits = parseCommitLog(c("a", "Merge pull request #49 from acme/feature/release-flow"));
+  const m = buildManifest({ commits, linked: [], live: {}, repoUsesStories: false });
+  assert.deepEqual(m.orphans, []);
+  assert.deepEqual(m.chores, ["feature/release-flow"]);
+});
+
+test("aunque el repo no use US, una branch que NOMBRA un ticket sí es un hallazgo", () => {
+  const commits = parseCommitLog(c("a", "Merge pull request #1 from acme/feature/ACME-482-checkout"));
+  const m = buildManifest({ commits, linked: [], live: {}, repoUsesStories: false });
+  assert.deepEqual(m.orphans, ["feature/ACME-482-checkout"]);
+});
+
+test("en un repo que sí usa US, una branch sin link sigue siendo un hallazgo", () => {
+  const commits = parseCommitLog(c("a", "Merge pull request #3 from acme/arreglo-rapido"));
+  const m = buildManifest({ commits, linked: LINKED, live: LIVE, repoUsesStories: true });
+  assert.deepEqual(m.orphans, ["arreglo-rapido"]);
+});

@@ -9,7 +9,7 @@
 // (correr git, consultar el tracker) viven en dai.mjs.
 
 import { parseVersion } from "./semver.mjs";
-import { branchType } from "./branch-scope.mjs";
+import { branchType, trackerKeysIn } from "./branch-scope.mjs";
 
 // ── Commits ──────────────────────────────────────────────────────────────────
 // Formato pedido a git: `%H%x1f%s` por línea (sha, US, subject) — el separador es \x1f
@@ -105,7 +105,7 @@ export function nextVersion(current, bump) {
 // leyendo el árbol de cada commit: el link viaja CON el código, así que no depende de que
 // la branch siga existiendo ni de que el change no se haya archivado).
 // `live` es lo que contestó el tracker por id: { [id]: { title, ac_hash, spec_version } }.
-export function buildManifest({ commits = [], linked = [], live = {}, unreachable = false } = {}) {
+export function buildManifest({ commits = [], linked = [], live = {}, unreachable = false, repoUsesStories = true } = {}) {
   // Una US puede aparecer en varios commits (se creó el link, después se resincronizó) y
   // en dos paths (el change y su copia archivada). El manifiesto la nombra UNA vez.
   const porId = new Map();
@@ -140,7 +140,14 @@ export function buildManifest({ commits = [], linked = [], live = {}, unreachabl
   const chores = [], orphans = [];
   for (const b of branches) {
     if (nombraAlguna(b, ids)) continue;                 // ya está contada como US
-    (EXENTAS.has(branchType(b)) ? chores : orphans).push(b);
+    if (EXENTAS.has(branchType(b))) { chores.push(b); continue; }
+    // "Entró trabajo sin link" solo es un hallazgo si el repo trabaja con User Stories. En
+    // un repo de tooling —el de dai, sin ir más lejos— NINGUNA branch va a declarar una, y
+    // marcarlas todas convierte el aviso en ruido que se aprende a ignorar. La excepción es
+    // una branch que NOMBRA un ticket: ahí alguien quiso linkear una US y no lo hizo, y eso
+    // vale como hallazgo aunque el repo no declare ninguna.
+    if (repoUsesStories || trackerKeysIn(b).length > 0) orphans.push(b);
+    else chores.push(b);
   }
 
   return {
@@ -199,7 +206,7 @@ export function renderManifest(m, ctx = {}) {
   }
   if (m.chores.length) {
     L.push(``);
-    L.push(`  Sin US, por tipo de branch (${m.chores.length}): ${m.chores.slice(0, 6).join(", ")}${m.chores.length > 6 ? "…" : ""}`);
+    L.push(`  Sin US (${m.chores.length}): ${m.chores.slice(0, 6).join(", ")}${m.chores.length > 6 ? "…" : ""}`);
   }
   if (m.orphans.length) {
     L.push(``);
