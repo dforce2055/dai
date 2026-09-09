@@ -3,14 +3,19 @@
 // Tercer adaptador del CLI, con la misma anatomía que los dos que ya existen: una variable
 // que elige el backend (DAI_NOTIFY, como DAI_PM) y las variables propias de ese backend.
 //
-// El mensaje es UNO SOLO para todos los canales, corto y en texto plano — y esa decisión
-// es la que hace que esto sea una tabla y no un módulo de render:
+// El mensaje es UNO SOLO para todos los canales: con ESTRUCTURA (qué salió, quién, cuándo,
+// qué trae, dónde mirar) pero SIN FORMATO. Esa distinción es la que hace que esto sea una
+// tabla y no un módulo de render:
 //
-//   · sin markdown no hay que pelear con las tres sintaxis incompatibles (Discord usa
-//     markdown, Slack usa mrkdwn con UN asterisco y links <url|texto>, Telegram exige
-//     escapar media docena de caracteres en MarkdownV2 o devuelve 400),
-//   · con dos líneas ningún canal se acerca a su límite, así que no hay nada que recortar,
+//   · la estructura son saltos de línea y viñetas, y se ve igual en los cinco canales,
+//   · el formato son cuatro dialectos incompatibles (Discord **negrita** sin links con
+//     nombre, Slack *negrita* con <url|texto>, Webex markdown completo, Telegram con su
+//     parse_mode y el escapeo de MarkdownV2 que devuelve 400 por un punto suelto),
+//   · una URL pelada se vuelve clickeable sola en los cuatro,
 //   · y lo único que queda distinto entre proveedores es EN QUÉ CAMPO del JSON va el string.
+//
+// Las viñetas se cortan en MAX_BULLETS, así que el mensaje no se acerca al límite de
+// ningún canal (el más chico es Discord, 2000) y no hay nada que recortar a mano.
 //
 // El detalle del release vive en el ticket (dai release stamp) y en el release note. El
 // canal avisa y linkea: un chat no es un registro, a los dos días nadie lo encuentra.
@@ -88,28 +93,70 @@ function eventFields(ev = {}) {
     version: ev.version ?? null,
     environment: ev.environment ?? null,
     url: ev.url ?? null,
-    stories: Array.isArray(ev.stories) ? ev.stories : [],
+    stories: (Array.isArray(ev.stories) ? ev.stories : []).map((s) => (typeof s === "string" ? { id: s, title: null } : { id: s.id, title: s.title ?? null })),
   };
 }
 
-// El texto, uno solo para todos los canales. Dos líneas, sin markdown.
-//   🚀 backend v1.2.0 → PRODUCCIÓN · 9 US
-//   https://…/releases/v1.2.0
+// El texto, uno solo para todos los canales. Con ESTRUCTURA (qué salió, quién, cuándo,
+// qué trae, dónde mirar) pero SIN FORMATO: ni negritas ni links con nombre.
 //
-// El ambiente se muestra tal como lo escribió quien lo pasó (en mayúsculas): dai no tiene
-// un catálogo de ambientes ni tiene por qué traducir el tuyo.
+// La diferencia no es estética, es de costo. La estructura son saltos de línea y viñetas,
+// que se ven igual en los cinco canales. El formato son cuatro dialectos incompatibles:
+// Discord usa **negrita** y no soporta links con nombre; Slack usa *negrita* de un
+// asterisco y <url|texto>; Webex quiere markdown completo; Telegram exige parse_mode y
+// escapar media docena de caracteres o devuelve 400. Una URL pelada, en cambio, se vuelve
+// clickeable sola en los cuatro.
+//
+//   🎉 Nuevo release · backend v1.2.0
+//   Autor: Ada Lovelace · Fecha: 09/09/2026 08:12 · Ambiente: PRODUCCIÓN
+//
+//   Cambios principales:
+//    • ACME-482  Checkout sin duplicado
+//    • ACME-491  Alta de póliza sin duplicar cliente
+//
+//   Ver release: https://…/releases/v1.2.0
+//
+// Las viñetas salen de las US del manifiesto, no de los subjects de los commits: lo que
+// el equipo quiere leer es qué valor salió, no qué archivos se tocaron. Es la misma
+// diferencia entre el QUÉ y el CÓMO que sostiene todo el método.
+const MAX_BULLETS = 8;
+
+const dosDigitos = (n) => String(n).padStart(2, "0");
+export function formatFecha(d = new Date()) {
+  return `${dosDigitos(d.getDate())}/${dosDigitos(d.getMonth() + 1)}/${d.getFullYear()} ` +
+         `${dosDigitos(d.getHours())}:${dosDigitos(d.getMinutes())}`;
+}
+
 export function renderNotice(ev = {}) {
   if (ev.event === "test") {
-    return `✅ prueba de canal · dai\nSi ves esto, el canal está bien configurado.`;
+    return "✅ Prueba de canal · dai\nSi ves esto, el canal está bien configurado.";
   }
   const app = ev.app ? `${ev.app} ` : "";
   const version = ev.version ? `v${String(ev.version).replace(/^v/, "")}` : "(sin versión)";
-  const n = Array.isArray(ev.stories) ? ev.stories.length : 0;
-  const us = n > 0 ? ` · ${n} US` : "";
-  const cabeza = ev.environment
-    ? `🚀 ${app}${version} → ${String(ev.environment).toUpperCase()}${us}`
-    : `📦 ${app}${version} publicada${us}`;
-  return ev.url ? `${cabeza}\n${ev.url}` : cabeza;
+  const L = [];
+  L.push(ev.environment
+    ? `🚀 Release desplegada · ${app}${version} → ${String(ev.environment).toUpperCase()}`
+    : `🎉 Nuevo release · ${app}${version}`);
+
+  // Segunda línea: quién y cuándo. Sale de git y del reloj — nada que configurar.
+  const meta = [];
+  if (ev.author) meta.push(`Autor: ${ev.author}`);
+  meta.push(`Fecha: ${ev.date || formatFecha()}`);
+  L.push(meta.join(" · "));
+
+  const stories = Array.isArray(ev.stories) ? ev.stories : [];
+  if (stories.length) {
+    L.push("");
+    L.push("Cambios principales:");
+    for (const s of stories.slice(0, MAX_BULLETS)) {
+      const id = typeof s === "string" ? s : s.id;
+      const title = typeof s === "string" ? null : s.title;
+      L.push(` • ${id}${title ? `  ${title}` : ""}`);
+    }
+    if (stories.length > MAX_BULLETS) L.push(` • …y ${stories.length - MAX_BULLETS} más`);
+  }
+  if (ev.url) { L.push(""); L.push(`Ver release: ${ev.url}`); }
+  return L.join("\n");
 }
 
 // El cuerpo que se le manda al canal.

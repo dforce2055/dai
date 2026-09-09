@@ -230,23 +230,45 @@ Ejemplo:
   release: `dai release — el ciclo de versión: qué entra, cortarla, cerrarla, contarla
 
 Uso:
-  dai release plan [--from <ref>] [--to <rama>] [--json] [--no-network]
+  dai release plan   [--from <ref>] [--to <rama>] [--json] [--no-network]
+  dai release cut    <X.Y.Z> [--no-branch] [--yes] [--dry-run]
+  dai release finish <X.Y.Z> [--app <n>] [--no-release] [--no-notify] [--yes] [--dry-run]
 
-Qué hace:
-  \`plan\` arma el MANIFIESTO de la próxima versión: qué hay entre el último tag y la rama de
-  integración, qué User Stories entran y en qué estado, qué branches entraron sin US, y qué
-  bump PROPONE — propone, no decide: dai lee los tipos de commit y la regla del repo mira el
-  comportamiento. Un cambio que mueve un default es minor aunque todo sea \`fix:\`.
+El ciclo, con la firma humana en el medio:
 
-Opciones:
-  --from <ref>    desde dónde contar (default: el último tag, ordenado por semver)
-  --to <rama>     hasta dónde (default: DAI_BRANCH_DEV, o la branch actual)
-  --json          el manifiesto estructurado, para scripts y para la skill
-  --no-network    no consulta el tracker: sale igual, avisando que no pudo verificar
+  plan  ──▶  cut  ──▶  dai pr  ──▶  [ merge + publicar: lo firma una persona ]
+                                                │
+                                                ▼
+                                            finish  ──▶  stamp (opcional)
+
+plan — el MANIFIESTO: qué hay entre el último tag y la rama de integración, qué User
+  Stories entran y en qué estado, qué branches entraron sin US, y qué bump PROPONE.
+  Propone, no decide: dai lee los tipos de commit y la regla del repo mira el
+  comportamiento. Algo que mueve un default es minor aunque todo sea \`fix:\`.
+
+cut — prepara la versión: crea \`release/X.Y.Z\`, sube el número en los archivos que este
+  repo espeja (VERSION, package.json — si no hay ninguno, la versión es el tag), escribe
+  la entrada del CHANGELOG con el material para repartir, y commitea. No habla hacia
+  afuera: ni push, ni tag, ni PR. La prosa del CHANGELOG la escribís vos: dai sabe qué
+  entró, no por qué importa.
+  --no-branch   taguea desde la rama de integración, sin branch de release
+
+finish — cierra la versión DESPUÉS del merge: tag anotado, release note en el forge,
+  back-merge a la rama de integración y aviso al canal. Es la mitad que se olvida cuando
+  la ceremonia se hace a mano. Cada paso reporta por separado: si falla la release note,
+  el tag YA existe y hay que saberlo.
+  --app <nombre>   con qué nombre aparece la app (default: el del repo)
+  --no-release     no publica la nota en el forge
+  --no-notify      no avisa al canal (DAI_NOTIFY)
+
+Config del repo (.env.dai):
+  DAI_BRANCH_DEV / DAI_BRANCH_PROD   las dos ramas de vida larga
+  DAI_NOTIFY=discord|slack|webex|telegram|webhook|none  ·  DAI_NOTIFY_WEBHOOK=<endpoint>
 
 Ejemplo:
   dai release plan
-  dai release plan --from v0.14.0 --json
+  dai release cut 1.2.0
+  dai release finish 1.2.0
 `,
 
   done: `dai done — cierra la US: vuelve a la base, actualiza y borra la branch local
@@ -435,6 +457,9 @@ export function globalUsage() {
     "  done [--base b] [--force]    cierra la US: vuelve a la base, actualiza y borra la branch local\n" +
     "  release plan [--from r] [--to b] [--json]   el manifiesto de la próxima versión: qué US entran,\n" +
     "                               qué entró sin US, y qué bump propone (propone: firmás vos)\n" +
+    "  release cut <X.Y.Z> [--no-branch]   prepara la versión: branch + bump + entrada del CHANGELOG + commit\n" +
+    "  release finish <X.Y.Z>       tras el merge: tag + release note + back-merge + aviso al canal\n" +
+    "      [--app n] [--no-release] [--no-notify]\n" +
     "  archive [<change>] [--skip-specs]   funde los delta specs del change en las specs canónicas y lo archiva (lo corre el aprobador en la PR)\n" +
     "  pr (alias mr) [--assignee u] [--base b] [--draft] [--yes]   crea o ACTUALIZA TU PR/MR precargada (muestra + confirma)\n" +
     "      [--us <ID>] [--title t]  la US la resuelve la branch; si hay varias, pregunta (sin TTY, falla)\n" +
