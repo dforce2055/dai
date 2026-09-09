@@ -70,7 +70,7 @@ producción, se etiquetan y se reintegran.
 `release/X.Y.Z` desde integración. Solo entran correcciones, y siempre **arregladas primero
 en integración y llevadas a la release** — nunca al revés, que es como se pierde el
 *back-merge*. Se etiqueta, se despliega, y **la rama se borra**: una rama de release que
-sobrevive a su release es un fork. (`dai release finish` la borra solo; `dai release status`
+sobrevive a su release es un fork. (`dai release done` la borra solo; `dai release status`
 avisa de las que quedaron de antes.)
 
 > **La pregunta que decide:** ¿cuántos días pasan entre "dejamos de agregar" y "está en

@@ -83,7 +83,7 @@ export function describeTarget(cfg) {
 
 // ── El mensaje ───────────────────────────────────────────────────────────────
 // Un evento de release: qué app, qué versión, a dónde fue, y qué US lleva adentro.
-//   event: "released"  → se publicó la versión (dai release finish)
+//   event: "released"  → se publicó la versión (dai release done)
 //   event: "deployed"  → esa versión llegó a un ambiente (dai release stamp --env X)
 //   event: "test"      → prueba de canal (dai release notify --test)
 function eventFields(ev = {}) {

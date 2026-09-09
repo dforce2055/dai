@@ -149,10 +149,10 @@ Apruebas y mergeas la PR, y ejecutas lo que tu repositorio use para publicar (`n
 un despliegue, lo que sea). **El ciclo no terminó acá**: faltan el tag, la nota de release y
 el *back-merge* — los tres pasos que más se olvidan cuando esto se hace de memoria.
 
-## Paso 6 · Cerrar — `dai release finish`
+## Paso 6 · Cerrar — `dai release done`
 
 ```bash
-dai release finish 0.5.0
+dai release done 0.5.0
 ```
 
 ```
@@ -211,7 +211,7 @@ ambiente sí es un evento nuevo y se estampa.
 
 ## Paso 8 · El aviso al equipo — opcional
 
-Si declaras un canal, `finish` y `stamp` avisan solos:
+Si declaras un canal, `done` y `stamp` avisan solos:
 
 ```bash
 # .env.dai
@@ -251,7 +251,7 @@ dai release cut 0.5.0                     # rama + número + CHANGELOG + commit
 # … escribes el CHANGELOG …
 dai pr                                    # PR a producción (te pide confirmación)
 # … mergeas y publicas: tu firma …
-dai release finish 0.5.0                  # tag + nota + back-merge + aviso
+dai release done 0.5.0                  # tag + nota + back-merge + aviso
 dai release stamp 0.5.0 --env prod        # opcional: avisar a cada US
 ```
 
@@ -259,8 +259,8 @@ dai release stamp 0.5.0 --env prod        # opcional: avisar a cada US
 
 | Síntoma | Qué hacer |
 |---|---|
-| `no existe el tag vX.Y.Z` al estampar | Cierra la versión primero (`dai release finish`), o trae los tags con `git fetch --tags`. |
-| `finish` creó el tag pero falló la nota | El tag ya está: la versión existe. Publica la nota a mano con el comando que dai te deja impreso. |
+| `no existe el tag vX.Y.Z` al estampar | Cierra la versión primero (`dai release done`), o trae los tags con `git fetch --tags`. |
+| `done` creó el tag pero falló la nota | El tag ya está: la versión existe. Publica la nota a mano con el comando que dai te deja impreso. |
 | El manifiesto no muestra ninguna US | ¿Las ramas tenían `implements.yaml`? Sin link no hay trazabilidad que reportar. |
 | El tracker no responde | `dai release plan --no-network` sale igual, avisando que no pudo verificar. |
 | Salieron comentarios repetidos | dai no pudo leer los comentarios previos y lo avisó. Revisa el token del tracker. |

@@ -232,7 +232,7 @@ Ejemplo:
 Uso:
   dai release plan   [--from <ref>] [--to <rama>] [--json] [--no-network]
   dai release cut    <X.Y.Z> [--no-branch] [--yes] [--dry-run]
-  dai release finish <X.Y.Z> [--app <n>] [--no-release] [--no-notify] [--yes] [--dry-run]
+  dai release done   <X.Y.Z> [--app <n>] [--no-release] [--no-notify] [--yes] [--dry-run]
   dai release stamp  <X.Y.Z> --env <ambiente> [--app <n>] [--url <u>] [--yes] [--dry-run]
   dai release status [--no-network]
   dai release notify --test
@@ -242,7 +242,7 @@ El ciclo, con la firma humana en el medio:
   plan  ──▶  cut  ──▶  dai pr  ──▶  [ merge + publicar: lo firma una persona ]
                                                 │
                                                 ▼
-                                            finish  ──▶  stamp (opcional)
+                                            done  ──▶  stamp (opcional)
 
 plan — el MANIFIESTO: qué hay entre el último tag y la rama de integración, qué User
   Stories entran y en qué estado, qué branches entraron sin US, y qué bump PROPONE.
@@ -256,7 +256,8 @@ cut — prepara la versión: crea \`release/X.Y.Z\`, sube el número en los arch
   entró, no por qué importa.
   --no-branch   taguea desde la rama de integración, sin branch de release
 
-finish — cierra la versión DESPUÉS del merge: tag anotado, release note en el forge,
+done — cierra la versión DESPUÉS del merge, igual que \`dai done\` cierra el trabajo de una
+  branch: tag anotado, release note en el forge,
   back-merge a la rama de integración y aviso al canal. Es la mitad que se olvida cuando
   la ceremonia se hace a mano. Cada paso reporta por separado: si falla la release note,
   el tag YA existe y hay que saberlo.
@@ -291,7 +292,7 @@ Config del repo (.env.dai):
 Ejemplo:
   dai release plan
   dai release cut 1.2.0
-  dai release finish 1.2.0
+  dai release done 1.2.0
 `,
 
   done: `dai done — cierra la US: vuelve a la base, actualiza y borra la branch local
@@ -481,7 +482,7 @@ export function globalUsage() {
     "  release plan [--from r] [--to b] [--json]   el manifiesto de la próxima versión: qué US entran,\n" +
     "                               qué entró sin US, y qué bump propone (propone: firmás vos)\n" +
     "  release cut <X.Y.Z> [--no-branch]   prepara la versión: branch + bump + entrada del CHANGELOG + commit\n" +
-    "  release finish <X.Y.Z>       tras el merge: tag + release note + back-merge + aviso al canal\n" +
+    "  release done <X.Y.Z>       tras el merge: tag + release note + back-merge + aviso al canal\n" +
     "      [--app n] [--no-release] [--no-notify]\n" +
     "  release stamp <X.Y.Z> --env <amb>   avisa a cada US en qué versión y ambiente salió\n" +
     "                               (muestra el alcance y confirma · opcional: decir que no no rompe nada)\n" +

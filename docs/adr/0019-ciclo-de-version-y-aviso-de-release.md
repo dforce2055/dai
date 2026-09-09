@@ -69,13 +69,13 @@ secundario de cómo alguien tituló un commit.
 ```
 plan ──▶ [FIRMA: la versión] ──▶ cut ──▶ dai pr ──▶ [FIRMA: merge + publicar]
                                                             │
-                                            finish ◀────────┘
+                                            done ◀────────┘
 ```
 
 `cut` **prepara y no habla hacia afuera**: rama de release, número, entrada de CHANGELOG,
 commit. Ni push, ni tag, ni PR.
 
-`finish` **cierra después del merge**: tag anotado, release note, back-merge y aviso. Existe
+`done` **cierra después del merge**: tag anotado, release note, back-merge y aviso. Existe
 como comando separado porque los dos pasos que más se olvidan cuando la ceremonia se hace a
 mano —el release note y el back-merge— viven en esta mitad, la que queda después de la firma.
 
@@ -149,7 +149,7 @@ dai muestra el host, nunca la URL — tampoco en los mensajes de error.
 archivo: cambia sin que cambie el código. Guardarlo en un archivo obligaría al CI a
 commitear en cada deploy. Su registro es el stamp en el tracker y el release del forge.
 
-### 8. `finish` borra la rama de release que acaba de cerrar
+### 8. `done` borra la rama de release que acaba de cerrar
 
 Es el único punto del ciclo donde dai puede **afirmar** que borrarla es seguro: ya está
 mergeada en producción, etiquetada y con el back-merge hecho. Si no se hace ahí, se

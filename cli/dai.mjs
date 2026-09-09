@@ -1303,7 +1303,7 @@ function linkedInRange(range) {
   return rows;
 }
 
-// El manifiesto, sin render: lo comparten plan, cut y finish. Un solo lugar que sabe
+// El manifiesto, sin render: lo comparten plan, cut y done. Un solo lugar que sabe
 // contestar "qué entra en esta versión" — si cada comando lo calculara a su manera,
 // tarde o temprano dirían cosas distintas y le creerías al que tenés más a mano.
 async function releaseManifest(opts = {}, { from, to } = {}) {
@@ -1444,18 +1444,18 @@ async function cmdReleaseCut(versionArg, opts = {}) {
 
   process.stdout.write("\n");
   info("Falta lo que dai no puede escribir por vos: repartí el manifiesto del CHANGELOG y contá el porqué.");
-  info(`Después:  dai pr${crearBranch ? "" : ""}   →   se mergea   →   dai release finish ${version}`);
+  info(`Después:  dai pr${crearBranch ? "" : ""}   →   se mergea   →   dai release done ${version}`);
 }
 
-// ── release finish: cerrar la versión ────────────────────────────────────────
+// ── release done: cerrar la versión ────────────────────────────────────────
 // DESPUÉS del merge. Tag + release note + back-merge + aviso. Es la mitad que se olvida
 // cuando la ceremonia se hace a mano, y la que habla hacia afuera: cada paso se reporta
 // por separado, porque si el release note falla el tag YA existe y hay que decirlo.
-async function cmdReleaseFinish(versionArg, opts = {}) {
+async function cmdReleaseDone(versionArg, opts = {}) {
   loadDaiEnv();
   let version;
   try { version = normalizeVersion(versionArg); }
-  catch (e) { fail(`${e.message}\n  Uso:  dai release finish 1.2.0`, 1); }
+  catch (e) { fail(`${e.message}\n  Uso:  dai release done 1.2.0`, 1); }
   const tag = tagName(version);
   const flow = branchFlow(process.env);
   const prod = textOpt(opts, "base") || flow.prod || parseOriginHead(safeGit(["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"])) || "main";
@@ -1607,7 +1607,7 @@ async function cmdReleaseStamp(versionArg, opts = {}) {
   // tag, no por rama, porque estampar es contar qué se desplegó — y lo desplegado es el tag.
   const previo = safeGit(["describe", "--tags", "--abbrev=0", `${tag}^`])?.trim() || null;
   if (!safeGit(["rev-parse", "--verify", "--quiet", `${tag}^{commit}`])) {
-    fail(`no existe el tag ${tag} en este repo.\n  Cerrá la versión primero:  dai release finish ${version}\n  (o traé los tags:  git fetch --tags)`, 1);
+    fail(`no existe el tag ${tag} en este repo.\n  Cerrá la versión primero:  dai release done ${version}\n  (o traé los tags:  git fetch --tags)`, 1);
   }
   const { manifest: m } = await releaseManifest(opts, { from: previo, to: tag });
 
@@ -1712,7 +1712,7 @@ async function cmdReleaseStatus(opts = {}) {
   if (abiertas.length) {
     warn(`${abiertas.length} branch(es) de release sin borrar: ${abiertas.join(", ")}`);
     process.stdout.write(`    Una rama de release que sobrevive a su release es un fork. Desde 0.15.0 las borra\n`);
-    process.stdout.write(`    \`dai release finish\`; las de antes se limpian a mano (git se niega si alguna no está mergeada):\n`);
+    process.stdout.write(`    \`dai release done\`; las de antes se limpian a mano (git se niega si alguna no está mergeada):\n`);
     process.stdout.write(`      git branch -d ${abiertas.join(" ")}\n`);
   }
 
@@ -2584,11 +2584,11 @@ switch (cmd) {
   case "release":
     if (pos[0] === "plan") cmdReleasePlan(opts).catch((e) => failSoft(String(e.message)));
     else if (pos[0] === "cut") cmdReleaseCut(pos[1], opts).catch((e) => failSoft(String(e.message)));
-    else if (pos[0] === "finish") cmdReleaseFinish(pos[1], opts).catch((e) => failSoft(String(e.message)));
+    else if (pos[0] === "done") cmdReleaseDone(pos[1], opts).catch((e) => failSoft(String(e.message)));
     else if (pos[0] === "stamp") cmdReleaseStamp(pos[1], opts).catch((e) => failSoft(String(e.message)));
     else if (pos[0] === "status") cmdReleaseStatus(opts).catch((e) => failSoft(String(e.message)));
     else if (pos[0] === "notify") cmdReleaseNotify(opts).catch((e) => failSoft(String(e.message)));
-    else fail(`subcomando de release desconocido: '${pos[0] ?? "(ninguno)"}' (plan | cut | finish | stamp | status | notify)`, 2);
+    else fail(`subcomando de release desconocido: '${pos[0] ?? "(ninguno)"}' (plan | cut | done | stamp | status | notify)`, 2);
     break;
   case "archive": cmdArchive(pos[0], opts); break;
   case "install": cmdInstall(opts).catch((e) => failSoft(String(e.message))); break;   // alias de `dai skills install`

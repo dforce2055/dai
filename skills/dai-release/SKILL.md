@@ -1,6 +1,6 @@
 ---
 name: dai-release
-description: "Conduce el ciclo de versión de un repo con dai, paso a paso y confirmando cada uno: el manifiesto de qué entra (qué User Stories, cuáles atrasadas, qué se coló sin US), la versión que corresponde, el corte de la release, la redacción del CHANGELOG, el cierre con tag + release note + back-merge, y —opcional— el aviso a cada US de en qué versión y ambiente salió más la notificación al canal del equipo. Se apoya en `dai release plan/cut/finish/stamp/status`: NO recalcula nada por su cuenta, narra lo que el CLI dice. Frena en las dos firmas humanas (aprobar la versión; mergear y publicar) y nunca las salta. Invocar como /dai-release, opcionalmente con la versión. Usar cuando alguien dice 'cortemos una versión', 'hay que sacar release', 'promover a producción' o 'qué entra en la próxima'."
+description: "Conduce el ciclo de versión de un repo con dai, paso a paso y confirmando cada uno: el manifiesto de qué entra (qué User Stories, cuáles atrasadas, qué se coló sin US), la versión que corresponde, el corte de la release, la redacción del CHANGELOG, el cierre con tag + release note + back-merge, y —opcional— el aviso a cada US de en qué versión y ambiente salió más la notificación al canal del equipo. Se apoya en `dai release plan/cut/done/stamp/status`: NO recalcula nada por su cuenta, narra lo que el CLI dice. Frena en las dos firmas humanas (aprobar la versión; mergear y publicar) y nunca las salta. Invocar como /dai-release, opcionalmente con la versión. Usar cuando alguien dice 'cortemos una versión', 'hay que sacar release', 'promover a producción' o 'qué entra en la próxima'."
 ---
 
 # dai-release — conducir el ciclo de versión
@@ -48,7 +48,7 @@ común: cortar una versión cuando la anterior quedó a medio cerrar.
                               [FIRMA 2: merge + publicar] ◀──┘
                                         │
                                         ▼
-                        finish ──▶ stamp (opcional) ──▶ aviso (opcional)
+                        done ──▶ stamp (opcional) ──▶ aviso (opcional)
 ```
 
 ### 1 · El manifiesto — `dai release plan`
@@ -112,7 +112,7 @@ persona. Si el repo tiene un `RELEASING.md`, leelo y decí los pasos exactos que
 Decí claramente que **el ciclo no terminó**: falta el tag, el release note y el back-merge.
 Es justo acá donde se abandonan los releases hechos a mano.
 
-### 6 · Cerrar — `dai release finish <X.Y.Z>`
+### 6 · Cerrar — `dai release done <X.Y.Z>`
 
 Después del merge. Tag anotado, release note en el forge, back-merge a integración y aviso
 al canal. Cada paso reporta por separado: **si falla la release note, el tag ya existe** —
@@ -140,7 +140,7 @@ hacer ruido en veinte tickets, y es una decisión legítima.
 
 ### 8 · El aviso al canal · OPCIONAL
 
-Sale solo con `finish` y con `stamp` si el repo declaró `DAI_NOTIFY`. Mostrá el mensaje
+Sale solo con `done` y con `stamp` si el repo declaró `DAI_NOTIFY`. Mostrá el mensaje
 exacto antes de mandarlo. Si el repo no lo declaró y el equipo quiere avisar, `dai release
 notify --test` prueba el canal antes de depender de él.
 
@@ -161,7 +161,7 @@ notify --test` prueba el canal antes de depender de él.
 
 - **El tracker no responde** → el manifiesto sale igual con `--no-network`, diciendo que no
   pudo verificar. Es preferible a no tener manifiesto; decilo al contarlo.
-- **`finish` falla a mitad de camino** → mirá qué reportó cada paso. Si el tag salió, la
+- **`done` falla a mitad de camino** → mirá qué reportó cada paso. Si el tag salió, la
   versión existe: lo que falta es la nota o el back-merge, y se completan a mano.
 - **El repo no tiene VERSION ni package.json** → normal. El tag es la versión; `cut` lo dice.
 - **No hay tags todavía** → el manifiesto arranca desde el principio del repo. Es correcto.
