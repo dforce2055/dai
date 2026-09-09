@@ -227,6 +227,74 @@ Ejemplo:
   dai pr --base develop --description-file notas.md
 `,
 
+  release: `dai release — el ciclo de versión: qué entra, cortarla, cerrarla, contarla
+
+Uso:
+  dai release plan   [--from <ref>] [--to <rama>] [--json] [--no-network]
+  dai release cut    <X.Y.Z> [--no-branch] [--yes] [--dry-run]
+  dai release done   <X.Y.Z> [--app <n>] [--no-release] [--no-notify] [--yes] [--dry-run]
+  dai release stamp  <X.Y.Z> --env <ambiente> [--app <n>] [--url <u>] [--yes] [--dry-run]
+  dai release status [--no-network]
+  dai release notify --test
+
+El ciclo, con la firma humana en el medio:
+
+  plan  ──▶  cut  ──▶  dai pr  ──▶  [ merge + publicar: lo firma una persona ]
+                                                │
+                                                ▼
+                                            done  ──▶  stamp (opcional)
+
+plan — el MANIFIESTO: qué hay entre el último tag y la rama de integración, qué User
+  Stories entran y en qué estado, qué branches entraron sin US, y qué bump PROPONE.
+  Propone, no decide: dai lee los tipos de commit y la regla del repo mira el
+  comportamiento. Algo que mueve un default es minor aunque todo sea \`fix:\`.
+
+cut — prepara la versión: crea \`release/X.Y.Z\`, sube el número en los archivos que este
+  repo espeja (VERSION, package.json — si no hay ninguno, la versión es el tag), escribe
+  la entrada del CHANGELOG con el material para repartir, y commitea. No habla hacia
+  afuera: ni push, ni tag, ni PR. La prosa del CHANGELOG la escribís vos: dai sabe qué
+  entró, no por qué importa.
+  --no-branch   taguea desde la rama de integración, sin branch de release
+
+done — cierra la versión DESPUÉS del merge, igual que \`dai done\` cierra el trabajo de una
+  branch: tag anotado, release note en el forge,
+  back-merge a la rama de integración y aviso al canal. Es la mitad que se olvida cuando
+  la ceremonia se hace a mano. Cada paso reporta por separado: si falla la release note,
+  el tag YA existe y hay que saberlo.
+  --app <nombre>   con qué nombre aparece la app (default: el del repo)
+  --no-release     no publica la nota en el forge
+  --no-notify      no avisa al canal (DAI_NOTIFY)
+  --keep-branch    conserva la rama release/X.Y.Z (por default la borra: ya está mergeada,
+                   tagueada y con el back-merge hecho, y una que sobrevive a su release
+                   es un fork). git se niega a borrar una sin mergear.
+
+stamp — le avisa a CADA User Story del release en qué versión y ambiente salió. Es el
+  comando que más cuidado necesita: escribe N veces hacia afuera, en tickets de gente
+  distinta, y no se deshace. Por eso muestra el alcance REAL antes —cuántos comentarios,
+  en qué tickets, cuáles se saltean por estar ya estampados— y pide confirmación.
+  Es OPCIONAL: decir que no sale con 0 y no rompe nada, porque la versión ya está hecha.
+  Idempotente por (app, versión, ambiente): redesplegar no llena el ticket de repetidos.
+  --env <ambiente>  obligatorio. El que uses (prod, pre, test, uat-2): dai no tiene catálogo
+  --url <u>         link al release, para que el comentario lleve a algún lado
+
+status — dónde estás en el ciclo: versión declarada vs último tag, cuánto hay sin promover,
+  si falta el back-merge, branches de release abiertas y el canal configurado.
+  Lo que NO contesta es qué versión hay en cada ambiente: eso es un evento, no un archivo
+  del repo, y su registro son los stamps de las US.
+
+notify --test — postea un mensaje de prueba al canal. Un webhook no se puede validar sin
+  postear, y fingir que sí sería justo lo que dai no hace: avisa antes y pide confirmación.
+
+Config del repo (.env.dai):
+  DAI_BRANCH_DEV / DAI_BRANCH_PROD   las dos ramas de vida larga
+  DAI_NOTIFY=discord|slack|webex|telegram|webhook|none  ·  DAI_NOTIFY_WEBHOOK=<endpoint>
+
+Ejemplo:
+  dai release plan
+  dai release cut 1.2.0
+  dai release done 1.2.0
+`,
+
   done: `dai done — cierra la US: vuelve a la base, actualiza y borra la branch local
 
 Uso:
@@ -411,6 +479,14 @@ export function globalUsage() {
     "  stamp [<ID>…] [--all]        estampa la cobertura en el tracker (ADR-0005)\n" +
     "                               sin ID: la US de esta branch; si hay varias, pregunta\n" +
     "  done [--base b] [--force]    cierra la US: vuelve a la base, actualiza y borra la branch local\n" +
+    "  release plan [--from r] [--to b] [--json]   el manifiesto de la próxima versión: qué US entran,\n" +
+    "                               qué entró sin US, y qué bump propone (propone: firmás vos)\n" +
+    "  release cut <X.Y.Z> [--no-branch]   prepara la versión: branch + bump + entrada del CHANGELOG + commit\n" +
+    "  release done <X.Y.Z>       tras el merge: tag + release note + back-merge + aviso al canal\n" +
+    "      [--app n] [--no-release] [--no-notify]\n" +
+    "  release stamp <X.Y.Z> --env <amb>   avisa a cada US en qué versión y ambiente salió\n" +
+    "                               (muestra el alcance y confirma · opcional: decir que no no rompe nada)\n" +
+    "  release status · release notify --test   dónde estás en el ciclo · probar el canal\n" +
     "  archive [<change>] [--skip-specs]   funde los delta specs del change en las specs canónicas y lo archiva (lo corre el aprobador en la PR)\n" +
     "  pr (alias mr) [--assignee u] [--base b] [--draft] [--yes]   crea o ACTUALIZA TU PR/MR precargada (muestra + confirma)\n" +
     "      [--us <ID>] [--title t]  la US la resuelve la branch; si hay varias, pregunta (sin TTY, falla)\n" +

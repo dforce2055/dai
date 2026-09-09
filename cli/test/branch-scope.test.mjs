@@ -271,7 +271,26 @@ test("prScope: sin US en el repo, una branch que no exige link sale SIN US, no f
   assert.match(s.reason, /no exige US/);
 });
 
-test("prScope: sin US en el repo, una feature/ SÍ sigue fallando (ahí el link falta de verdad)", () => {
+// Lo que distingue un olvido de un repo sin US es si la branch NOMBRA UN TICKET.
+test("prScope: sin US en el repo, una feature/ que NOMBRA un ticket sigue fallando", () => {
   const s = prScope({ branch: "feature/ABC-482-checkout", rows: [], allRows: [] });
+  assert.equal(s.mode, "none");   // alguien quiso implementar una US y no corrió link-us
+});
+
+// Un repo con US archivadas SÍ trabaja con User Stories: ahí una feature/ sin link es un
+// olvido, no un repo de tooling. Por eso se mira allRows y no solo las vivas.
+test("prScope: con US archivadas, una feature/ sin link sigue siendo un olvido", () => {
+  const s = prScope({ branch: "feature/algo", rows: [], allRows: [{ id: "ABC-9", path: "p", change: "c" }] });
   assert.equal(s.mode, "none");
+});
+
+test("prScope: sin US en el repo, una feature/ que no nombra ticket sale SIN US", () => {
+  const s = prScope({ branch: "feature/release-flow", rows: [], allRows: [] });
+  assert.equal(s.mode, "exempt");
+  assert.match(s.reason, /no nombra ninguna US y el repo no declara ninguna/);
+});
+
+// El gate de CI no se afloja: sigue mirando requiresLink, no esto.
+test("requiresLink no cambió: feature/ sigue exigiendo US aunque prScope la deje pasar", () => {
+  assert.equal(requiresLink("feature/release-flow").required, true);
 });

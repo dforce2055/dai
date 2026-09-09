@@ -35,6 +35,23 @@ export function clickupAdapter(env) {
       // `url` es la canónica (/t/<team_id>/<id>): la sabe ClickUp, no la deducimos.
       return { id, ...parseUS(raw), url: j.url || null, raw };
     },
+    // Comentario libre (lo usa `dai release stamp`). ClickUp toma texto directamente.
+    async comment(id, markdown) {
+      const res = await fetch(clickupCommentUrl(id), {
+        method: "POST", headers: clickupAuthHeaders(env),
+        body: JSON.stringify({ comment_text: markdown }),
+      });
+      if (!res.ok) throw new Error(`clickup ${res.status}: ${await res.text()}`);
+      return `task ${id} (comentario)`;
+    },
+    // Los comentarios como texto, para reconocer los que dai ya puso por su marca.
+    async listComments(id) {
+      const res = await fetch(clickupCommentUrl(id), { headers: clickupAuthHeaders(env) });
+      if (res.status === 404) return [];
+      if (!res.ok) throw new Error(`clickup ${res.status}: ${await res.text()}`);
+      const j = await res.json();
+      return (j.comments || []).map((c) => c.comment_text || c.text_content || "");
+    },
     async stamp(id, record) {
       const res = await fetch(clickupCommentUrl(id), {
         method: "POST", headers: clickupAuthHeaders(env),
