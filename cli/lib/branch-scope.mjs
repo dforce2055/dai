@@ -194,16 +194,31 @@ export function prScope({ branch, rows, allRows = rows, ids = [] }) {
   if (req.kind === "exempt") {
     return { mode: "exempt", target: null, candidates: rows, reason: `${req.reason} y su nombre no nombra ninguna US` };
   }
-  // El repo no tiene NINGUNA US viva. Exigirle un link a una branch que el propio
-  // branch-naming declara exenta es pedir algo que no existe: `fix/lo-que-sea` (sin ID en
-  // el nombre) terminaba con "corré dai link-us primero" y el consejo de renombrarla a
-  // `chore/`, que para un fix es directamente el consejo equivocado. Le pasa a cualquier
-  // repo de tooling — al de dai, sin ir más lejos, que no se trackea a sí mismo con US.
-  if (rows.length === 0) {
-    return req.required
-      ? { mode: "none", target: null, candidates: [], reason: "no hay implements.yaml vivo en el repo" }
-      : { mode: "exempt", target: null, candidates: [], reason: `${req.reason}, y el repo no declara ninguna US` };
+  // El repo no tiene NINGUNA US viva. Exigir un link acá es pedir algo que no existe: le
+  // pasa a cualquier repo de tooling —al de dai, sin ir más lejos, que no se trackea a sí
+  // mismo con US— y el mensaje terminaba mandando a renombrar la branch a `chore/`, que
+  // para un fix o una feature es el consejo equivocado.
+  //
+  // Lo que SÍ distingue un olvido de un repo sin US es si la branch NOMBRA UN TICKET: con
+  // `feature/ABC-482-checkout` alguien quiso implementar una US y no corrió `link-us`, y
+  // ahí el link falta de verdad. Sin key en el nombre no hay nada que reclamar.
+  //
+  // Esto no afloja ningún gate: el gate es `dai check --ci`, que sigue mirando requiresLink.
+  // Acá solo se decide con qué titular una PR.
+  // Se mira `allRows` (archivados incluidos), no `rows`: un repo con US archivadas SÍ
+  // trabaja con User Stories, así que una `feature/` sin link ahí es un olvido, no un repo
+  // de tooling. La exención es para el repo que nunca declaró una.
+  if (allRows.length === 0 && trackerKeysIn(branch).length === 0) {
+    return {
+      mode: "exempt", target: null, candidates: [],
+      // Si branch-naming ya tiene un motivo (chore/ exenta por tipo, fix/ sin ID), se usa
+      // ese: es más específico y es el que el equipo puede ir a leer.
+      reason: req.required
+        ? "la branch no nombra ninguna US y el repo no declara ninguna"
+        : `${req.reason}, y el repo no declara ninguna US`,
+    };
   }
+  if (rows.length === 0) return { mode: "none", target: null, candidates: [], reason: "no hay implements.yaml vivo en el repo" };
   if (rows.length === 1) return { mode: "only", target: rows[0], candidates: rows, reason: "es la única US viva del repo" };
   return { mode: "ambiguous", target: null, candidates: rows, reason: `hay ${rows.length} US vivas y la branch '${branch}' no dice cuál` };
 }
