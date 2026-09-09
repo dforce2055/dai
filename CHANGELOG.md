@@ -3,6 +3,21 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
+## [0.15.0] — 2026-09-09
+
+<!-- dai:manifiesto · el material de esta versión. Repartilo abajo y contá el porqué:
+     dai sabe qué entró; por qué importa lo sabés vos.
+     (sin US) feature/release-flow
+-->
+
+### Agregado
+
+### Cambiado
+
+### Corregido
+
+### Interno
+
 ## [0.14.0] — 2026-09-08
 
 **`dai pr` proponía mergear a `main` en un repo donde `main` despliega a producción, y el
@@ -918,6 +933,7 @@ ClickUp y Jira Cloud.
 - Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
   `files` de npm sin tests ni secretos.
 
+[0.15.0]: https://github.com/dforce2055/dai/releases/tag/v0.15.0
 [0.14.0]: https://github.com/dforce2055/dai/releases/tag/v0.14.0
 [0.13.3]: https://github.com/dforce2055/dai/releases/tag/v0.13.3
 [0.13.2]: https://github.com/dforce2055/dai/releases/tag/v0.13.2
