@@ -1470,6 +1470,13 @@ async function cmdReleaseFinish(versionArg, opts = {}) {
   process.stdout.write(`  tag:      ${tag} → ${prod} @ ${String(head).slice(0, 8)}\n`);
   process.stdout.write(`  release:  ${opts.noRelease ? C.dim("no (--no-release)") : `nota en el forge${notes ? "" : C.dim(" (sin sección del CHANGELOG: sale con las notas del forge)")}`}\n`);
   process.stdout.write(`  back-merge: ${dev ? `${prod} → ${dev}` : C.dim("no (DAI_BRANCH_DEV no declarada)")}\n`);
+  const relBranch = releaseBranch(version);
+  const hayLocal = Boolean(safeGit(["rev-parse", "--verify", "--quiet", relBranch]));
+  const hayRemota = Boolean(safeGit(["rev-parse", "--verify", "--quiet", `origin/${relBranch}`]));
+  const limpiar = (hayLocal || hayRemota) && !opts.keepBranch;
+  process.stdout.write(`  limpieza: ${limpiar
+    ? `borrar ${relBranch}${hayLocal ? " (local)" : ""}${hayLocal && hayRemota ? " +" : ""}${hayRemota ? " (remota)" : ""}`
+    : C.dim(hayLocal || hayRemota ? "no (--keep-branch)" : "nada que borrar")}\n`);
   process.stdout.write(`  aviso:    ${avisar ? describeTarget(cfg) : C.dim(cfg ? "no (--no-notify)" : "no (DAI_NOTIFY no declarado)")}\n`);
   process.stdout.write(`  ─────────────────────────────────────────────────────\n`);
   if (opts.dryRun) { info("[dry-run] no se tocó nada."); return; }
@@ -1523,7 +1530,31 @@ async function cmdReleaseFinish(versionArg, opts = {}) {
     }
   }
 
-  // 4. El aviso. Lo último a propósito: anunciar algo que después falla es peor que no anunciar.
+  // 4. Borrar la rama de release. Es el ÚNICO punto del ciclo donde dai puede afirmar que
+  // es seguro: ya está mergeada en producción, tagueada y con el back-merge hecho. Si esto
+  // no pasa acá, se acumulan — y una rama de release que sobrevive a su release es un fork.
+  // Misma disciplina que `dai done`: `git branch -d` (minúscula) se niega si no está
+  // mergeada, así que la red de seguridad la pone git, no una suposición nuestra.
+  if (limpiar) {
+    if (hayLocal) {
+      try { git(["branch", "-d", relBranch]); ok(`borrada la branch local ${relBranch}`); }
+      catch (e) {
+        warn(`no borré '${relBranch}' local: ${String(e.message).split("\n")[0]}`);
+        process.stdout.write(`  git se niega a borrar una branch sin mergear. Revisala: quizá tiene commits que no llegaron a '${prod}'.\n`);
+      }
+    }
+    if (hayRemota) {
+      try {
+        git(["push", "origin", "--delete", relBranch], { stdio: ["inherit", "pipe", "inherit"], env: { ...process.env, GIT_TERMINAL_PROMPT: "1" } });
+        ok(`borrada la branch remota origin/${relBranch}`);
+      } catch (e) {
+        warn(`no borré 'origin/${relBranch}': ${String(e.message).split("\n")[0]}`);
+        process.stdout.write(`  Puede que ya la haya borrado el forge al mergear. Si no:  git push origin --delete ${relBranch}\n`);
+      }
+    }
+  }
+
+  // 5. El aviso. Lo último a propósito: anunciar algo que después falla es peor que no anunciar.
   if (avisar) {
     const ev = {
       event: "released", app: releaseApp(opts), version, environment: null,
@@ -1665,7 +1696,12 @@ async function cmdReleaseStatus(opts = {}) {
   // Branches de release abiertas (model B): una que sobrevive a su release es un fork.
   const abiertas = (safeGit(["branch", "--list", "release/*", "--format=%(refname:short)"]) || "")
     .split("\n").map((x) => x.trim()).filter(Boolean);
-  if (abiertas.length) info(`branch(es) de release abiertas: ${abiertas.join(", ")}`);
+  if (abiertas.length) {
+    warn(`${abiertas.length} branch(es) de release sin borrar: ${abiertas.join(", ")}`);
+    process.stdout.write(`    Una rama de release que sobrevive a su release es un fork. Desde 0.15.0 las borra\n`);
+    process.stdout.write(`    \`dai release finish\`; las de antes se limpian a mano (git se niega si alguna no está mergeada):\n`);
+    process.stdout.write(`      git branch -d ${abiertas.join(" ")}\n`);
+  }
 
   const cfg = (() => { try { return notifyConfig(process.env); } catch { return null; } })();
   info(`aviso al canal: ${cfg ? `${describeTarget(cfg)}  ${C.dim("(no verificado: eso lo dice `dai release notify --test`)")}` : C.dim("sin declarar (DAI_NOTIFY)")}`);

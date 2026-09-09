@@ -149,7 +149,22 @@ dai muestra el host, nunca la URL — tampoco en los mensajes de error.
 archivo: cambia sin que cambie el código. Guardarlo en un archivo obligaría al CI a
 commitear en cada deploy. Su registro es el stamp en el tracker y el release del forge.
 
-### 8. Lo que dai NO hace
+### 8. `finish` borra la rama de release que acaba de cerrar
+
+Es el único punto del ciclo donde dai puede **afirmar** que borrarla es seguro: ya está
+mergeada en producción, etiquetada y con el back-merge hecho. Si no se hace ahí, se
+acumulan — este mismo repo tenía cinco cuando se implementó el comando.
+
+La red de seguridad la pone git, no una suposición: `git branch -d` (minúscula) se niega a
+borrar una rama sin mergear. Hay precedente en el CLI: `dai done` ya hace exactamente esto
+con la rama de una US.
+
+**Alternativa descartada:** un `dai release cleanup` que borre ramas de release viejas en
+masa. dai no las creó, no puede saber si alguien conserva una a propósito, y limpiar ramas
+en general no es su dominio. `dai release status` las nombra y deja el comando escrito;
+borrarlas es del equipo.
+
+### 9. Lo que dai NO hace
 
 - **No despliega.** Llega hasta el tag y vuelve a aparecer después, estampando. Quién
   despliega es el pipeline.

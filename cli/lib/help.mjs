@@ -263,6 +263,9 @@ finish — cierra la versión DESPUÉS del merge: tag anotado, release note en e
   --app <nombre>   con qué nombre aparece la app (default: el del repo)
   --no-release     no publica la nota en el forge
   --no-notify      no avisa al canal (DAI_NOTIFY)
+  --keep-branch    conserva la rama release/X.Y.Z (por default la borra: ya está mergeada,
+                   tagueada y con el back-merge hecho, y una que sobrevive a su release
+                   es un fork). git se niega a borrar una sin mergear.
 
 stamp — le avisa a CADA User Story del release en qué versión y ambiente salió. Es el
   comando que más cuidado necesita: escribe N veces hacia afuera, en tickets de gente

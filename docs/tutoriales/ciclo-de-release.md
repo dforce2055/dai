@@ -167,6 +167,11 @@ dai release finish 0.5.0
 ✓ back-merge main → develop
 ```
 
+Y borra la rama `release/0.5.0` (local y remota): ya está mergeada, etiquetada y con el
+back-merge hecho, así que no tiene más razón de existir — una rama de release que sobrevive
+a su release es un fork. Si quieres conservarla, `--keep-branch`. Si git se niega a
+borrarla, es porque tiene commits que no llegaron a producción: revísala.
+
 Cada paso se reporta por separado a propósito: **una vez creado el tag, la versión existe**.
 Si falla la nota de release, dai te lo dice y aclara que el tag ya está publicado, para que
 completes solo lo que falta.

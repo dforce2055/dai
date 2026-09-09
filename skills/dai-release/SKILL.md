@@ -118,6 +118,10 @@ Después del merge. Tag anotado, release note en el forge, back-merge a integrac
 al canal. Cada paso reporta por separado: **si falla la release note, el tag ya existe** —
 decilo, no lo tapes.
 
+También **borra la rama de release** que cerró: ya está mergeada, etiquetada y con el
+back-merge hecho. Si git se niega, es porque tiene commits que no llegaron a producción —
+decilo, no lo tapes con `--keep-branch`.
+
 ### 7 · Estampar — `dai release stamp <X.Y.Z> --env <ambiente>` · OPCIONAL
 
 Cuando la versión llega a un ambiente. Le deja a **cada US del release** un comentario
