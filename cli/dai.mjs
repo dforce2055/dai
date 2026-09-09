@@ -33,6 +33,7 @@ import { listPrCmd, parsePrList, updatePrCmd, isAlreadyExistsError, describeUpda
 import { parseCommitLog, proposeBump, nextVersion, buildManifest, renderManifest, BUMP_CAVEAT } from "./lib/release-plan.mjs";
 import { bumpPackageJson, bumpVersionFile, changelogEntry, insertChangelogEntry, changelogSection, changelogGaps, releaseBranch, tagName, normalizeVersion } from "./lib/release-files.mjs";
 import { notifyConfig, describeTarget, renderNotice, sendNotice, formatFecha } from "./lib/notify.mjs";
+import { releaseMarker, alreadyStamped, renderReleaseStamp, stampPlan, renderStampPlan, stampWarning, SIN_ESTAMPAR } from "./lib/release-stamp.mjs";
 import { parseImplements } from "./lib/implements.mjs";
 import { absolutizeSiteLinks } from "./lib/docs-links.mjs";
 import { diagnoseGitSsh, pushFailureHint, WINDOWS_OPENSSH } from "./lib/git-ssh.mjs";
@@ -1536,6 +1537,164 @@ async function cmdReleaseFinish(versionArg, opts = {}) {
   info(`Cuando la despliegues:  dai release stamp ${version} --env <ambiente>   (opcional: la release ya está hecha)`);
 }
 
+// ── release stamp: avisarle a cada US en qué versión y ambiente salió ────────
+//
+// Es el comando que más cuidado necesita del lote: escribe N veces hacia afuera, en
+// tickets de gente distinta, y no se deshace. Por eso muestra el ALCANCE REAL antes de
+// escribir —cuántos comentarios, en qué tickets, cuáles se saltean— y pide confirmación.
+//
+// Y es OPCIONAL: decir que no acá no rompe nada. Para cuando esto corre, el tag existe y
+// el release note existe; la versión ya está. Que alguien elija no hacer ruido en veinte
+// tickets es una decisión legítima, no un error a corregir — así que sale con 0.
+async function cmdReleaseStamp(versionArg, opts = {}) {
+  loadDaiEnv();
+  let version;
+  try { version = normalizeVersion(versionArg); }
+  catch (e) { fail(`${e.message}\n  Uso:  dai release stamp 1.2.0 --env prod`, 1); }
+  const environment = textOpt(opts, "env");
+  if (!environment) {
+    fail("falta --env: a qué ambiente se desplegó esta versión (prod, pre, test, el nombre que uses).\n" +
+         "  dai no tiene catálogo de ambientes: el que pases es el que se estampa.", 1);
+  }
+  const app = releaseApp(opts);
+  const tag = tagName(version);
+
+  // El manifiesto de ESA versión: lo que entró entre el tag anterior y este. Se pide por
+  // tag, no por rama, porque estampar es contar qué se desplegó — y lo desplegado es el tag.
+  const previo = safeGit(["describe", "--tags", "--abbrev=0", `${tag}^`])?.trim() || null;
+  if (!safeGit(["rev-parse", "--verify", "--quiet", `${tag}^{commit}`])) {
+    fail(`no existe el tag ${tag} en este repo.\n  Cerrá la versión primero:  dai release finish ${version}\n  (o traé los tags:  git fetch --tags)`, 1);
+  }
+  const { manifest: m } = await releaseManifest(opts, { from: previo, to: tag });
+
+  // ¿Cuáles ya están estampadas? Sin poder leer los comentarios dai NO afirma que no las
+  // estampó: lo dice, y quien decide es la persona. Afirmar de más acá se paga en duplicados.
+  const marker = releaseMarker({ app, version, environment });
+  const adapter = getAdapter(process.env);
+  const stamped = new Set();
+  let unknown = false;
+  if (typeof adapter.listComments === "function") {
+    for (const s of m.stories) {
+      try { if (alreadyStamped(await adapter.listComments(s.id), marker)) stamped.add(s.id); }
+      catch { unknown = true; }
+    }
+  } else unknown = true;
+
+  const plan = stampPlan({ stories: m.stories, stamped, unknown });
+  process.stdout.write("\n" + renderStampPlan(plan, { app, version, environment, tracker: adapter.kind }) + "\n");
+  warn(stampWarning(plan));
+  if (plan.pendientes.length === 0) { info("Nada que hacer."); return; }
+
+  if (opts.dryRun) { info("[dry-run] no se escribió nada."); return; }
+  if (!opts.yes) {
+    if (!process.stdin.isTTY) {
+      info(`Sin TTY y sin --yes: no estampo. Re-ejecutá con --yes si querés los ${plan.pendientes.length} comentarios.`);
+      return;
+    }
+    const a = (await askOrCancel(`  ¿Estampo ${plan.pendientes.length} comentario(s)? (s/N) `) || "").toLowerCase();
+    if (!["s", "si", "sí", "y", "yes"].includes(a)) {
+      info("No se estampó nada — la release está hecha igual.");
+      info(SIN_ESTAMPAR);
+      return;   // salida 0: decir que no es una respuesta válida, no un error
+    }
+  }
+
+  const cuerpo = renderReleaseStamp({
+    app, version, environment, date: formatFecha(), commit: safeGit(["rev-list", "-n", "1", tag])?.trim(),
+    url: textOpt(opts, "url") || null,
+  });
+  let hechos = 0;
+  const fallados = [];
+  for (const s of plan.pendientes) {
+    try { await adapter.comment(s.id, cuerpo); hechos++; ok(`${s.id} estampada`); }
+    catch (e) { fallados.push(s.id); warn(`${s.id}: ${String(e.message).split("\n")[0]}`); }
+  }
+  if (fallados.length) {
+    warn(`quedaron ${fallados.length} sin estampar: ${fallados.join(", ")}. Volvé a correr el comando — las ya hechas se saltean.`);
+    process.exitCode = 1;
+  } else ok(`${hechos} US estampada(s) con ${app} ${tag} → ${environment.toUpperCase()}.`);
+
+  // El aviso al canal es del EVENTO de despliegue, no del estampado: sale aunque no se
+  // haya estampado nada (para eso está `--only-notify`), y no sale si el repo no lo declaró.
+  const cfg = (() => { try { return notifyConfig(process.env); } catch (e) { warn(String(e.message)); return null; } })();
+  if (cfg && !opts.noNotify) {
+    await confirmarYAvisar(cfg, {
+      event: "deployed", app, version, environment, author: gitUser(), date: formatFecha(),
+      url: textOpt(opts, "url") || null, stories: m.stories.map((x) => ({ id: x.id, title: x.title })),
+    }, opts);
+  }
+}
+
+// ── release status: ¿dónde estoy en el ciclo? ────────────────────────────────
+// Todo local + el forge: rápido y sin tocar el tracker. Lo que NO contesta —qué versión
+// hay en cada ambiente— vive en los stamps de las US, porque un despliegue es un evento
+// y no un archivo del repo: cambia sin que cambie el código.
+async function cmdReleaseStatus(opts = {}) {
+  loadDaiEnv();
+  if (!gitBranch()) fail("esto no parece un repo git.", 1);
+  const flow = branchFlow(process.env);
+  const { version: declarada, file } = currentVersion();
+  const tag = lastTag();
+  const dev = flow.dev || gitBranch();
+  const prod = flow.prod;
+
+  info(`versión declarada: ${declarada ? `${declarada}  ${C.dim(`(${file})`)}` : C.dim("ningún archivo la espeja — la versión es el tag")}`);
+  info(`último tag: ${tag || C.dim("(ninguno)")}`);
+  if (tag && declarada && tagName(declarada) !== tag) {
+    warn(`el archivo dice ${declarada} y el último tag es ${tag}: hay una versión preparada sin cerrar, o un tag sin bump.`);
+  }
+
+  // ¿Hay algo sin promover? Es la pregunta que dispara el ciclo.
+  const { manifest: m, commits } = await releaseManifest({ ...opts, noNetwork: true }, { from: tag, to: dev });
+  if (m.counts.commits === 0) info(`'${dev}' no tiene nada nuevo sobre ${tag || "el principio"}: no hay versión que cortar.`);
+  else {
+    const { bump } = proposeBump(commits);
+    warn(`'${dev}' tiene ${m.counts.commits} commit(s) sin promover · ${m.counts.stories} US · bump propuesto: ${bump}.`);
+    process.stdout.write(`    Ver el detalle:  dai release plan\n`);
+  }
+
+  // Back-merge pendiente: producción adelante de integración es el olvido clásico.
+  if (prod && flow.dev) {
+    const pendiente = safeGit(["rev-list", "--count", `${flow.dev}..${prod}`])?.trim();
+    if (pendiente && Number(pendiente) > 0) {
+      warn(`'${prod}' está ${pendiente} commit(s) adelante de '${flow.dev}': falta el back-merge.`);
+      process.stdout.write(`    git checkout ${flow.dev} && git merge ${prod} && git push origin ${flow.dev}\n`);
+    }
+  }
+
+  // Branches de release abiertas (model B): una que sobrevive a su release es un fork.
+  const abiertas = (safeGit(["branch", "--list", "release/*", "--format=%(refname:short)"]) || "")
+    .split("\n").map((x) => x.trim()).filter(Boolean);
+  if (abiertas.length) info(`branch(es) de release abiertas: ${abiertas.join(", ")}`);
+
+  const cfg = (() => { try { return notifyConfig(process.env); } catch { return null; } })();
+  info(`aviso al canal: ${cfg ? `${describeTarget(cfg)}  ${C.dim("(no verificado: eso lo dice `dai release notify --test`)")}` : C.dim("sin declarar (DAI_NOTIFY)")}`);
+
+  // Los últimos releases publicados, según el forge. Es lo más cerca de "qué hay afuera"
+  // que dai puede saber sin preguntarle al tracker ni al pipeline.
+  if (!opts.noNetwork) {
+    const tool = forgeTool(detectForge(parseRemote(gitRemote())?.host));
+    try {
+      const out = execFileSync(tool, ["release", "list", ...(tool === "gh" ? ["--limit", "3"] : ["--per-page", "3"])],
+        { encoding: "utf8", cwd: process.cwd(), stdio: ["ignore", "pipe", "pipe"] });
+      const lineas = String(out).split("\n").filter(Boolean).slice(0, 3);
+      if (lineas.length) { info("últimos releases publicados:"); for (const l of lineas) process.stdout.write(`    ${l}\n`); }
+    } catch { /* sin binario, sin auth o sin releases: no es un problema que resolver acá */ }
+  }
+}
+
+// ── release notify --test: probar el canal sin esperar a una release ─────────
+// Un webhook no se puede validar sin postear. Fingir que sí sería justo lo que dai no hace,
+// así que esto POSTEA de verdad — y lo dice antes.
+async function cmdReleaseNotify(opts = {}) {
+  loadDaiEnv();
+  let cfg;
+  try { cfg = notifyConfig(process.env); } catch (e) { fail(String(e.message), 1); }
+  if (!cfg) fail("no hay canal declarado: poné DAI_NOTIFY (y DAI_NOTIFY_WEBHOOK) en el .env.dai.", 1);
+  if (!opts.test) fail("por ahora `dai release notify` solo sabe probar el canal:  dai release notify --test", 2);
+  await confirmarYAvisar(cfg, { event: "test" }, opts);
+}
+
 // El nombre de la app en los avisos y en el stamp. Sale del repo, no de una variable
 // nueva: `--app` lo pisa cuando el nombre lindo no es el del directorio.
 function releaseApp(opts) {
@@ -2377,7 +2536,10 @@ switch (cmd) {
     if (pos[0] === "plan") cmdReleasePlan(opts).catch((e) => failSoft(String(e.message)));
     else if (pos[0] === "cut") cmdReleaseCut(pos[1], opts).catch((e) => failSoft(String(e.message)));
     else if (pos[0] === "finish") cmdReleaseFinish(pos[1], opts).catch((e) => failSoft(String(e.message)));
-    else fail(`subcomando de release desconocido: '${pos[0] ?? "(ninguno)"}' (plan | cut | finish)`, 2);
+    else if (pos[0] === "stamp") cmdReleaseStamp(pos[1], opts).catch((e) => failSoft(String(e.message)));
+    else if (pos[0] === "status") cmdReleaseStatus(opts).catch((e) => failSoft(String(e.message)));
+    else if (pos[0] === "notify") cmdReleaseNotify(opts).catch((e) => failSoft(String(e.message)));
+    else fail(`subcomando de release desconocido: '${pos[0] ?? "(ninguno)"}' (plan | cut | finish | stamp | status | notify)`, 2);
     break;
   case "archive": cmdArchive(pos[0], opts); break;
   case "install": cmdInstall(opts).catch((e) => failSoft(String(e.message))); break;   // alias de `dai skills install`

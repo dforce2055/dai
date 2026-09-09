@@ -147,6 +147,26 @@ export function jiraAdapter(env) {
       const raw = jiraIssueToText(await res.json());
       return { id, ...parseUS(raw), url: `${trim(base)}/browse/${id}`, raw };
     },
+    // Comentario libre en markdown (lo usa `dai release stamp`). Jira Cloud pide ADF, así
+    // que se convierte con el mismo parser que ya usa la descripción de la US.
+    async comment(id, markdown) {
+      const res = await daiFetch(jiraCommentUrl(base, id), {
+        method: "POST", headers: jiraAuthHeaders(env),
+        body: JSON.stringify({ body: markdownToAdf(markdown) }),
+      });
+      if (!res.ok) throw new Error(`jira ${res.status}: ${await res.text()}`);
+      return `${trim(base)}/browse/${id}`;
+    },
+    // Los comentarios como texto plano, para que dai reconozca los suyos por la marca y no
+    // vuelva a estampar lo mismo. Los más nuevos primero: la marca que buscamos, si está,
+    // es reciente. 100 alcanza de sobra y evita paginar un ticket con años de historia.
+    async listComments(id) {
+      const res = await daiFetch(`${jiraCommentUrl(base, id)}?maxResults=100&orderBy=-created`, { headers: jiraAuthHeaders(env) });
+      if (res.status === 404) return [];
+      if (!res.ok) throw new Error(`jira ${res.status}: ${await res.text()}`);
+      const j = await res.json();
+      return (j.comments || []).map((c) => (typeof c.body === "string" ? c.body : adfToMarkdown(c.body)));
+    },
     async stamp(id, record) {
       const res = await daiFetch(jiraCommentUrl(base, id), {
         method: "POST", headers: jiraAuthHeaders(env),

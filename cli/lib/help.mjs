@@ -233,6 +233,9 @@ Uso:
   dai release plan   [--from <ref>] [--to <rama>] [--json] [--no-network]
   dai release cut    <X.Y.Z> [--no-branch] [--yes] [--dry-run]
   dai release finish <X.Y.Z> [--app <n>] [--no-release] [--no-notify] [--yes] [--dry-run]
+  dai release stamp  <X.Y.Z> --env <ambiente> [--app <n>] [--url <u>] [--yes] [--dry-run]
+  dai release status [--no-network]
+  dai release notify --test
 
 El ciclo, con la firma humana en el medio:
 
@@ -260,6 +263,23 @@ finish — cierra la versión DESPUÉS del merge: tag anotado, release note en e
   --app <nombre>   con qué nombre aparece la app (default: el del repo)
   --no-release     no publica la nota en el forge
   --no-notify      no avisa al canal (DAI_NOTIFY)
+
+stamp — le avisa a CADA User Story del release en qué versión y ambiente salió. Es el
+  comando que más cuidado necesita: escribe N veces hacia afuera, en tickets de gente
+  distinta, y no se deshace. Por eso muestra el alcance REAL antes —cuántos comentarios,
+  en qué tickets, cuáles se saltean por estar ya estampados— y pide confirmación.
+  Es OPCIONAL: decir que no sale con 0 y no rompe nada, porque la versión ya está hecha.
+  Idempotente por (app, versión, ambiente): redesplegar no llena el ticket de repetidos.
+  --env <ambiente>  obligatorio. El que uses (prod, pre, test, uat-2): dai no tiene catálogo
+  --url <u>         link al release, para que el comentario lleve a algún lado
+
+status — dónde estás en el ciclo: versión declarada vs último tag, cuánto hay sin promover,
+  si falta el back-merge, branches de release abiertas y el canal configurado.
+  Lo que NO contesta es qué versión hay en cada ambiente: eso es un evento, no un archivo
+  del repo, y su registro son los stamps de las US.
+
+notify --test — postea un mensaje de prueba al canal. Un webhook no se puede validar sin
+  postear, y fingir que sí sería justo lo que dai no hace: avisa antes y pide confirmación.
 
 Config del repo (.env.dai):
   DAI_BRANCH_DEV / DAI_BRANCH_PROD   las dos ramas de vida larga
@@ -460,6 +480,9 @@ export function globalUsage() {
     "  release cut <X.Y.Z> [--no-branch]   prepara la versión: branch + bump + entrada del CHANGELOG + commit\n" +
     "  release finish <X.Y.Z>       tras el merge: tag + release note + back-merge + aviso al canal\n" +
     "      [--app n] [--no-release] [--no-notify]\n" +
+    "  release stamp <X.Y.Z> --env <amb>   avisa a cada US en qué versión y ambiente salió\n" +
+    "                               (muestra el alcance y confirma · opcional: decir que no no rompe nada)\n" +
+    "  release status · release notify --test   dónde estás en el ciclo · probar el canal\n" +
     "  archive [<change>] [--skip-specs]   funde los delta specs del change en las specs canónicas y lo archiva (lo corre el aprobador en la PR)\n" +
     "  pr (alias mr) [--assignee u] [--base b] [--draft] [--yes]   crea o ACTUALIZA TU PR/MR precargada (muestra + confirma)\n" +
     "      [--us <ID>] [--title t]  la US la resuelve la branch; si hay varias, pregunta (sin TTY, falla)\n" +
