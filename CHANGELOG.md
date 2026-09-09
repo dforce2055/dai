@@ -3,6 +3,76 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
+## [0.15.0] — 2026-09-09
+
+**Un equipo puede tener el link QUÉ↔CÓMO perfecto y seguir sin poder contestar la pregunta
+que hace el negocio: "¿esto ya está en producción?". La trazabilidad llegaba hasta la PR y
+se cortaba justo ahí. Esta versión agrega el último eslabón — la versión desplegada — y con
+él, el ciclo completo para cortarla, cerrarla y contarla.**
+
+### Agregado
+- **`dai release plan` — el manifiesto de la versión.** Qué User Stories entran entre el
+  último tag y la rama de integración, en qué estado está cada una, y qué entró **sin**
+  declarar US. Resuelve las US leyendo los `implements.yaml` **tal como estaban en cada
+  commit del rango**, no por el nombre de la rama: el link viaja con el código, así que la
+  respuesta sobrevive a que la branch se borre y a que el change se archive — el estado
+  normal del repo cuando llegás a cortar, días después del merge. Es el dato del que
+  dependen los otros cuatro comandos; `--json` es lo que consume la skill.
+- **`dai release cut <X.Y.Z>` — preparar, sin hablar hacia afuera.** Rama de release, número
+  en los archivos que el repo espeja, entrada del CHANGELOG y commit. Ni push, ni tag, ni
+  PR: todo lo que pasa ANTES de la firma humana.
+- **`dai release done <X.Y.Z>` — cerrar, después del merge.** Tag anotado, release note en
+  el forge, back-merge a integración, borrado de la rama de release y aviso al canal. Existe
+  como comando separado porque los dos pasos que más se olvidan cuando la ceremonia se hace
+  a mano viven en esta mitad, la que queda después de la firma. Se llama `done` y no
+  `finish` por lo mismo que `dai done` cierra el trabajo de una branch: mismo verbo, distinto
+  sustantivo.
+- **`dai release stamp <X.Y.Z> --env <ambiente>` — que cada US sepa dónde está.** Deja en
+  cada historia del release un comentario con versión, app, ambiente y fecha, y con eso el
+  funcional lee el ticket en vez de preguntar. Una US federada en varios repos acumula sola
+  su matriz. Es **opcional** y decir que no sale con 0: cuando el comando corre, el tag ya
+  existe y la versión está hecha.
+- **`dai release status`** — dónde estás en el ciclo: versión declarada vs último tag, qué
+  falta promover, si quedó un back-merge pendiente, qué ramas de release sobrevivieron.
+  **`dai release notify --test`** — probar el canal antes de depender de él, porque un
+  webhook no se puede validar sin postear y fingir que sí sería justo lo que dai no hace.
+- **Aviso de release a un canal de equipo** (`DAI_NOTIFY`): discord, slack, webex, telegram
+  o un `webhook` genérico para Teams, Mattermost o un sistema interno. Apagado por default:
+  dai no habla hacia afuera sin que se lo pidan. El endpoint **es la credencial**, así que
+  vive en el `.env.dai` y dai muestra el host, nunca la URL — tampoco en los errores.
+- **Skill `/dai-release`** — conduce el ciclo confirmando paso a paso. No recalcula el
+  manifiesto: lo pide y lo narra. Si su memoria y el CLI se contradicen, gana el CLI.
+- **[Guía de releases](docs/guias/releases.md)** con el *porqué* y
+  **[tutorial del ciclo completo](docs/tutoriales/ciclo-de-release.md)**. Una estrategia de
+  branching que el equipo no entiende se abandona en dos sprints, así que la documentación
+  entra en la misma versión que los comandos, no después.
+
+### Corregido
+- **`dai pr` no podía abrir la PR de una `feature/` en un repo sin User Stories.** Le pasa a
+  cualquier repo de tooling o librería interna que use dai para versionar sin gestionar sus
+  propias historias — a este, sin ir más lejos, donde el mensaje mandaba a renombrar la
+  branch a `chore/`. Lo que distingue un olvido de un repo que no trabaja así es si la
+  branch **nombra un ticket**. El gate de CI no se toca.
+- **Un aviso que aparece siempre no avisa nada.** El manifiesto marcaba cada branch sin US
+  como "entró trabajo sin link", incluso en repos donde ninguna branch va a declarar una
+  jamás. Ahora el hallazgo se reporta solo si el repo trabaja con User Stories — salvo que
+  la branch nombre un ticket, que ahí sí es un olvido.
+- **`dai pr` fallaba al actualizar una PR por un motivo que no era suyo.** `gh pr edit`
+  resuelve por GraphQL y arrastra campos deprecados del servidor, así que devolvía un error
+  sobre *Projects (classic)* cuando lo único que se quería era cambiar el body. Ahora
+  reintenta por REST con la misma autenticación; se intenta callado y solo se reporta si el
+  plan B también falla.
+
+### Interno
+- **475 tests** (+68 desde la 0.14.0): el manifiesto y su resolución por commit, el corte y
+  el cierre, el gate de alcance del estampado y su idempotencia por (app, versión,
+  ambiente), y el adaptador de canal — incluidos tres tests que fallan si el endpoint se
+  filtra en algún mensaje.
+- El adaptador de PM suma `comment(id, markdown)` y `listComments(id)` en los tres backends:
+  sin poder leer sus propios comentarios, dai no puede saber qué ya estampó.
+- Esta versión se cortó con los comandos nuevos, y el dogfooding devolvió tres de las
+  correcciones de arriba.
+
 ## [0.14.0] — 2026-09-08
 
 **`dai pr` proponía mergear a `main` en un repo donde `main` despliega a producción, y el
@@ -918,6 +988,7 @@ ClickUp y Jira Cloud.
 - Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
   `files` de npm sin tests ni secretos.
 
+[0.15.0]: https://github.com/dforce2055/dai/releases/tag/v0.15.0
 [0.14.0]: https://github.com/dforce2055/dai/releases/tag/v0.14.0
 [0.13.3]: https://github.com/dforce2055/dai/releases/tag/v0.13.3
 [0.13.2]: https://github.com/dforce2055/dai/releases/tag/v0.13.2

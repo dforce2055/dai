@@ -9,6 +9,8 @@
 // Interfaz (fetchUS/stamp pueden ser sync o async — el CLI siempre await-ea):
 //   fetchUS(id)          → { id, title, spec_version, ac_hash, url, raw } | null
 //   stamp(id, record)    → destino donde quedó la cobertura
+//   comment(id, markdown)→ comentario libre en la US    (lo usa `dai release stamp`)
+//   listComments(id)     → [texto]  para reconocer los comentarios que dai ya puso
 //   createUS({...})      → { id, url }            (opcional: `dai publish`)
 //   updateUS(id, {...})  → { id, url }            (opcional: `dai update-us`)
 //   kind                 → nombre del backend
@@ -56,6 +58,20 @@ function mdAdapter(env) {
       if (!existsSync(p)) return null;
       const raw = readFileSync(p, "utf8");
       return { id, ...parseUS(raw), raw };
+    },
+    // Sin tracker, un "comentario" es una línea más en el registro de despliegues de esa US.
+    // Se APÉNDEA (no se pisa): el archivo es la bitácora, y una bitácora que se sobrescribe
+    // no es una bitácora.
+    comment(id, markdown) {
+      const p = join(dir, `${id}.deploys.md`);
+      mkdirSync(dirname(p), { recursive: true });
+      const previo = existsSync(p) ? readFileSync(p, "utf8") : `# Despliegues de ${id}\n`;
+      writeFileSync(p, `${previo.replace(/\s*$/, "")}\n\n${markdown}\n`);
+      return p;
+    },
+    listComments(id) {
+      const p = join(dir, `${id}.deploys.md`);
+      return existsSync(p) ? [readFileSync(p, "utf8")] : [];
     },
     stamp(id, record) {
       const p = join(dir, `${id}.coverage.md`);

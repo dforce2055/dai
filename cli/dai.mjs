@@ -29,7 +29,12 @@ import { trackerUrl } from "./lib/tracker-url.mjs";
 import { parseFindings, diffPositions, validateFindings, filterFindings, renderFindingBody, renderReviewSummary } from "./lib/review-findings.mjs";
 import { composePrBody, prTitle, forgeTool, bodyGaps } from "./lib/pr.mjs";
 import { resolveBase, isProdBranch, branchFlow, baseHint, parseOriginHead } from "./lib/branch-flow.mjs";
-import { listPrCmd, parsePrList, updatePrCmd, isAlreadyExistsError, describeUpdate } from "./lib/pr-remote.mjs";
+import { listPrCmd, parsePrList, updatePrCmd, updatePrApiCmd, isAlreadyExistsError, describeUpdate } from "./lib/pr-remote.mjs";
+import { parseCommitLog, proposeBump, nextVersion, buildManifest, renderManifest, BUMP_CAVEAT } from "./lib/release-plan.mjs";
+import { bumpPackageJson, bumpVersionFile, changelogEntry, insertChangelogEntry, changelogSection, changelogGaps, releaseBranch, tagName, normalizeVersion } from "./lib/release-files.mjs";
+import { notifyConfig, describeTarget, renderNotice, sendNotice, formatFecha } from "./lib/notify.mjs";
+import { releaseMarker, alreadyStamped, renderReleaseStamp, stampPlan, renderStampPlan, stampWarning, SIN_ESTAMPAR } from "./lib/release-stamp.mjs";
+import { parseImplements } from "./lib/implements.mjs";
 import { absolutizeSiteLinks } from "./lib/docs-links.mjs";
 import { diagnoseGitSsh, pushFailureHint, WINDOWS_OPENSSH } from "./lib/git-ssh.mjs";
 import { dirsEqual } from "./lib/fsutil.mjs";
@@ -1188,6 +1193,19 @@ async function cmdPr(opts) {
       return true;
     } catch (e) {
       const msg = String(e.stderr || e.message || "");
+      // Plan B por REST: el comando de alto nivel puede fallar por algo ajeno a la edición
+      // (gh consulta GraphQL y arrastra campos deprecados del servidor). Se intenta callado
+      // y solo se reporta si TAMBIÉN falla — avisar de un error que se resolvió solo es ruido.
+      const api = updatePrApiCmd(tool, { number, title, bodyFile, projectPath: parseRemote(remote)?.path });
+      if (api) {
+        try {
+          execFileSync(tool, api, { encoding: "utf8", cwd: process.cwd(), stdio: ["ignore", "pipe", "pipe"] });
+          ok(`PR/MR #${number} actualizada: título + descripción${existing?.url ? ` — ${existing.url}` : ""}.`);
+          info(`(\`${tool} pr edit\` falló por algo ajeno a la edición; se actualizó por la API REST)`);
+          try { rmSync(bodyFile); } catch { /* noop */ }
+          return true;
+        } catch (e2) { process.stdout.write(`  ${tool} api también falló: ${String(e2.stderr || e2.message).split("\n")[0]}\n`); }
+      }
       warn(`no pude actualizar la PR/MR #${number} con ${tool}. El body quedó en ${bodyFile}.`);
       if (msg.trim()) process.stdout.write(`  ${tool} dijo:\n  ${msg.trim().split("\n").join("\n  ")}\n`);
       process.stdout.write(shellHint(tool, ucmd));
@@ -1240,7 +1258,523 @@ async function cmdPr(opts) {
   }
 }
 
-// ── install: skills → ~/.claude/skills o <repo>/.claude/skills ────────────────
+// ── release plan: el manifiesto de la versión ─────────────────────────────────
+//
+// Contesta la pregunta que a un equipo sin versiones no le contesta nadie: qué User
+// Stories tiene esta release. El tag, el CHANGELOG, el comentario en cada ticket y el
+// aviso al canal son formas distintas de publicar ESTE dato, así que primero el dato.
+
+// El último tag alcanzable, ordenado por semver (no por fecha: un hotfix tagueado tarde
+// no es "el último release"). null si el repo todavía no tiene ninguno.
+function lastTag() {
+  try {
+    const out = git(["tag", "--sort=-v:refname", "--merged", "HEAD"]);
+    return out.split("\n").map((t) => t.trim()).filter(Boolean)[0] || null;
+  } catch { return null; }
+}
+
+// Las US que entraron en el rango, leyendo los implements.yaml TAL COMO ESTABAN en cada
+// commit que los tocó. El link viaja con el código, así que esto no depende de que la
+// branch siga existiendo ni de que el change no se haya archivado — que es exactamente
+// lo que pasa cuando llegás a cortar la release, días después del merge.
+function linkedInRange(range) {
+  const rows = [];
+  let raw;
+  try {
+    raw = git(["log", "--format=\x1e%H", "--name-only", "--diff-filter=AMR", range, "--", "*implements.yaml"]);
+  } catch { return rows; }
+  let order = 0;
+  for (const bloque of raw.split("\x1e")) {
+    const lineas = bloque.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (lineas.length === 0) continue;
+    const sha = lineas[0];
+    for (const path of lineas.slice(1)) {
+      if (!path.endsWith("implements.yaml")) continue;
+      let texto;
+      try { texto = git(["show", `${sha}:${path}`]); } catch { continue; }   // borrado después
+      let parsed;
+      try { parsed = parseImplements(texto); } catch { continue; }
+      for (const im of parsed.implements || []) {
+        if (isPlaceholderId(im.id)) continue;
+        rows.push({ ...im, change: parsed.change, repo: parsed.repo, path, sha, order: order++ });
+      }
+    }
+  }
+  return rows;
+}
+
+// El manifiesto, sin render: lo comparten plan, cut y done. Un solo lugar que sabe
+// contestar "qué entra en esta versión" — si cada comando lo calculara a su manera,
+// tarde o temprano dirían cosas distintas y le creerías al que tenés más a mano.
+async function releaseManifest(opts = {}, { from, to } = {}) {
+  const desde = from ?? (textOpt(opts, "from") || lastTag());
+  const hasta = to ?? (textOpt(opts, "to") || branchFlow(process.env).dev || gitBranch());
+  const toRev = resolveRev(hasta) || resolveRev(`origin/${hasta}`);
+  if (!toRev) fail(`no encuentro '${hasta}' (ni local ni en origin/${hasta}).\n  Traelo primero:  git fetch origin ${hasta}`, 1);
+  const range = desde ? `${desde}..${toRev}` : toRev;
+
+  let commits = [];
+  try { commits = parseCommitLog(git(["log", "--format=%H\x1f%s", range])); }
+  catch (e) { fail(`no pude leer el historial de '${range}': ${String(e.message).split("\n")[0]}`, 1); }
+
+  const linked = linkedInRange(range);
+  const live = {};
+  let unreachable = false;
+  if (!opts.noNetwork && linked.length) {
+    try {
+      const adapter = getAdapter(process.env);
+      for (const id of new Set(linked.map((r) => r.id))) {
+        const { us, unreachable: nore } = await fetchLiveUS(adapter, id);
+        if (nore) { unreachable = true; break; }
+        if (us) live[id] = us;
+      }
+    } catch (e) { unreachable = true; warn(`no puedo verificar contra el tracker: ${String(e.message).split("\n")[0]}`); }
+  }
+  // ¿Este repo trabaja con User Stories? Si nunca declaró ninguna (archivadas incluidas),
+  // marcar cada branch como "entró sin link" es ruido: en un repo de tooling ninguna va a
+  // declararla nunca. Se mira el repo entero, no el rango.
+  const repoUsesStories = flattenImplements(discoverImplements(process.cwd())).length > 0;
+  const m = buildManifest({ commits, linked, live, unreachable: unreachable || Boolean(opts.noNetwork), repoUsesStories });
+  return { manifest: m, commits, from: desde, to: hasta, range };
+}
+
+// La versión que este repo declara hoy. `null` si no espeja el número en ningún archivo
+// que dai reconozca — que es legítimo: el tag es la fuente de verdad.
+function currentVersion() {
+  for (const [file, leer] of [
+    ["VERSION", (t) => t.trim().split("\n")[0]],
+    ["package.json", (t) => { try { return JSON.parse(t).version || null; } catch { return null; } }],
+  ]) {
+    const p = join(process.cwd(), file);
+    if (existsSync(p)) { const v = leer(readFileSync(p, "utf8")); if (v) return { version: v, file }; }
+  }
+  return { version: null, file: null };
+}
+
+async function cmdReleasePlan(opts = {}) {
+  loadDaiEnv();
+  if (!gitBranch()) fail("esto no parece un repo git.", 1);
+  const { manifest: m, commits, from, to } = await releaseManifest(opts);
+  const { version: current } = currentVersion();
+  const { bump, reason } = proposeBump(commits);
+  const proposed = current ? nextVersion(current, bump) : null;
+
+  if (opts.json) {
+    process.stdout.write(JSON.stringify({ from, to, current, proposed, bump, reason, caveat: BUMP_CAVEAT, ...m }, null, 2) + "\n");
+    return;
+  }
+  process.stdout.write("\n" + renderManifest(m, { from, to, current: current || "(sin archivo de versión)", proposed, bump, reason }) + "\n");
+  process.stdout.write(`  ${C.dim(BUMP_CAVEAT.split("\n").join("\n  "))}\n\n`);
+  if (m.counts.commits === 0) { info("no hay nada nuevo para promover: no hace falta cortar una versión."); return; }
+  info(`Cuando lo confirmes:  dai release cut ${proposed || "<X.Y.Z>"}`);
+}
+
+// ── release cut: preparar la versión ─────────────────────────────────────────
+// Branch + bump + entrada del CHANGELOG + commit. Todo lo que pasa ANTES de la firma
+// humana; nada que hable hacia afuera (ni push, ni tag, ni PR).
+async function cmdReleaseCut(versionArg, opts = {}) {
+  loadDaiEnv();
+  const branch = gitBranch();
+  if (!branch) fail("esto no parece un repo git.", 1);
+  let version;
+  try { version = normalizeVersion(versionArg); }
+  catch (e) { fail(`${e.message}\n  Uso:  dai release cut 1.2.0`, 1); }
+
+  const dirty = (() => { try { return git(["status", "--porcelain"]).length > 0; } catch { return false; } })();
+  if (dirty && !opts.dryRun) fail("tenés cambios sin commitear. Una versión se corta sobre un árbol limpio.", 1);
+
+  const { manifest: m, commits, from, to } = await releaseManifest(opts);
+  const { version: current, file: versionFile } = currentVersion();
+  const { bump, reason } = proposeBump(commits);
+  const sugerida = current ? nextVersion(current, bump) : null;
+
+  // Qué archivos espejan el número en ESTE repo. Puede no haber ninguno (un repo .NET, un
+  // frontend corporativo): el tag sigue siendo la versión.
+  const espejos = [];
+  for (const [file, fn] of [["VERSION", bumpVersionFile], ["package.json", bumpPackageJson]]) {
+    const p = join(process.cwd(), file);
+    if (!existsSync(p)) continue;
+    const r = fn(readFileSync(p, "utf8"), version);
+    espejos.push({ file, path: p, ...r });
+  }
+
+  const crearBranch = opts.branch !== false && !opts.noBranch;
+  const nombreBranch = releaseBranch(version);
+
+  process.stdout.write("\n" + renderManifest(m, { from, to, current: current || "(sin archivo)", proposed: version, bump: `pediste ${version}`, reason }) + "\n");
+  process.stdout.write(`\n  ── Se va a preparar ─────────────────────────────────\n`);
+  process.stdout.write(`  versión:  ${version}${sugerida && sugerida !== version ? C.dim(`   (dai habría propuesto ${sugerida} — ${bump})`) : ""}\n`);
+  process.stdout.write(`  branch:   ${crearBranch ? `${nombreBranch}  (desde ${branch})` : C.dim("ninguna — se taguea desde la rama de integración")}\n`);
+  for (const e of espejos) process.stdout.write(`  ${e.file.padEnd(9)} ${e.changed ? `${e.from} → ${version}` : C.dim(`ya está en ${version}`)}\n`);
+  if (espejos.length === 0) process.stdout.write(`  ${C.dim("este repo no espeja el número en ningún archivo que dai reconozca: la versión es el tag")}\n`);
+  process.stdout.write(`  CHANGELOG entrada nueva para ${version} (con el manifiesto para repartir)\n`);
+  process.stdout.write(`  commit:   chore(release): v${version}\n`);
+  process.stdout.write(`  ─────────────────────────────────────────────────────\n`);
+  if (m.counts.atrasadas > 0) warn(`vas a cortar una versión con ${m.counts.atrasadas} US ATRASADA(S). Revisalas o resincronizá antes.`);
+  if (m.orphans.length) warn(`hay ${m.orphans.length} branch(es) sin US ni prefijo exento en el rango.`);
+
+  if (opts.dryRun) { info("[dry-run] no se tocó nada."); return; }
+  if (!opts.yes) {
+    if (!process.stdin.isTTY) { info("Sin TTY y sin --yes: no preparo la versión. Revisá el plan y re-ejecutá con --yes."); return; }
+    const a = (await askOrCancel(`  ¿Preparo la versión ${version}? (s/N) `) || "").toLowerCase();
+    if (!["s", "si", "sí", "y", "yes"].includes(a)) { info("Cancelado — no se tocó nada."); return; }
+  }
+
+  if (crearBranch) {
+    try { git(["checkout", "-b", nombreBranch]); ok(`branch ${nombreBranch}`); }
+    catch (e) { fail(`no pude crear '${nombreBranch}': ${String(e.message).split("\n")[0]}`, 1); }
+  }
+  const tocados = [];
+  for (const e of espejos) {
+    if (!e.changed) continue;
+    writeFileSync(e.path, e.text);
+    tocados.push(e.file);
+    ok(`${e.file}: ${e.from} → ${version}`);
+  }
+
+  // CHANGELOG: el andamio y el material. La prosa la escribe una persona (o la skill).
+  const chPath = join(process.cwd(), "CHANGELOG.md");
+  const entry = changelogEntry({ version, date: new Date().toISOString().slice(0, 10), manifest: m });
+  const previo = existsSync(chPath) ? readFileSync(chPath, "utf8") : "# Changelog\n";
+  const repoUrl = (() => { const p = parseRemote(gitRemote()); return p ? `https://${p.host}/${p.path}` : null; })();
+  const res = insertChangelogEntry(previo, entry, { version, repoUrl });
+  if (res.changed) { writeFileSync(chPath, res.text); tocados.push("CHANGELOG.md"); ok(`CHANGELOG.md: entrada para ${version}`); }
+  else warn(`CHANGELOG.md sin tocar — ${res.reason}.`);
+
+  if (tocados.length === 0) { warn("no hubo nada que cambiar: no hago un commit vacío."); return; }
+  git(["add", ...tocados]);
+  git(["commit", "-m", `chore(release): v${version}`, "-m", `Manifiesto: ${m.counts.stories} US · ${m.counts.commits} commits desde ${from || "el principio"}.`]);
+  ok(`commit chore(release): v${version}`);
+
+  process.stdout.write("\n");
+  info("Falta lo que dai no puede escribir por vos: repartí el manifiesto del CHANGELOG y contá el porqué.");
+  info(`Después:  dai pr${crearBranch ? "" : ""}   →   se mergea   →   dai release done ${version}`);
+}
+
+// ── release done: cerrar la versión ────────────────────────────────────────
+// DESPUÉS del merge. Tag + release note + back-merge + aviso. Es la mitad que se olvida
+// cuando la ceremonia se hace a mano, y la que habla hacia afuera: cada paso se reporta
+// por separado, porque si el release note falla el tag YA existe y hay que decirlo.
+async function cmdReleaseDone(versionArg, opts = {}) {
+  loadDaiEnv();
+  let version;
+  try { version = normalizeVersion(versionArg); }
+  catch (e) { fail(`${e.message}\n  Uso:  dai release done 1.2.0`, 1); }
+  const tag = tagName(version);
+  const flow = branchFlow(process.env);
+  const prod = textOpt(opts, "base") || flow.prod || parseOriginHead(safeGit(["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"])) || "main";
+  const dev = flow.dev;
+
+  if (safeGit(["tag", "-l", tag])?.trim() === tag && !opts.force) {
+    fail(`el tag ${tag} ya existe. Una versión no se re-taguea: si querés rehacerla, borrá el tag a mano (local y remoto) sabiendo lo que eso implica.`, 1);
+  }
+  try { git(["checkout", prod]); } catch (e) { fail(`no pude cambiar a '${prod}': ${String(e.message).split("\n")[0]}`, 1); }
+  try { git(["pull", "--ff-only"]); } catch { warn(`no pude actualizar '${prod}' con pull --ff-only. Revisá a mano antes de taguear.`); }
+
+  const head = gitCommit();
+  const { version: enArchivo } = currentVersion();
+  if (enArchivo && enArchivo !== version) {
+    fail(`'${prod}' declara la versión ${enArchivo}, no ${version}.\n  ¿Se mergeó la PR de release? El tag tiene que apuntar al commit final.`, 1);
+  }
+
+  const { manifest: m } = await releaseManifest(opts, { to: prod });
+  const notes = existsSync(join(process.cwd(), "CHANGELOG.md"))
+    ? changelogSection(readFileSync(join(process.cwd(), "CHANGELOG.md"), "utf8"), version) : null;
+  const cfg = (() => { try { return notifyConfig(process.env); } catch (e) { warn(String(e.message)); return null; } })();
+  const avisar = cfg && !opts.noNotify;
+
+  process.stdout.write(`\n  ── Cerrar la versión ${version} ──────────────────────────\n`);
+  process.stdout.write(`  tag:      ${tag} → ${prod} @ ${String(head).slice(0, 8)}\n`);
+  process.stdout.write(`  release:  ${opts.noRelease ? C.dim("no (--no-release)") : `nota en el forge${notes ? "" : C.dim(" (sin sección del CHANGELOG: sale con las notas del forge)")}`}\n`);
+  process.stdout.write(`  back-merge: ${dev ? `${prod} → ${dev}` : C.dim("no (DAI_BRANCH_DEV no declarada)")}\n`);
+  const relBranch = releaseBranch(version);
+  const hayLocal = Boolean(safeGit(["rev-parse", "--verify", "--quiet", relBranch]));
+  const hayRemota = Boolean(safeGit(["rev-parse", "--verify", "--quiet", `origin/${relBranch}`]));
+  const limpiar = (hayLocal || hayRemota) && !opts.keepBranch;
+  process.stdout.write(`  limpieza: ${limpiar
+    ? `borrar ${relBranch}${hayLocal ? " (local)" : ""}${hayLocal && hayRemota ? " +" : ""}${hayRemota ? " (remota)" : ""}`
+    : C.dim(hayLocal || hayRemota ? "no (--keep-branch)" : "nada que borrar")}\n`);
+  process.stdout.write(`  aviso:    ${avisar ? describeTarget(cfg) : C.dim(cfg ? "no (--no-notify)" : "no (DAI_NOTIFY no declarado)")}\n`);
+  process.stdout.write(`  ─────────────────────────────────────────────────────\n`);
+  if (opts.dryRun) { info("[dry-run] no se tocó nada."); return; }
+  if (!opts.yes) {
+    if (!process.stdin.isTTY) { info("Sin TTY y sin --yes: no cierro la versión."); return; }
+    const a = (await askOrCancel(`  ¿Cierro la versión ${version}? (s/N) `) || "").toLowerCase();
+    if (!["s", "si", "sí", "y", "yes"].includes(a)) { info("Cancelado — no se tocó nada."); return; }
+  }
+
+  // 1. El tag. Es LA versión: si esto falla, no sigue nada.
+  try {
+    git(["tag", "-a", tag, "-m", `${tag}`, ...(opts.force ? ["-f"] : [])]);
+    git(["push", "origin", tag, ...(opts.force ? ["--force"] : [])], { stdio: ["inherit", "pipe", "inherit"], env: { ...process.env, GIT_TERMINAL_PROMPT: "1" } });
+    ok(`tag ${tag} creado y publicado`);
+  } catch (e) { fail(`no pude crear o publicar el tag ${tag}: ${String(e.message).split("\n")[0]}`, 1); }
+
+  // 2. Release note en el forge. De acá en adelante, cada paso reporta y sigue: el tag ya
+  //    existe, y abortar dejaría la versión a medio cerrar sin decir en qué mitad quedó.
+  let releaseUrl = null;
+  if (!opts.noRelease) {
+    const forge = detectForge(parseRemote(gitRemote())?.host);
+    const tool = forgeTool(forge);
+    const notesFile = join(mkdtempSync(join(tmpdir(), "dai-rel-")), "notes.md");
+    if (notes) writeFileSync(notesFile, notes + "\n");
+    const cmd = tool === "gh"
+      ? ["release", "create", tag, "--target", prod, "--title", `${tag}`, ...(notes ? ["--notes-file", notesFile] : ["--generate-notes"]), "--latest"]
+      : ["release", "create", tag, "--name", `${tag}`, ...(notes ? ["--notes-file", notesFile] : [])];
+    try {
+      const out = execFileSync(tool, cmd, { encoding: "utf8", cwd: process.cwd() });
+      releaseUrl = (String(out).match(/https?:\/\/\S+/) || [null])[0];
+      process.stdout.write(out);
+      ok(`release note publicada${releaseUrl ? ` — ${releaseUrl}` : ""}`);
+    } catch (e) {
+      warn(`no pude publicar la release note con ${tool}: ${String(e.stderr || e.message).split("\n")[0]}`);
+      process.stdout.write(shellHint(tool, cmd));
+      process.stdout.write(`  El tag ${tag} SÍ está publicado: la versión existe, le falta la nota.\n`);
+    }
+  }
+
+  // 3. Back-merge: el otro paso que se olvida. Sin esto, integración queda una versión atrás.
+  if (dev) {
+    try {
+      git(["checkout", dev]); git(["pull", "--ff-only"]);
+      git(["merge", "--no-edit", prod]);
+      git(["push", "origin", dev], { stdio: ["inherit", "pipe", "inherit"], env: { ...process.env, GIT_TERMINAL_PROMPT: "1" } });
+      ok(`back-merge ${prod} → ${dev}`);
+    } catch (e) {
+      warn(`no pude hacer el back-merge ${prod} → ${dev}: ${String(e.message).split("\n")[0]}`);
+      process.stdout.write(`  Hacelo a mano:  git checkout ${dev} && git merge ${prod} && git push origin ${dev}\n`);
+      process.stdout.write(`  Si no, '${dev}' queda una versión atrás y el próximo corte arranca torcido.\n`);
+    }
+  }
+
+  // 4. Borrar la rama de release. Es el ÚNICO punto del ciclo donde dai puede afirmar que
+  // es seguro: ya está mergeada en producción, tagueada y con el back-merge hecho. Si esto
+  // no pasa acá, se acumulan — y una rama de release que sobrevive a su release es un fork.
+  // Misma disciplina que `dai done`: `git branch -d` (minúscula) se niega si no está
+  // mergeada, así que la red de seguridad la pone git, no una suposición nuestra.
+  if (limpiar) {
+    if (hayLocal) {
+      try { git(["branch", "-d", relBranch]); ok(`borrada la branch local ${relBranch}`); }
+      catch (e) {
+        warn(`no borré '${relBranch}' local: ${String(e.message).split("\n")[0]}`);
+        process.stdout.write(`  git se niega a borrar una branch sin mergear. Revisala: quizá tiene commits que no llegaron a '${prod}'.\n`);
+      }
+    }
+    if (hayRemota) {
+      try {
+        git(["push", "origin", "--delete", relBranch], { stdio: ["inherit", "pipe", "inherit"], env: { ...process.env, GIT_TERMINAL_PROMPT: "1" } });
+        ok(`borrada la branch remota origin/${relBranch}`);
+      } catch (e) {
+        warn(`no borré 'origin/${relBranch}': ${String(e.message).split("\n")[0]}`);
+        process.stdout.write(`  Puede que ya la haya borrado el forge al mergear. Si no:  git push origin --delete ${relBranch}\n`);
+      }
+    }
+  }
+
+  // 5. El aviso. Lo último a propósito: anunciar algo que después falla es peor que no anunciar.
+  if (avisar) {
+    const ev = {
+      event: "released", app: releaseApp(opts), version, environment: null,
+      author: gitUser(), date: formatFecha(), url: releaseUrl,
+      stories: m.stories.map((s) => ({ id: s.id, title: s.title })),
+    };
+    await confirmarYAvisar(cfg, ev, opts);
+  }
+  process.stdout.write("\n");
+  ok(`versión ${version} cerrada.`);
+  info(`Cuando la despliegues:  dai release stamp ${version} --env <ambiente>   (opcional: la release ya está hecha)`);
+}
+
+// ── release stamp: avisarle a cada US en qué versión y ambiente salió ────────
+//
+// Es el comando que más cuidado necesita del lote: escribe N veces hacia afuera, en
+// tickets de gente distinta, y no se deshace. Por eso muestra el ALCANCE REAL antes de
+// escribir —cuántos comentarios, en qué tickets, cuáles se saltean— y pide confirmación.
+//
+// Y es OPCIONAL: decir que no acá no rompe nada. Para cuando esto corre, el tag existe y
+// el release note existe; la versión ya está. Que alguien elija no hacer ruido en veinte
+// tickets es una decisión legítima, no un error a corregir — así que sale con 0.
+async function cmdReleaseStamp(versionArg, opts = {}) {
+  loadDaiEnv();
+  let version;
+  try { version = normalizeVersion(versionArg); }
+  catch (e) { fail(`${e.message}\n  Uso:  dai release stamp 1.2.0 --env prod`, 1); }
+  const environment = textOpt(opts, "env");
+  if (!environment) {
+    fail("falta --env: a qué ambiente se desplegó esta versión (prod, pre, test, el nombre que uses).\n" +
+         "  dai no tiene catálogo de ambientes: el que pases es el que se estampa.", 1);
+  }
+  const app = releaseApp(opts);
+  const tag = tagName(version);
+
+  // El manifiesto de ESA versión: lo que entró entre el tag anterior y este. Se pide por
+  // tag, no por rama, porque estampar es contar qué se desplegó — y lo desplegado es el tag.
+  const previo = safeGit(["describe", "--tags", "--abbrev=0", `${tag}^`])?.trim() || null;
+  if (!safeGit(["rev-parse", "--verify", "--quiet", `${tag}^{commit}`])) {
+    fail(`no existe el tag ${tag} en este repo.\n  Cerrá la versión primero:  dai release done ${version}\n  (o traé los tags:  git fetch --tags)`, 1);
+  }
+  const { manifest: m } = await releaseManifest(opts, { from: previo, to: tag });
+
+  // ¿Cuáles ya están estampadas? Sin poder leer los comentarios dai NO afirma que no las
+  // estampó: lo dice, y quien decide es la persona. Afirmar de más acá se paga en duplicados.
+  const marker = releaseMarker({ app, version, environment });
+  const adapter = getAdapter(process.env);
+  const stamped = new Set();
+  let unknown = false;
+  if (typeof adapter.listComments === "function") {
+    for (const s of m.stories) {
+      try { if (alreadyStamped(await adapter.listComments(s.id), marker)) stamped.add(s.id); }
+      catch { unknown = true; }
+    }
+  } else unknown = true;
+
+  const plan = stampPlan({ stories: m.stories, stamped, unknown });
+  process.stdout.write("\n" + renderStampPlan(plan, { app, version, environment, tracker: adapter.kind }) + "\n");
+  warn(stampWarning(plan));
+  if (plan.pendientes.length === 0) { info("Nada que hacer."); return; }
+
+  if (opts.dryRun) { info("[dry-run] no se escribió nada."); return; }
+  if (!opts.yes) {
+    if (!process.stdin.isTTY) {
+      info(`Sin TTY y sin --yes: no estampo. Re-ejecutá con --yes si querés los ${plan.pendientes.length} comentarios.`);
+      return;
+    }
+    const a = (await askOrCancel(`  ¿Estampo ${plan.pendientes.length} comentario(s)? (s/N) `) || "").toLowerCase();
+    if (!["s", "si", "sí", "y", "yes"].includes(a)) {
+      info("No se estampó nada — la release está hecha igual.");
+      info(SIN_ESTAMPAR);
+      return;   // salida 0: decir que no es una respuesta válida, no un error
+    }
+  }
+
+  const cuerpo = renderReleaseStamp({
+    app, version, environment, date: formatFecha(), commit: safeGit(["rev-list", "-n", "1", tag])?.trim(),
+    url: textOpt(opts, "url") || null,
+  });
+  let hechos = 0;
+  const fallados = [];
+  for (const s of plan.pendientes) {
+    try { await adapter.comment(s.id, cuerpo); hechos++; ok(`${s.id} estampada`); }
+    catch (e) { fallados.push(s.id); warn(`${s.id}: ${String(e.message).split("\n")[0]}`); }
+  }
+  if (fallados.length) {
+    warn(`quedaron ${fallados.length} sin estampar: ${fallados.join(", ")}. Volvé a correr el comando — las ya hechas se saltean.`);
+    process.exitCode = 1;
+  } else ok(`${hechos} US estampada(s) con ${app} ${tag} → ${environment.toUpperCase()}.`);
+
+  // El aviso al canal es del EVENTO de despliegue, no del estampado: sale aunque no se
+  // haya estampado nada (para eso está `--only-notify`), y no sale si el repo no lo declaró.
+  const cfg = (() => { try { return notifyConfig(process.env); } catch (e) { warn(String(e.message)); return null; } })();
+  if (cfg && !opts.noNotify) {
+    await confirmarYAvisar(cfg, {
+      event: "deployed", app, version, environment, author: gitUser(), date: formatFecha(),
+      url: textOpt(opts, "url") || null, stories: m.stories.map((x) => ({ id: x.id, title: x.title })),
+    }, opts);
+  }
+}
+
+// ── release status: ¿dónde estoy en el ciclo? ────────────────────────────────
+// Todo local + el forge: rápido y sin tocar el tracker. Lo que NO contesta —qué versión
+// hay en cada ambiente— vive en los stamps de las US, porque un despliegue es un evento
+// y no un archivo del repo: cambia sin que cambie el código.
+async function cmdReleaseStatus(opts = {}) {
+  loadDaiEnv();
+  if (!gitBranch()) fail("esto no parece un repo git.", 1);
+  const flow = branchFlow(process.env);
+  const { version: declarada, file } = currentVersion();
+  const tag = lastTag();
+  const dev = flow.dev || gitBranch();
+  const prod = flow.prod;
+
+  info(`versión declarada: ${declarada ? `${declarada}  ${C.dim(`(${file})`)}` : C.dim("ningún archivo la espeja — la versión es el tag")}`);
+  info(`último tag: ${tag || C.dim("(ninguno)")}`);
+  if (tag && declarada && tagName(declarada) !== tag) {
+    warn(`el archivo dice ${declarada} y el último tag es ${tag}: hay una versión preparada sin cerrar, o un tag sin bump.`);
+  }
+
+  // ¿Hay algo sin promover? Es la pregunta que dispara el ciclo.
+  const { manifest: m, commits } = await releaseManifest({ ...opts, noNetwork: true }, { from: tag, to: dev });
+  if (m.counts.commits === 0) info(`'${dev}' no tiene nada nuevo sobre ${tag || "el principio"}: no hay versión que cortar.`);
+  else {
+    const { bump } = proposeBump(commits);
+    warn(`'${dev}' tiene ${m.counts.commits} commit(s) sin promover · ${m.counts.stories} US · bump propuesto: ${bump}.`);
+    process.stdout.write(`    Ver el detalle:  dai release plan\n`);
+  }
+
+  // Back-merge pendiente: producción adelante de integración es el olvido clásico.
+  if (prod && flow.dev) {
+    const pendiente = safeGit(["rev-list", "--count", `${flow.dev}..${prod}`])?.trim();
+    if (pendiente && Number(pendiente) > 0) {
+      warn(`'${prod}' está ${pendiente} commit(s) adelante de '${flow.dev}': falta el back-merge.`);
+      process.stdout.write(`    git checkout ${flow.dev} && git merge ${prod} && git push origin ${flow.dev}\n`);
+    }
+  }
+
+  // Branches de release abiertas (model B): una que sobrevive a su release es un fork.
+  const abiertas = (safeGit(["branch", "--list", "release/*", "--format=%(refname:short)"]) || "")
+    .split("\n").map((x) => x.trim()).filter(Boolean);
+  if (abiertas.length) {
+    warn(`${abiertas.length} branch(es) de release sin borrar: ${abiertas.join(", ")}`);
+    process.stdout.write(`    Una rama de release que sobrevive a su release es un fork. Desde 0.15.0 las borra\n`);
+    process.stdout.write(`    \`dai release done\`; las de antes se limpian a mano (git se niega si alguna no está mergeada):\n`);
+    process.stdout.write(`      git branch -d ${abiertas.join(" ")}\n`);
+  }
+
+  const cfg = (() => { try { return notifyConfig(process.env); } catch { return null; } })();
+  info(`aviso al canal: ${cfg ? `${describeTarget(cfg)}  ${C.dim("(no verificado: eso lo dice `dai release notify --test`)")}` : C.dim("sin declarar (DAI_NOTIFY)")}`);
+
+  // Los últimos releases publicados, según el forge. Es lo más cerca de "qué hay afuera"
+  // que dai puede saber sin preguntarle al tracker ni al pipeline.
+  if (!opts.noNetwork) {
+    const tool = forgeTool(detectForge(parseRemote(gitRemote())?.host));
+    try {
+      const out = execFileSync(tool, ["release", "list", ...(tool === "gh" ? ["--limit", "3"] : ["--per-page", "3"])],
+        { encoding: "utf8", cwd: process.cwd(), stdio: ["ignore", "pipe", "pipe"] });
+      const lineas = String(out).split("\n").filter(Boolean).slice(0, 3);
+      if (lineas.length) { info("últimos releases publicados:"); for (const l of lineas) process.stdout.write(`    ${l}\n`); }
+    } catch { /* sin binario, sin auth o sin releases: no es un problema que resolver acá */ }
+  }
+}
+
+// ── release notify --test: probar el canal sin esperar a una release ─────────
+// Un webhook no se puede validar sin postear. Fingir que sí sería justo lo que dai no hace,
+// así que esto POSTEA de verdad — y lo dice antes.
+async function cmdReleaseNotify(opts = {}) {
+  loadDaiEnv();
+  let cfg;
+  try { cfg = notifyConfig(process.env); } catch (e) { fail(String(e.message), 1); }
+  if (!cfg) fail("no hay canal declarado: poné DAI_NOTIFY (y DAI_NOTIFY_WEBHOOK) en el .env.dai.", 1);
+  if (!opts.test) fail("por ahora `dai release notify` solo sabe probar el canal:  dai release notify --test", 2);
+  await confirmarYAvisar(cfg, { event: "test" }, opts);
+}
+
+// El nombre de la app en los avisos y en el stamp. Sale del repo, no de una variable
+// nueva: `--app` lo pisa cuando el nombre lindo no es el del directorio.
+function releaseApp(opts) {
+  return textOpt(opts, "app") || gitRepoName() || basename(process.cwd()) || null;
+}
+
+// Mostrar el mensaje EXACTO que va a salir y pedir confirmación. Un mensaje a un canal de
+// equipo no se desmanda: se muestra antes, siempre, aunque el aviso sea de una sola línea.
+async function confirmarYAvisar(cfg, ev, opts = {}) {
+  const msg = renderNotice(ev);
+  process.stdout.write(`\n  ── Aviso a ${describeTarget(cfg)} ──\n`);
+  process.stdout.write(msg.split("\n").map((l) => `  │ ${l}`).join("\n") + "\n");
+  process.stdout.write(`  ──────────────────────────────────────\n`);
+  if (opts.dryRun) { info("[dry-run] no se envió."); return; }
+  if (!opts.yes) {
+    if (!process.stdin.isTTY) { info("Sin TTY y sin --yes: no aviso al canal."); return; }
+    const a = (await askOrCancel(`  ¿Aviso al canal? (s/N) `) || "").toLowerCase();
+    if (!["s", "si", "sí", "y", "yes"].includes(a)) { info("No se avisó — la release está hecha igual."); return; }
+  }
+  const r = await sendNotice(cfg, ev);
+  if (r.ok) ok(`avisado a ${describeTarget(cfg)}`);
+  else { warn(r.error); process.stdout.write(`  El aviso no salió, pero la release SÍ está hecha.\n`); }
+}
+
+function safeGit(args) { try { return git(args); } catch { return null; } }
+
+// ── install: skills → ~/.claude/skills o <repo>/.claude/skills ────────────────// ── install: skills → ~/.claude/skills o <repo>/.claude/skills ────────────────
 async function cmdInstall(opts) {
   if (opts.from !== undefined) return cmdInstallFrom(opts);   // skills externas (ADR-0013)
   const skillsSrc = join(ROOT, "skills");
@@ -2051,6 +2585,15 @@ switch (cmd) {
   case "pr":
   case "mr":      cmdPr(opts).catch((e) => failSoft(String(e.message))); break;   // `mr` = alias para GitLab (merge request)
   case "done":    cmdDone(opts); break;
+  case "release":
+    if (pos[0] === "plan") cmdReleasePlan(opts).catch((e) => failSoft(String(e.message)));
+    else if (pos[0] === "cut") cmdReleaseCut(pos[1], opts).catch((e) => failSoft(String(e.message)));
+    else if (pos[0] === "done") cmdReleaseDone(pos[1], opts).catch((e) => failSoft(String(e.message)));
+    else if (pos[0] === "stamp") cmdReleaseStamp(pos[1], opts).catch((e) => failSoft(String(e.message)));
+    else if (pos[0] === "status") cmdReleaseStatus(opts).catch((e) => failSoft(String(e.message)));
+    else if (pos[0] === "notify") cmdReleaseNotify(opts).catch((e) => failSoft(String(e.message)));
+    else fail(`subcomando de release desconocido: '${pos[0] ?? "(ninguno)"}' (plan | cut | done | stamp | status | notify)`, 2);
+    break;
   case "archive": cmdArchive(pos[0], opts); break;
   case "install": cmdInstall(opts).catch((e) => failSoft(String(e.message))); break;   // alias de `dai skills install`
   case "skills":
