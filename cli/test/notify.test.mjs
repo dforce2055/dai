@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { notifyConfig, describeTarget, renderNotice, payloadFor, sendNotice, explainNotifyError, formatFecha, CANALES_VALIDOS } from "../lib/notify.mjs";
+import { notifyConfig, describeTarget, renderNotice, payloadFor, sendNotice, explainNotifyError, formatFecha, VALID_CHANNELS } from "../lib/notify.mjs";
 import { withMockFetch, mockResponse } from "./helpers.mjs";
 
 const DISCORD = { DAI_NOTIFY: "discord", DAI_NOTIFY_WEBHOOK: "https://discord.com/api/webhooks/1/secreto" };
@@ -131,7 +131,7 @@ test("el canal genérico manda los campos estructurados Y el texto ya armado", (
 });
 
 test("todos los canales documentados están implementados", () => {
-  assert.deepEqual(CANALES_VALIDOS.sort(), ["discord", "slack", "telegram", "webex", "webhook"]);
+  assert.deepEqual(VALID_CHANNELS.sort(), ["discord", "slack", "telegram", "webex", "webhook"]);
 });
 
 // ── red ──────────────────────────────────────────────────────────────────────

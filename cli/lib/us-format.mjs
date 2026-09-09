@@ -93,8 +93,8 @@ export function validateUS(md) {
 
   for (const c of criteria) {
     if (!isGherkin(c)) {
-      const falta = [!c.dado && "Dado", !c.cuando && "Cuando", !c.entonces && "Entonces"].filter(Boolean).join(" / ");
-      warnings.push(`${c.label}: no es Gherkin completo — falta ${falta}. Un criterio sin las tres partes es difícil de volver un test.`);
+      const missingParts = [!c.dado && "Dado", !c.cuando && "Cuando", !c.entonces && "Entonces"].filter(Boolean).join(" / ");
+      warnings.push(`${c.label}: no es Gherkin completo — falta ${missingParts}. Un criterio sin las tres partes es difícil de volver un test.`);
     }
     if (TECNICAS.test(c.text)) {
       warnings.push(`${c.label}: menciona implementación (${c.text.match(TECNICAS)[0]}). El QUÉ describe comportamiento observable; el CÓMO lo decide el dev.`);
