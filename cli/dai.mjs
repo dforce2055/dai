@@ -1489,7 +1489,11 @@ async function cmdReleaseDone(versionArg, opts = {}) {
   process.stdout.write(`  back-merge: ${dev ? `${prod} → ${dev}` : C.dim("no (DAI_BRANCH_DEV no declarada)")}\n`);
   const relBranch = releaseBranch(version);
   const hayLocal = Boolean(safeGit(["rev-parse", "--verify", "--quiet", relBranch]));
-  const hayRemota = Boolean(safeGit(["rev-parse", "--verify", "--quiet", `origin/${relBranch}`]));
+  // Se pregunta al REMOTO, no a `origin/<branch>`: esa ref local queda desactualizada
+  // cuando el forge borra la rama al mergear (auto-delete on merge, que es lo normal), y
+  // dai terminaba intentando borrar algo que ya no estaba y reportando un ⚠ por un estado
+  // que en realidad era el correcto. Avisar de un problema inexistente enseña a ignorar los avisos.
+  const hayRemota = Boolean(safeGit(["ls-remote", "--heads", "origin", relBranch])?.trim());
   const limpiar = (hayLocal || hayRemota) && !opts.keepBranch;
   process.stdout.write(`  limpieza: ${limpiar
     ? `borrar ${relBranch}${hayLocal ? " (local)" : ""}${hayLocal && hayRemota ? " +" : ""}${hayRemota ? " (remota)" : ""}`
@@ -1566,7 +1570,14 @@ async function cmdReleaseDone(versionArg, opts = {}) {
         ok(`borrada la branch remota origin/${relBranch}`);
       } catch (e) {
         warn(`no borré 'origin/${relBranch}': ${String(e.message).split("\n")[0]}`);
-        process.stdout.write(`  Puede que ya la haya borrado el forge al mergear. Si no:  git push origin --delete ${relBranch}\n`);
+        process.stdout.write(`  Borrala a mano:  git push origin --delete ${relBranch}\n`);
+      }
+    } else if (hayLocal) {
+      // La ref local puede seguir apuntando a una rama que el forge ya borró. Se limpia
+      // para que el próximo `git branch -r` no muestre un fantasma.
+      if (safeGit(["rev-parse", "--verify", "--quiet", `origin/${relBranch}`])) {
+        safeGit(["branch", "-dr", `origin/${relBranch}`]);
+        info(`la branch remota ya no estaba (la borró el forge al mergear); limpié la referencia local`);
       }
     }
   }
