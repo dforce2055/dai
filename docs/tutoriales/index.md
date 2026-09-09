@@ -11,6 +11,12 @@ Guías de **setup operativo** — lo que haces una vez por máquina para trabaja
   + `glab`, las skills en Copilot, OpenSpec y el ciclo completo sobre una US real
   (`link-us` → `check` → `mr` → `stamp`).
 
+## El día a día
+
+- [**Ciclo de release**](./ciclo-de-release) — de "hay cosas para sacar" a "producción sabe
+  qué versión tiene y cada User Story lo dice": manifiesto, corte, tag, nota de release y el
+  aviso a cada historia. El *porqué* está en la [guía de releases](../guias/releases).
+
 ## Preparar el entorno
 
 - [**Configurar git**](./configurar-git) — tu identidad (nombre + correo) para que los

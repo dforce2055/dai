@@ -24,6 +24,7 @@ decisión cambia, se escribe un ADR nuevo que supersede al viejo. Molde en
 | [0016](0016-review-inline.md) | Review inline: `review.json` como contrato y puerta humana, el CLI valida las posiciones contra el diff, `--yes` explícito, nunca `APPROVE` | aceptado |
 | [0017](0017-env-dai.md) | La config de dai vive en `.env.dai` (no versionado), no en el `.env` del equipo; el loader lee ambos con precedencia shell > `.env.dai` > `.env` | aceptado |
 | [0018](0018-alcance-de-stamp-y-gate-de-ci.md) | El alcance de `dai stamp` lo decide la rama (ante la duda pregunta, no estampa de más), `dai check --ci` ejecuta el gate de governance con ramas exentas, y `dai edit-us`/`update-us` editan el QUÉ validando el formato y proponiendo el `spec_version` | aceptado |
+| [0019](0019-ciclo-de-version-y-aviso-de-release.md) | El ciclo de versión: el manifiesto de US como dato central, el bump se propone y lo firma una persona, el corte son dos comandos con una firma en el medio, el tag es la versión y los archivos son espejos, estampar es opcional y avisa su alcance, y el canal es un tercer adaptador con estructura sin formato | aceptado |
 
 > Estas son las decisiones que cierran las "Decisiones abiertas" de
 > [`METODOLOGIA.md §7`](../METODOLOGIA.md) y las enmiendas al

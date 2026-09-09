@@ -209,6 +209,7 @@ flowchart TD
 | `dai forge review <ref> --from <review.json>` `[--dry-run\|--yes]` | **review inline**: un resumen + un comentario anclado a cada `archivo:línea`, clasificado low/medium/high. **Valida cada posición contra el diff** (descarta lo que el modelo inventó) antes de postear; sin `--yes` muestra el preview y no postea nada. Modo desatendido: `--min-severity`/`--min-confidence`/`--max-comments`. El review sale con `event: COMMENT`, nunca `APPROVE` ([ADR-0016](docs/adr/0016-review-inline.md)) |
 | `dai forge comment <ref> --body-file <f>` · `dai forge pr <ref>` | comentar / leer una PR/MR (GitHub/GitLab) — el fallback simple, sin anclar |
 | `dai ac-hash <us.md>` | calcula el hash de los criterios de aceptación de una US |
+| `dai release plan` · `cut <X.Y.Z>` · `finish <X.Y.Z>` · `stamp <X.Y.Z> --env <amb>` · `status` · `notify --test` | **el ciclo de versión** ([ADR-0019](docs/adr/0019-ciclo-de-version-y-aviso-de-release.md)). `plan` arma el **manifiesto**: qué US entran, cuáles quedaron **atrasadas** y qué se coló **sin US** — más el bump que **propone** (la versión la firma una persona: un cambio de default es minor aunque todo sea `fix:`). `cut` prepara (rama, número, entrada del CHANGELOG con el material para repartir, commit) y **no habla hacia afuera**; `finish` cierra tras el merge (tag + release note + back-merge + aviso) — los dos pasos que más se olvidan. `stamp` le avisa a **cada US** en qué versión y ambiente salió: muestra el alcance real, es **idempotente** por (app, versión, ambiente) y **es opcional** (decir que no sale con 0). El tag es la versión; `VERSION`/`package.json` son espejos y puede no haber ninguno. Guía: [releases](docs/guias/releases.md) · Tutorial: [ciclo de release](docs/tutoriales/ciclo-de-release.md) |
 | `dai help [<comando>]` · `dai <comando> --help` | ayuda del CLI. Pedir ayuda **nunca ejecuta el comando**: sale por `stdout` y termina con 0. Valen `--help`, `-h` y `dai <comando> help` — las tres formas, en todos los comandos |
 | `dai doctor` · `dai docs <dest>` · `dai version` | diagnóstico del entorno (incluye **version-drift** del scaffold) · copiar la doc (sin los assets del sitio; los links a las capturas apuntan al sitio publicado) · versión (`dai version` avisa si tu repo quedó atrás) |
 
@@ -243,7 +244,7 @@ flowchart TD
 > en [`skills/`](skills/).
 
 Skills (se invocan en el asistente): `/doc-to-backlog` · `/grill-intent` · `/grill-epic` · `/grill-user-story` · `/link-us` ·
-`/tdd` · `/dai-review`. Config del tracker (`md`\|`jira`\|`clickup`) y tokens: en `.env.dai`
+`/tdd` · `/dai-review` · `/dai-release`. Config del tracker (`md`\|`jira`\|`clickup`) y tokens: en `.env.dai`
 (no versionado; el `.env` del equipo no se toca — [ADR-0017](docs/adr/0017-env-dai.md)) —
 ver [`.env.dai.example`](.env.dai.example). Auth (SSH + tokens): [ADR-0007](docs/adr/0007-modelo-de-autenticacion.md).
 
@@ -279,7 +280,7 @@ mi-repo/
 ├── CLAUDE.md                       · Constitución del proyecto (auto-cargada por Claude)
 ├── .env.dai                        · tu tracker (NO versionado, completa el token) + .env.dai.example (plantilla, sí versionada)
 ├── .claude/skills/                 · Las skills, locales al repo (el equipo las hereda)
-│   └── doc-to-backlog · grill-intent · grill-epic · grill-user-story · link-us · tdd · dai-review
+│   └── doc-to-backlog · grill-intent · grill-epic · grill-user-story · link-us · tdd · dai-review · dai-release
 ├── .github/
 │   ├── copilot-instructions.md     · La constitución, auto-inyectada en cada chat de Copilot
 │   ├── skills/                     · Las mismas skills, en formato Copilot nativo (SKILL.md)
