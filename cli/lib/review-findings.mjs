@@ -168,7 +168,7 @@ export function renderReviewSummary(r, { kept = [], suppressed = [], rejected = 
     .filter(({ n }) => n > 0)
     .map(({ s, n }) => `${n} ${SEV[s].emoji} ${SEV[s].label}`);
 
-  const hallazgos = kept.length
+  const findings = kept.length
     ? `Dejé **${kept.length}** ${kept.length === 1 ? "comentario" : "comentarios"} en línea: ${counts.join(" · ")}.`
     : "Sin comentarios en línea: no encontré nada concreto que marcar.";
 
@@ -181,7 +181,7 @@ export function renderReviewSummary(r, { kept = [], suppressed = [], rejected = 
     r.summary || null,
     r.summary ? "" : null,
     "### Hallazgos",
-    hallazgos,
+    findings,
     "",
     "### ✅ Lo que está bien",
     bullets(r.good),

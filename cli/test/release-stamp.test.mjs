@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   releaseMarker, alreadyStamped, renderReleaseStamp,
-  stampPlan, renderStampPlan, stampWarning, SIN_ESTAMPAR,
+  stampPlan, renderStampPlan, stampWarning, NOT_STAMPED_NOTE,
 } from "../lib/release-stamp.mjs";
 
 const EV = { app: "acme-backend", version: "0.5.0", environment: "prod" };
@@ -28,9 +28,9 @@ test("la misma versión en otro ambiente, o de otra app, es otra marca", () => {
 });
 
 test("alreadyStamped encuentra la marca dentro del cuerpo del comentario", () => {
-  const cuerpo = renderReleaseStamp({ ...EV, date: "09/09/2026 09:25" });
-  assert.equal(alreadyStamped([cuerpo], releaseMarker(EV)), true);
-  assert.equal(alreadyStamped([cuerpo], releaseMarker({ ...EV, environment: "pre" })), false);
+  const body = renderReleaseStamp({ ...EV, date: "09/09/2026 09:25" });
+  assert.equal(alreadyStamped([body], releaseMarker(EV)), true);
+  assert.equal(alreadyStamped([body], releaseMarker({ ...EV, environment: "pre" })), false);
   assert.equal(alreadyStamped([], releaseMarker(EV)), false);
 });
 
@@ -47,8 +47,8 @@ test("el comentario dice qué salió, dónde y cuándo, y lleva su marca al fina
 // gente aprende a ignorar. El número tiene que ser el real.
 test("el plan separa lo pendiente de lo ya estampado", () => {
   const plan = stampPlan({ stories: US, stamped: new Set(["ACME-491"]) });
-  assert.deepEqual(plan.pendientes.map((s) => s.id), ["ACME-482", "ACME-503"]);
-  assert.deepEqual(plan.repetidas.map((s) => s.id), ["ACME-491"]);
+  assert.deepEqual(plan.pending.map((s) => s.id), ["ACME-482", "ACME-503"]);
+  assert.deepEqual(plan.alreadyDone.map((s) => s.id), ["ACME-491"]);
   assert.equal(plan.total, 3);
 });
 
@@ -63,7 +63,7 @@ test("el aviso dice el número REAL de escrituras y que no se deshace", () => {
 test("sin nada pendiente el aviso no asusta: dice que no hay nada que hacer", () => {
   const plan = stampPlan({ stories: US, stamped: new Set(US.map((s) => s.id)) });
   assert.match(stampWarning(plan), /no hay nada para estampar/);
-  assert.equal(plan.pendientes.length, 0);
+  assert.equal(plan.pending.length, 0);
 });
 
 test("el render marca cuáles se saltean, para que el número cierre a la vista", () => {
@@ -91,6 +91,6 @@ test("sin US en el manifiesto lo dice, en vez de mostrar una lista vacía", () =
 
 // Estampar es OPCIONAL: decir que no no rompe nada, y se dice una vez qué se pierde.
 test("el aviso de lo que se pierde se dice una vez, sin insistir", () => {
-  assert.match(SIN_ESTAMPAR, /el registro queda solo en el release note/);
-  assert.doesNotMatch(SIN_ESTAMPAR, /deberías|tenés que|error/i);
+  assert.match(NOT_STAMPED_NOTE, /el registro queda solo en el release note/);
+  assert.doesNotMatch(NOT_STAMPED_NOTE, /deberías|tenés que|error/i);
 });

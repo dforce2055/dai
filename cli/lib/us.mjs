@@ -55,17 +55,17 @@ export function renderCoverage(id, r) {
 // llega. Acá se le pone alrededor qué, contra qué, y qué mirar.
 export function explainFetchError(err, { kind, endpoint, id } = {}) {
   const raw = String(err?.message ?? err ?? "").split("\n")[0] || "error desconocido";
-  const donde = [kind, endpoint].filter(Boolean).join(" · ");
-  const cabeza = `no pude consultar ${id ? `la US ${id}` : "el tracker"}${donde ? ` en ${donde}` : ""}: ${raw}`;
+  const where = [kind, endpoint].filter(Boolean).join(" · ");
+  const head = `no pude consultar ${id ? `la US ${id}` : "el tracker"}${where ? ` en ${where}` : ""}: ${raw}`;
   if (/fetch failed|ENOTFOUND|ECONNREFUSED|EAI_AGAIN|ETIMEDOUT|ECONNRESET|certificate|self.signed/i.test(raw)) {
-    return `${cabeza}\n  No llegó a haber respuesta. Revisá la red y el host del backend; si estás detrás de un\n` +
+    return `${head}\n  No llegó a haber respuesta. Revisá la red y el host del backend; si estás detrás de un\n` +
            `  proxy corporativo, declará la CA con NODE_EXTRA_CA_CERTS (nunca NODE_TLS_REJECT_UNAUTHORIZED=0).\n` +
            `  Diagnóstico:  dai doctor`;
   }
   if (/\b40[13]\b|unauthorized|forbidden/i.test(raw)) {
-    return `${cabeza}\n  El tracker rechazó las credenciales: revisá el token del .env.dai (¿venció?) y sus permisos.\n` +
+    return `${head}\n  El tracker rechazó las credenciales: revisá el token del .env.dai (¿venció?) y sus permisos.\n` +
            `  Diagnóstico:  dai doctor`;
   }
-  if (/\b5\d\d\b/.test(raw)) return `${cabeza}\n  El error es del tracker, no tuyo: probá de nuevo en un rato.`;
-  return cabeza;
+  if (/\b5\d\d\b/.test(raw)) return `${head}\n  El error es del tracker, no tuyo: probá de nuevo en un rato.`;
+  return head;
 }

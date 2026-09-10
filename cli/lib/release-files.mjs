@@ -63,10 +63,10 @@ export function changelogEntry({ version, date, manifest = {}, secciones = ["Agr
 // Acá es un AVISO, no un bloqueo: cortar la versión no debe frenarse por la redacción.
 export function changelogGaps(entry) {
   const gaps = [];
-  const cuerpo = String(entry ?? "").replace(/<!--[\s\S]*?-->/g, "");
+  const body = String(entry ?? "").replace(/<!--[\s\S]*?-->/g, "");
   if (String(entry ?? "").includes(CHANGELOG_MARK)) gaps.push("el manifiesto de dai sigue sin repartir");
-  const conTexto = cuerpo.split("\n").some((l) => /^\s*[-*]\s+\S/.test(l));
-  if (!conTexto) gaps.push("no hay ni un ítem en las secciones");
+  const hasItems = body.split("\n").some((l) => /^\s*[-*]\s+\S/.test(l));
+  if (!hasItems) gaps.push("no hay ni un ítem en las secciones");
   return gaps;
 }
 
@@ -99,9 +99,9 @@ export function changelogSection(text, version) {
   const m = s.match(re);
   if (!m) return null;
   const ini = m.index + m[0].length;
-  const resto = s.slice(ini);
-  const j = resto.search(/^## \[/m);
-  return (j === -1 ? resto : resto.slice(0, j)).replace(/<!--[\s\S]*?-->/g, "").trim() || null;
+  const rest = s.slice(ini);
+  const j = rest.search(/^## \[/m);
+  return (j === -1 ? rest : rest.slice(0, j)).replace(/<!--[\s\S]*?-->/g, "").trim() || null;
 }
 
 // ── Nombres ──────────────────────────────────────────────────────────────────
