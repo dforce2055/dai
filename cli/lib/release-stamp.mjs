@@ -32,8 +32,8 @@ export function alreadyStamped(comments = [], marker) {
 // y el ticket solo necesita saber qué salió, dónde y cuándo.
 export function renderReleaseStamp(ev = {}) {
   const v = `v${String(ev.version ?? "").replace(/^v/, "")}`;
-  const amb = String(ev.environment ?? "").toUpperCase();
-  const L = [`**${ev.app || "app"} ${v}** desplegada en **${amb}** — ${ev.date || ""}`.trim(), ""];
+  const envLabel = String(ev.environment ?? "").toUpperCase();
+  const L = [`**${ev.app || "app"} ${v}** desplegada en **${envLabel}** — ${ev.date || ""}`.trim(), ""];
   if (ev.commit) L.push(`- commit: \`${String(ev.commit).slice(0, 8)}\``);
   if (ev.url) L.push(`- release: ${ev.url}`);
   L.push("");
@@ -48,9 +48,9 @@ export function renderReleaseStamp(ev = {}) {
 //   stories  → las US del manifiesto
 //   stamped  → Set de ids que YA tienen la marca de este (app, versión, ambiente)
 export function stampPlan({ stories = [], stamped = new Set(), unknown = false } = {}) {
-  const pendientes = [], repetidas = [];
-  for (const s of stories) (stamped.has(s.id) ? repetidas : pendientes).push(s);
-  return { pendientes, repetidas, unknown, total: stories.length };
+  const pending = [], alreadyDone = [];
+  for (const s of stories) (stamped.has(s.id) ? alreadyDone : pending).push(s);
+  return { pending, alreadyDone, unknown, total: stories.length };
 }
 
 // El aviso de alcance. Es la pantalla que pidió existir: cuántos comentarios, en qué
@@ -62,8 +62,8 @@ export function renderStampPlan(plan, { app, version, environment, tracker } = {
   L.push(`  versión:  ${v}     app: ${app || "?"}     ambiente: ${String(environment ?? "").toUpperCase()}`);
   L.push(`  tracker:  ${tracker || "?"} · ${plan.total} User Storie(s) en el release`);
   L.push(`  ─────────────────────────────────────────────────────`);
-  for (const s of plan.pendientes) L.push(`    ${s.id}${s.title ? `  ${s.title}` : ""}`);
-  for (const s of plan.repetidas) L.push(`    ${s.id}${s.title ? `  ${s.title}` : ""}   ← ya estampada, se saltea`);
+  for (const s of plan.pending) L.push(`    ${s.id}${s.title ? `  ${s.title}` : ""}`);
+  for (const s of plan.alreadyDone) L.push(`    ${s.id}${s.title ? `  ${s.title}` : ""}   ← ya estampada, se saltea`);
   if (plan.total === 0) L.push(`    (ninguna: el manifiesto de esta versión no declara US)`);
   L.push(`  ─────────────────────────────────────────────────────`);
   if (plan.unknown) {
@@ -75,13 +75,13 @@ export function renderStampPlan(plan, { app, version, environment, tracker } = {
 
 // La frase que decide. Dice el número REAL de escrituras y que no hay vuelta atrás.
 export function stampWarning(plan) {
-  const n = plan.pendientes.length;
+  const n = plan.pending.length;
   if (n === 0) return "no hay nada para estampar: todas las US ya tienen esta versión en este ambiente.";
-  const saltea = plan.repetidas.length ? ` (${plan.repetidas.length} ya estampada(s), se saltean)` : "";
-  return `esto escribe ${n} comentario(s) en el tracker de todo el equipo${saltea}. No se deshace.`;
+  const skipped = plan.alreadyDone.length ? ` (${plan.alreadyDone.length} ya estampada(s), se saltean)` : "";
+  return `esto escribe ${n} comentario(s) en el tracker de todo el equipo${skipped}. No se deshace.`;
 }
 
 // Lo que se pierde al decir que no. Se dice UNA vez, sin insistir: elegir menos ruido es
 // una decisión legítima, no un error a corregir.
-export const SIN_ESTAMPAR =
+export const NOT_STAMPED_NOTE =
   "sin estampar, el ticket no va a decir en qué versión salió: el registro queda solo en el release note.";

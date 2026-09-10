@@ -41,6 +41,28 @@ git config core.hooksPath .githooks   # valida convención de commits + autoría
    (Cursor, Copilot, Claude, …). Un agente puede ayudarte, pero el cambio lo firmas
    tú: con tu identidad y sin el trailer del agente. Un check de CI lo bloquea en cada
    PR (ver [`governance/human-authorship.md`](governance/human-authorship.md)).
+6. **Código en inglés, comentarios en español.** Los identificadores —variables,
+   funciones, constantes, claves de objeto— van en **inglés**; los comentarios y la
+   documentación, en **español**. Y todo lo que sale por una interfaz de máquina
+   (`--json`, el payload de un webhook, los códigos de estado internos) va en inglés
+   también: es una API, la lee un script, y traducirla después rompe a quien la consume.
+
+   ```js
+   // El endpoint ES la credencial: quien lo tiene, postea.   ← comentario en español
+   export function describeTarget(cfg) {                      ← código en inglés
+     const target = new URL(cfg.endpoint).host;
+   ```
+
+   **La excepción, y es una sola:** los nombres de campo del `implements.yaml` son
+   parte del contrato del método, no del código. `autor:` se llama así en el schema
+   (ADR-0004) y en todos los repos que ya lo usan; renombrarlo sería romper el
+   contrato para ganar consistencia interna, que es el peor cambio posible.
+
+   Lo que **todavía no** cumple esta regla son los **mensajes al usuario**, que hoy son
+   literales en español repartidos por todo el CLI. Eso no es un descuido: es el
+   refactor que [ADR-0008](docs/adr/0008-estrategia-de-i18n.md) tiene planificado como
+   fase 3 (`DAI_LANG` + un catálogo `t(key)` sin dependencias). Mientras tanto, escribí
+   los mensajes en español y **no inventes un mecanismo de traducción propio**.
 
 ## Flujo (la propia metodología)
 

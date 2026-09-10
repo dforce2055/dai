@@ -67,20 +67,20 @@ export function mergedBranch(subject) {
 // observable. Cualquier derivación automática habría cortado un patch equivocado.
 // Por eso esto devuelve un PISO y su justificación, y quien firma es una persona.
 export function proposeBump(commits = []) {
-  const reales = commits.filter((c) => !c.merge);
-  if (reales.some((c) => c.breaking)) {
-    const cual = reales.find((c) => c.breaking);
-    return { bump: "major", floor: true, reason: `hay un commit marcado como breaking (${cual.subject})` };
+  const realCommits = commits.filter((c) => !c.merge);
+  if (realCommits.some((c) => c.breaking)) {
+    const offender = realCommits.find((c) => c.breaking);
+    return { bump: "major", floor: true, reason: `hay un commit marcado como breaking (${offender.subject})` };
   }
-  if (reales.some((c) => c.type === "feat")) {
-    const n = reales.filter((c) => c.type === "feat").length;
+  if (realCommits.some((c) => c.type === "feat")) {
+    const n = realCommits.filter((c) => c.type === "feat").length;
     return { bump: "minor", floor: true, reason: `${n} commit(s) feat: agregan funcionalidad` };
   }
   return {
     bump: "patch",
     floor: true,
-    reason: reales.length
-      ? `solo hay ${[...new Set(reales.map((c) => c.type || "sin-tipo"))].sort().join(", ")}: ningún feat ni breaking`
+    reason: realCommits.length
+      ? `solo hay ${[...new Set(realCommits.map((c) => c.type || "sin-tipo"))].sort().join(", ")}: ningún feat ni breaking`
       : "no hay commits nuevos",
   };
 }
@@ -118,7 +118,7 @@ export function buildManifest({ commits = [], linked = [], live = {}, unreachabl
 
   const stories = [...porId.values()].map((r) => {
     const l = live[r.id];
-    const estado = unreachable || !l ? (unreachable ? "sin-respuesta" : "sin-us")
+    const storyStatus = unreachable || !l ? (unreachable ? "sin-respuesta" : "sin-us")
       : l.ac_hash === r.ac_hash ? "al-dia" : "atrasado";
     return {
       id: r.id,
@@ -127,7 +127,7 @@ export function buildManifest({ commits = [], linked = [], live = {}, unreachabl
       ac_hash: r.ac_hash ?? null,
       spec_version: l?.spec_version ?? null,
       change: r.change ?? null,
-      status: estado,
+      status: storyStatus,
     };
   }).sort((a, b) => String(a.id).localeCompare(String(b.id)));
 
@@ -136,11 +136,11 @@ export function buildManifest({ commits = [], linked = [], live = {}, unreachabl
   // trabajo de producto sin link, y esta es la última oportunidad de verlo.
   const ids = new Set(stories.map((s) => String(s.id).toLowerCase()));
   const branches = commits.map((c) => mergedBranch(c.subject)).filter(Boolean);
-  const EXENTAS = new Set(["chore", "docs", "ci", "build", "test", "refactor", "style", "release", "hotfix", "revert"]);
+  const EXEMPT_TYPES = new Set(["chore", "docs", "ci", "build", "test", "refactor", "style", "release", "hotfix", "revert"]);
   const chores = [], orphans = [];
   for (const b of branches) {
-    if (nombraAlguna(b, ids)) continue;                 // ya está contada como US
-    if (EXENTAS.has(branchType(b))) { chores.push(b); continue; }
+    if (namesAnyStory(b, ids)) continue;                 // ya está contada como US
+    if (EXEMPT_TYPES.has(branchType(b))) { chores.push(b); continue; }
     // "Entró trabajo sin link" solo es un hallazgo si el repo trabaja con User Stories. En
     // un repo de tooling —el de dai, sin ir más lejos— NINGUNA branch va a declarar una, y
     // marcarlas todas convierte el aviso en ruido que se aprende a ignorar. La excepción es
@@ -158,22 +158,22 @@ export function buildManifest({ commits = [], linked = [], live = {}, unreachabl
       commits: commits.filter((c) => !c.merge).length,
       merges: commits.filter((c) => c.merge).length,
       stories: stories.length,
-      atrasadas: stories.filter((s) => s.status === "atrasado").length,
+      stale: stories.filter((s) => s.status === "atrasado").length,
     },
   };
 }
 
 // ¿El nombre de la branch nombra alguna de las US del manifiesto? Comparación en
 // minúsculas: el slug de la branch va en minúscula y el key del tracker en mayúscula.
-function nombraAlguna(branch, ids) {
+function namesAnyStory(branch, ids) {
   const b = String(branch).toLowerCase();
   for (const id of ids) if (b.includes(id)) return true;
   return false;
 }
 
 // ── Render ───────────────────────────────────────────────────────────────────
-const ICONO = { "al-dia": "✅", atrasado: "⚠️ ", "sin-us": "❓", "sin-respuesta": "⚠️ " };
-const ETIQUETA = {
+const ICON = { "al-dia": "✅", atrasado: "⚠️ ", "sin-us": "❓", "sin-respuesta": "⚠️ " };
+const LABEL = {
   "al-dia": "al día", atrasado: "ATRASADA", "sin-us": "no está en el tracker",
   "sin-respuesta": "no verificada",
 };
@@ -195,13 +195,13 @@ export function renderManifest(m, ctx = {}) {
     const w = Math.max(...m.stories.map((s) => String(s.id).length), 4);
     for (const s of m.stories) {
       const t = s.title ? `  ${s.title}` : "";
-      L.push(`    ${ICONO[s.status] || " "} ${String(s.id).padEnd(w)}  ${s.version || "?"}${t}`);
-      if (s.status !== "al-dia") L.push(`       ${" ".repeat(w)}   ${ETIQUETA[s.status]}`);
+      L.push(`    ${ICON[s.status] || " "} ${String(s.id).padEnd(w)}  ${s.version || "?"}${t}`);
+      if (s.status !== "al-dia") L.push(`       ${" ".repeat(w)}   ${LABEL[s.status]}`);
     }
   }
-  if (m.counts.atrasadas > 0) {
+  if (m.counts.stale > 0) {
     L.push(``);
-    L.push(`  ⚠ ${m.counts.atrasadas} US ATRASADA(S): el QUÉ cambió después de implementarlo.`);
+    L.push(`  ⚠ ${m.counts.stale} US ATRASADA(S): el QUÉ cambió después de implementarlo.`);
     L.push(`    Esta release las llevaría sin cubrir el criterio nuevo. Revisalas antes de cortar.`);
   }
   if (m.chores.length) {

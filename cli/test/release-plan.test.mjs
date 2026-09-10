@@ -5,7 +5,7 @@ import {
   buildManifest, renderManifest, BUMP_CAVEAT,
 } from "../lib/release-plan.mjs";
 
-const log = (...lineas) => lineas.join("\n");
+const log = (...outLines) => outLines.join("\n");
 const c = (sha, subject) => `${sha}\x1f${subject}`;
 
 // ── parseo del log ───────────────────────────────────────────────────────────
@@ -83,7 +83,7 @@ test("el manifiesto marca atrasada la US cuyo QUÉ se movió después de impleme
   const m = buildManifest({ commits: [], linked: LINKED, live: LIVE });
   assert.equal(m.stories.find((s) => s.id === "ACME-482").status, "al-dia");
   assert.equal(m.stories.find((s) => s.id === "ACME-491").status, "atrasado");
-  assert.equal(m.counts.atrasadas, 1);
+  assert.equal(m.counts.stale, 1);
 });
 
 // El link se crea al empezar y se resincroniza después; y al archivar el change, el mismo

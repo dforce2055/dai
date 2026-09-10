@@ -43,6 +43,12 @@ export function jiraAuthHeaders(env) {
 }
 
 // ── ADF → markdown (para leer la descripción) ────────────────────────────────
+
+// Una celda puede tener varios párrafos, y una fila de markdown no sobrevive un salto de
+// línea en el medio: se aplana a UNA línea y se escapan los `|` que traiga el texto.
+const inlineCell = (cell) => adfToMarkdown(cell).replace(/\s+/g, " ").replace(/\|/g, "\\|").trim();
+const mdRow = (cells) => `| ${cells.join(" | ")} |`;
+
 export function adfToMarkdown(node) {
   if (node == null) return "";
   if (Array.isArray(node)) return node.map(adfToMarkdown).join("");
@@ -53,6 +59,25 @@ export function adfToMarkdown(node) {
     case "bulletList":
     case "orderedList": return (node.content || []).map(adfToMarkdown).join("");
     case "listItem":    return "- " + (node.content || []).map(adfToMarkdown).join("").trim() + "\n";
+    // Jira Cloud tiene tablas de verdad, y el molde de US pone la metadata —`spec_version`
+    // incluido— en una. Sin estos casos caían al `default`, que aplana cada celda a su
+    // propia línea: `spec_version` quedaba en una y `v1` en la siguiente, y SPEC_VERSION_RE
+    // —que no cruza saltos de línea a propósito— no encontraba nada. La US declaraba `v1`
+    // en el tracker y dai estampaba `version: pendiente` sin que nada explicara por qué.
+    case "table": {
+      const rows = (node.content || []).filter((r) => r?.type === "tableRow");
+      if (rows.length === 0) return "";
+      const out = rows.map((r) => mdRow((r.content || []).map(inlineCell)));
+      // El separador va solo si la primera fila es de encabezados: es lo que hace que esto
+      // se RENDERICE como tabla donde el markdown importa (el cuerpo de una PR, el .md que
+      // baja `dai edit-us`). Para el parseo no cambia nada.
+      const head = rows[0].content || [];
+      if (head.length && head.every((c) => c?.type === "tableHeader")) {
+        out.splice(1, 0, mdRow(head.map(() => "---")));
+      }
+      return out.join("\n") + "\n";
+    }
+    case "tableRow":    return mdRow((node.content || []).map(inlineCell)) + "\n";
     case "text":        return node.text || "";
     case "hardBreak":   return "\n";
     default:            return (node.content || []).map(adfToMarkdown).join("");
@@ -60,23 +85,62 @@ export function adfToMarkdown(node) {
 }
 
 // ── markdown → ADF (para CREAR el issue: la descripción va en ADF) ────────────
-// Parser de bloques: headings, párrafos y bullets. Suficiente para el formato de US.
+// Parser de bloques: headings, párrafos, bullets y tablas. Suficiente para el formato de US.
+
+// Una fila de markdown: `| a | b |`. El separador (`|---|---|`) marca que la fila de
+// arriba era el encabezado; no es una fila de datos.
+const MD_ROW_RE = /^\s*\|.*\|\s*$/;
+const MD_SEP_RE = /^\s*\|[\s:|-]+\|\s*$/;
+const splitCells = (line) =>
+  line.trim().replace(/^\||\|$/g, "").split(/(?<!\\)\|/).map((c) => c.replace(/\\\|/g, "|"));
+
 export function markdownToAdf(md) {
-  const clean = (s) => s.replace(/[*_`]+/g, "").trim();
+  // El `_` se saca solo cuando hace de énfasis (_así_), no cuando vive DENTRO de una
+  // palabra: sacarlo siempre publicaba la fila del molde como `specversion`, un nombre de
+  // campo que nadie escribió y que del otro lado hubo que aprender a leer (issue #46).
+  const clean = (s) => s.replace(/[*`]+/g, "").replace(/(?<![A-Za-z0-9])_+|_+(?![A-Za-z0-9])/g, "").trim();
   const content = [];
-  let para = [], bullets = null;
+  let para = [], bullets = null, rows = null;
   const flushPara = () => { if (para.length) { const t = clean(para.join(" ")); if (t) content.push({ type: "paragraph", content: [{ type: "text", text: t }] }); para = []; } };
   const flushBullets = () => { if (bullets) { if (bullets.length) content.push({ type: "bulletList", content: bullets }); bullets = null; } };
+  // La metadata de trazabilidad del molde de US es una TABLA, y el comentario de cobertura
+  // también. Sin este caso viajaban a Jira como párrafos con pipes adentro: ilegibles, y
+  // encima invitaban a rehacerlos como tabla de Jira a mano — que es justo lo que del otro
+  // lado dai no sabía leer.
+  const flushTable = () => {
+    if (!rows) return;
+    const data = rows.filter((r) => !r.sep);
+    if (data.length) {
+      const headed = rows.length > 1 && rows[1].sep;
+      const cell = (raw, header) => {
+        const text = clean(raw);
+        return {
+          type: header ? "tableHeader" : "tableCell",
+          attrs: {},
+          content: [{ type: "paragraph", content: text ? [{ type: "text", text }] : [] }],
+        };
+      };
+      content.push({
+        type: "table",
+        attrs: { isNumberColumnEnabled: false, layout: "default" },
+        content: data.map((r, i) => ({ type: "tableRow", content: r.cells.map((c) => cell(c, headed && i === 0)) })),
+      });
+    }
+    rows = null;
+  };
   for (const raw of String(md || "").split(/\r?\n/)) {
     const line = raw.replace(/\s+$/, "");
     const h = line.match(/^(#{1,6})\s+(.*)$/);
     const b = line.match(/^\s*[-*+]\s+(?:\[[ xX]\]\s+)?(.*)$/);
-    if (h) { flushPara(); flushBullets(); const t = clean(h[2]); if (t) content.push({ type: "heading", attrs: { level: h[1].length }, content: [{ type: "text", text: t }] }); }
-    else if (b) { flushPara(); if (!bullets) bullets = []; const t = clean(b[1]); if (t) bullets.push({ type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: t }] }] }); }
-    else if (line.trim() === "") { flushPara(); flushBullets(); }
-    else { flushBullets(); para.push(line.trim()); }
+    if (h) { flushPara(); flushBullets(); flushTable(); const t = clean(h[2]); if (t) content.push({ type: "heading", attrs: { level: h[1].length }, content: [{ type: "text", text: t }] }); }
+    // Una fila se reconoce por abrir Y cerrar con `|`; el separador entra acá también,
+    // marcado, porque es lo único que distingue un encabezado de una fila más.
+    else if (MD_ROW_RE.test(line)) { flushPara(); flushBullets(); if (!rows) rows = []; rows.push({ sep: MD_SEP_RE.test(line), cells: splitCells(line) }); }
+    else if (b) { flushPara(); flushTable(); if (!bullets) bullets = []; const t = clean(b[1]); if (t) bullets.push({ type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: t }] }] }); }
+    else if (line.trim() === "") { flushPara(); flushBullets(); flushTable(); }
+    else { flushBullets(); flushTable(); para.push(line.trim()); }
   }
-  flushPara(); flushBullets();
+  flushPara(); flushBullets(); flushTable();
   if (content.length === 0) content.push({ type: "paragraph", content: [{ type: "text", text: " " }] });
   return { type: "doc", version: 1, content };
 }

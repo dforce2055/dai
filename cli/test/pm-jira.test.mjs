@@ -295,3 +295,69 @@ test("[red] jira fetchUS devuelve el markdown crudo, no solo el parseo", async (
       assert.equal(us.ac_hash, acHash(us.raw), "el hash que reporta es el de ese mismo texto");
     });
 });
+
+// ── tablas ADF ───────────────────────────────────────────────────────────────
+// El molde de US pone la metadata de trazabilidad en una TABLA, y en un Jira real la US se
+// escribe a mano: la tabla es una tabla de Jira, no un párrafo con pipes. Sin el caso
+// `table`, cada celda caía en su propia línea, `spec_version` y `v1` quedaban separados por
+// un salto de línea, y SPEC_VERSION_RE —que a propósito no cruza líneas— no encontraba
+// nada: la US declaraba v1 en el tracker y dai estampaba `version: pendiente`.
+const cell = (text, type = "tableCell") => ({ type, attrs: {}, content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
+const row = (texts, type) => ({ type: "tableRow", content: texts.map((t) => cell(t, type)) });
+const ADF_CON_TABLA = {
+  type: "doc", version: 1, content: [
+    { type: "heading", attrs: { level: 1 }, content: [{ type: "text", text: "Metadata de trazabilidad" }] },
+    { type: "table", attrs: { isNumberColumnEnabled: false, layout: "default" }, content: [
+      row(["Campo", "Valor", "Quién lo mantiene"], "tableHeader"),
+      row(["ID", "ACME-123", "Jira"]),
+      row(["spec_version", "v4", "PO"]),
+    ] },
+    { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Criterios de aceptación" }] },
+    { type: "bulletList", content: [
+      { type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Dado un carrito, cuando finalizo, entonces se crea la orden" }] }] },
+    ] },
+  ],
+};
+
+test("adfToMarkdown: una fila de tabla queda en UNA línea de markdown", () => {
+  const md = adfToMarkdown(ADF_CON_TABLA);
+  assert.match(md, /^\| spec_version \| v4 \| PO \|$/m);
+  assert.match(md, /^\| Campo \| Valor \| Quién lo mantiene \|$/m, "el encabezado, tal cual");
+  assert.match(md, /^\| --- \| --- \| --- \|$/m, "con separador: se renderiza como tabla donde el markdown importa");
+});
+
+test("[Jira Cloud] la US que declara spec_version en una tabla NO queda en 'pendiente'", () => {
+  const us = parseUS(jiraIssueToText({ key: "ACME-123", fields: { summary: "Finalizar la compra", description: ADF_CON_TABLA } }));
+  assert.equal(us.spec_version, "v4");
+  assert.match(us.ac_hash, /^[0-9a-f]{8}$/);
+});
+
+// Una celda con varios párrafos NO puede partir la fila: la metadata seguiría ilegible.
+test("adfToMarkdown: una celda de varias líneas se aplana, y los pipes se escapan", () => {
+  const multi = { type: "tableCell", attrs: {}, content: [
+    { type: "paragraph", content: [{ type: "text", text: "alta" }] },
+    { type: "paragraph", content: [{ type: "text", text: "o baja | según el caso" }] },
+  ] };
+  const md = adfToMarkdown({ type: "table", content: [{ type: "tableRow", content: [cell("prioridad"), multi] }] });
+  assert.equal(md, "| prioridad | alta o baja \\| según el caso |\n");
+});
+
+test("markdownToAdf: una tabla markdown viaja a Jira como tabla, no como párrafo con pipes", () => {
+  const doc = markdownToAdf("| Campo | Valor |\n|-------|-------|\n| **spec_version** | `v2` |\n");
+  const table = doc.content.find((n) => n.type === "table");
+  assert.ok(table, "hay un nodo table");
+  assert.equal(table.content.length, 2, "el separador no es una fila de datos");
+  assert.equal(table.content[0].content[0].type, "tableHeader");
+  assert.equal(table.content[1].content[0].type, "tableCell");
+  assert.equal(table.content[1].content[0].content[0].content[0].text, "spec_version",
+    "el `_` de adentro de la palabra no es énfasis: se publica 'spec_version', no 'specversion'");
+  assert.equal(table.content[1].content[1].content[0].content[0].text, "v2");
+});
+
+// El ida y vuelta que hace `dai edit-us`: baja la US, la edita, la sube. Si la tabla no
+// sobrevive el viaje, el PO pierde la metadata cada vez que toca una US.
+test("markdown → ADF → markdown: la tabla de metadata sobrevive el ida y vuelta", () => {
+  const md = "| Campo | Valor |\n| --- | --- |\n| spec_version | v7 |\n";
+  assert.equal(adfToMarkdown(markdownToAdf(md)), md);
+  assert.equal(parseUS(`# T\n\n${adfToMarkdown(markdownToAdf(md))}`).spec_version, "v7");
+});

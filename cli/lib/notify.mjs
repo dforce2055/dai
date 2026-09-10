@@ -26,7 +26,7 @@
 import { daiFetch } from "./http.mjs";
 
 // El envelope de cada canal. Esto es el adaptador entero.
-const CANALES = {
+const CHANNELS = {
   discord:  (msg) => ({ content: msg }),
   slack:    (msg) => ({ text: msg }),
   webex:    (msg) => ({ markdown: msg }),
@@ -37,7 +37,7 @@ const CANALES = {
   webhook:  (msg, cfg, ev) => ({ ...eventFields(ev), text: msg }),
 };
 
-export const CANALES_VALIDOS = Object.keys(CANALES);
+export const VALID_CHANNELS = Object.keys(CHANNELS);
 
 // ── Config ───────────────────────────────────────────────────────────────────
 // Devuelve null cuando el repo no declaró canal: no avisar es el default, y un default
@@ -45,9 +45,9 @@ export const CANALES_VALIDOS = Object.keys(CANALES);
 export function notifyConfig(env = {}) {
   const channel = String(env.DAI_NOTIFY ?? "").trim().toLowerCase();
   if (channel === "" || channel === "none") return null;
-  if (!CANALES[channel]) {
+  if (!CHANNELS[channel]) {
     throw new Error(
-      `DAI_NOTIFY='${channel}' no es un canal que dai conozca (${CANALES_VALIDOS.join(" | ")} | none).\n` +
+      `DAI_NOTIFY='${channel}' no es un canal que dai conozca (${VALID_CHANNELS.join(" | ")} | none).\n` +
       `  Para un destino propio —Teams, Mattermost, un sistema interno— usá 'webhook':\n` +
       `  manda los campos del release en JSON y tu endpoint hace lo que quiera con ellos.`,
     );
@@ -121,10 +121,10 @@ function eventFields(ev = {}) {
 // diferencia entre el QUÉ y el CÓMO que sostiene todo el método.
 const MAX_BULLETS = 8;
 
-const dosDigitos = (n) => String(n).padStart(2, "0");
+const pad2 = (n) => String(n).padStart(2, "0");
 export function formatFecha(d = new Date()) {
-  return `${dosDigitos(d.getDate())}/${dosDigitos(d.getMonth() + 1)}/${d.getFullYear()} ` +
-         `${dosDigitos(d.getHours())}:${dosDigitos(d.getMinutes())}`;
+  return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()} ` +
+         `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 
 export function renderNotice(ev = {}) {
@@ -161,7 +161,7 @@ export function renderNotice(ev = {}) {
 
 // El cuerpo que se le manda al canal.
 export function payloadFor(cfg, ev) {
-  const envelope = CANALES[cfg.channel];
+  const envelope = CHANNELS[cfg.channel];
   if (!envelope) throw new Error(`canal desconocido: ${cfg.channel}`);
   return envelope(renderNotice(ev), cfg, ev);
 }
@@ -190,16 +190,16 @@ export async function sendNotice(cfg, ev) {
 }
 
 export function explainNotifyError(cfg, status, body = "") {
-  const donde = describeTarget(cfg);
+  const target = describeTarget(cfg);
   if (status === 401 || status === 403) {
-    return `${donde} rechazó el aviso (${status}): el endpoint existe pero no autoriza.\n` +
+    return `${target} rechazó el aviso (${status}): el endpoint existe pero no autoriza.\n` +
            "  Revisá DAI_NOTIFY_WEBHOOK en el .env.dai — puede estar revocado o ser de otro espacio.";
   }
   if (status === 404) {
-    return `${donde} no existe (404). El webhook fue borrado, o la URL está mal copiada.`;
+    return `${target} no existe (404). El webhook fue borrado, o la URL está mal copiada.`;
   }
   if (status === 429) {
-    return `${donde} te frenó por rate limit (429). El aviso no salió; el release sí está hecho.`;
+    return `${target} te frenó por rate limit (429). El aviso no salió; el release sí está hecho.`;
   }
-  return `${donde} respondió ${status}.${body ? `\n  ${body}` : ""}`;
+  return `${target} respondió ${status}.${body ? `\n  ${body}` : ""}`;
 }

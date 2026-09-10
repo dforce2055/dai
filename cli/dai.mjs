@@ -33,7 +33,7 @@ import { listPrCmd, parsePrList, updatePrCmd, updatePrApiCmd, isAlreadyExistsErr
 import { parseCommitLog, proposeBump, nextVersion, buildManifest, renderManifest, BUMP_CAVEAT } from "./lib/release-plan.mjs";
 import { bumpPackageJson, bumpVersionFile, changelogEntry, insertChangelogEntry, changelogSection, changelogGaps, releaseBranch, tagName, normalizeVersion } from "./lib/release-files.mjs";
 import { notifyConfig, describeTarget, renderNotice, sendNotice, formatFecha } from "./lib/notify.mjs";
-import { releaseMarker, alreadyStamped, renderReleaseStamp, stampPlan, renderStampPlan, stampWarning, SIN_ESTAMPAR } from "./lib/release-stamp.mjs";
+import { releaseMarker, alreadyStamped, renderReleaseStamp, stampPlan, renderStampPlan, stampWarning, NOT_STAMPED_NOTE } from "./lib/release-stamp.mjs";
 import { parseImplements } from "./lib/implements.mjs";
 import { absolutizeSiteLinks } from "./lib/docs-links.mjs";
 import { diagnoseGitSsh, pushFailureHint, WINDOWS_OPENSSH } from "./lib/git-ssh.mjs";
@@ -353,9 +353,9 @@ function ciBranch() {
 // lo hace pasar por verificado (issue #46). No cambia el exit code — el hash manda.
 function versionDriftHint(im, live) {
   const declared = String(im?.version ?? "").trim();
-  const real = String(live?.spec_version ?? "").trim();
-  if (!real || declared === real) return;
-  warn(`${im.id}: el link declara version '${declared || "(vacío)"}' y la US viva dice '${real}'.`);
+  const liveVersion = String(live?.spec_version ?? "").trim();
+  if (!liveVersion || declared === liveVersion) return;
+  warn(`${im.id}: el link declara version '${declared || "(vacío)"}' y la US viva dice '${liveVersion}'.`);
   process.stdout.write(`    Ese número se publica en la PR y se estampa en el tracker. Corregilo:  dai link-us ${im.id} --resync\n`);
 }
 
@@ -366,7 +366,7 @@ async function cmdCheck() {
   const adapter = getAdapter(process.env);
   const found = discoverImplements(process.cwd(), { includeArchived: false });
   let worst = 0, n = 0;
-  const atrasadas = [];
+  const stale = [];
   for (const f of found) for (const im of f.implements || []) {
     if (isPlaceholderId(im.id)) continue;   // plantilla sin completar, no es una US real
     n++;
@@ -378,7 +378,7 @@ async function cmdCheck() {
     }
     else if (status === "atrasado") {
       process.stdout.write(`⚠️  ${im.id} ATRASADO: implementaste ${im.ac_hash}, la US viva es ${live.ac_hash}${live.spec_version ? ` (${live.spec_version})` : ""}\n`);
-      atrasadas.push(im.id);
+      stale.push(im.id);
       worst = Math.max(worst, 1);
     } else if (status === "sin-respuesta") {
       // No es "no hay US": es "no pude preguntar". Antes moría acá con `fetch failed` y sin
@@ -391,9 +391,9 @@ async function cmdCheck() {
     }
   }
   if (n === 0) process.stdout.write("No hay implements.yaml para chequear.\n");
-  if (atrasadas.length) {
+  if (stale.length) {
     process.stdout.write("\n  El QUÉ cambió desde que lo implementaste. Para resincronizar:\n");
-    for (const id of atrasadas) process.stdout.write(`    dai link-us ${id} --resync     # re-estampa el ac_hash contra la US viva\n`);
+    for (const id of stale) process.stdout.write(`    dai link-us ${id} --resync     # re-estampa el ac_hash contra la US viva\n`);
     process.stdout.write("  Después, revisa si tu implementación cubre el criterio nuevo.\n");
   }
   process.exitCode = worst;
@@ -1091,8 +1091,8 @@ async function cmdPr(opts) {
   const existing = findExistingPr(tool, branch);
 
   // 4. Mostrar y pedir confirmación (acción hacia afuera).
-  const accion = existing ? `a ACTUALIZAR (#${existing.number})` : "a crear";
-  process.stdout.write(`\n  ── Pull Request ${accion} ──────────────────────────────\n`);
+  const action = existing ? `a ACTUALIZAR (#${existing.number})` : "a crear";
+  process.stdout.write(`\n  ── Pull Request ${action} ──────────────────────────────\n`);
   process.stdout.write(`  título:   ${title}\n  de:       ${branch}\n`);
   process.stdout.write(`  a:        ${base}  ${C.dim(`(${baseSource}${baseWhy ? ` — ${baseWhy}` : ""})`)}${toProd ? `   ${C.b("⚠️  DESPLIEGA A PRODUCCIÓN")}` : ""}\n`);
   process.stdout.write(`  US:       ${id || C.dim("(sin US)")}  ${C.dim(`— ${usWhy}`)}\n`);
@@ -1284,16 +1284,16 @@ function linkedInRange(range) {
     raw = git(["log", "--format=\x1e%H", "--name-only", "--diff-filter=AMR", range, "--", "*implements.yaml"]);
   } catch { return rows; }
   let order = 0;
-  for (const bloque of raw.split("\x1e")) {
-    const lineas = bloque.split("\n").map((l) => l.trim()).filter(Boolean);
-    if (lineas.length === 0) continue;
-    const sha = lineas[0];
-    for (const path of lineas.slice(1)) {
+  for (const chunk of raw.split("\x1e")) {
+    const outLines = chunk.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (outLines.length === 0) continue;
+    const sha = outLines[0];
+    for (const path of outLines.slice(1)) {
       if (!path.endsWith("implements.yaml")) continue;
-      let texto;
-      try { texto = git(["show", `${sha}:${path}`]); } catch { continue; }   // borrado después
+      let text;
+      try { text = git(["show", `${sha}:${path}`]); } catch { continue; }   // borrado después
       let parsed;
-      try { parsed = parseImplements(texto); } catch { continue; }
+      try { parsed = parseImplements(text); } catch { continue; }
       for (const im of parsed.implements || []) {
         if (isPlaceholderId(im.id)) continue;
         rows.push({ ...im, change: parsed.change, repo: parsed.repo, path, sha, order: order++ });
@@ -1307,11 +1307,11 @@ function linkedInRange(range) {
 // contestar "qué entra en esta versión" — si cada comando lo calculara a su manera,
 // tarde o temprano dirían cosas distintas y le creerías al que tenés más a mano.
 async function releaseManifest(opts = {}, { from, to } = {}) {
-  const desde = from ?? (textOpt(opts, "from") || lastTag());
-  const hasta = to ?? (textOpt(opts, "to") || branchFlow(process.env).dev || gitBranch());
-  const toRev = resolveRev(hasta) || resolveRev(`origin/${hasta}`);
-  if (!toRev) fail(`no encuentro '${hasta}' (ni local ni en origin/${hasta}).\n  Traelo primero:  git fetch origin ${hasta}`, 1);
-  const range = desde ? `${desde}..${toRev}` : toRev;
+  const fromRef = from ?? (textOpt(opts, "from") || lastTag());
+  const toRef = to ?? (textOpt(opts, "to") || branchFlow(process.env).dev || gitBranch());
+  const toRev = resolveRev(toRef) || resolveRev(`origin/${toRef}`);
+  if (!toRev) fail(`no encuentro '${toRef}' (ni local ni en origin/${toRef}).\n  Traelo primero:  git fetch origin ${toRef}`, 1);
+  const range = fromRef ? `${fromRef}..${toRev}` : toRev;
 
   let commits = [];
   try { commits = parseCommitLog(git(["log", "--format=%H\x1f%s", range])); }
@@ -1335,7 +1335,7 @@ async function releaseManifest(opts = {}, { from, to } = {}) {
   // declararla nunca. Se mira el repo entero, no el rango.
   const repoUsesStories = flattenImplements(discoverImplements(process.cwd())).length > 0;
   const m = buildManifest({ commits, linked, live, unreachable: unreachable || Boolean(opts.noNetwork), repoUsesStories });
-  return { manifest: m, commits, from: desde, to: hasta, range };
+  return { manifest: m, commits, from: fromRef, to: toRef, range };
 }
 
 // La versión que este repo declara hoy. `null` si no espeja el número en ningún archivo
@@ -1386,31 +1386,31 @@ async function cmdReleaseCut(versionArg, opts = {}) {
   const { manifest: m, commits, from, to } = await releaseManifest(opts);
   const { version: current, file: versionFile } = currentVersion();
   const { bump, reason } = proposeBump(commits);
-  const sugerida = current ? nextVersion(current, bump) : null;
+  const suggested = current ? nextVersion(current, bump) : null;
 
   // Qué archivos espejan el número en ESTE repo. Puede no haber ninguno (un repo .NET, un
   // frontend corporativo): el tag sigue siendo la versión.
-  const espejos = [];
+  const mirrors = [];
   for (const [file, fn] of [["VERSION", bumpVersionFile], ["package.json", bumpPackageJson]]) {
     const p = join(process.cwd(), file);
     if (!existsSync(p)) continue;
     const r = fn(readFileSync(p, "utf8"), version);
-    espejos.push({ file, path: p, ...r });
+    mirrors.push({ file, path: p, ...r });
   }
 
-  const crearBranch = opts.branch !== false && !opts.noBranch;
-  const nombreBranch = releaseBranch(version);
+  const makeBranch = opts.branch !== false && !opts.noBranch;
+  const releaseBranchName = releaseBranch(version);
 
   process.stdout.write("\n" + renderManifest(m, { from, to, current: current || "(sin archivo)", proposed: version, bump: `pediste ${version}`, reason }) + "\n");
   process.stdout.write(`\n  ── Se va a preparar ─────────────────────────────────\n`);
-  process.stdout.write(`  versión:  ${version}${sugerida && sugerida !== version ? C.dim(`   (dai habría propuesto ${sugerida} — ${bump})`) : ""}\n`);
-  process.stdout.write(`  branch:   ${crearBranch ? `${nombreBranch}  (desde ${branch})` : C.dim("ninguna — se taguea desde la rama de integración")}\n`);
-  for (const e of espejos) process.stdout.write(`  ${e.file.padEnd(9)} ${e.changed ? `${e.from} → ${version}` : C.dim(`ya está en ${version}`)}\n`);
-  if (espejos.length === 0) process.stdout.write(`  ${C.dim("este repo no espeja el número en ningún archivo que dai reconozca: la versión es el tag")}\n`);
+  process.stdout.write(`  versión:  ${version}${suggested && suggested !== version ? C.dim(`   (dai habría propuesto ${suggested} — ${bump})`) : ""}\n`);
+  process.stdout.write(`  branch:   ${makeBranch ? `${releaseBranchName}  (desde ${branch})` : C.dim("ninguna — se taguea desde la rama de integración")}\n`);
+  for (const e of mirrors) process.stdout.write(`  ${e.file.padEnd(9)} ${e.changed ? `${e.from} → ${version}` : C.dim(`ya está en ${version}`)}\n`);
+  if (mirrors.length === 0) process.stdout.write(`  ${C.dim("este repo no espeja el número en ningún archivo que dai reconozca: la versión es el tag")}\n`);
   process.stdout.write(`  CHANGELOG entrada nueva para ${version} (con el manifiesto para repartir)\n`);
   process.stdout.write(`  commit:   chore(release): v${version}\n`);
   process.stdout.write(`  ─────────────────────────────────────────────────────\n`);
-  if (m.counts.atrasadas > 0) warn(`vas a cortar una versión con ${m.counts.atrasadas} US ATRASADA(S). Revisalas o resincronizá antes.`);
+  if (m.counts.stale > 0) warn(`vas a cortar una versión con ${m.counts.stale} US ATRASADA(S). Revisalas o resincronizá antes.`);
   if (m.orphans.length) warn(`hay ${m.orphans.length} branch(es) sin US ni prefijo exento en el rango.`);
 
   if (opts.dryRun) { info("[dry-run] no se tocó nada."); return; }
@@ -1420,35 +1420,35 @@ async function cmdReleaseCut(versionArg, opts = {}) {
     if (!["s", "si", "sí", "y", "yes"].includes(a)) { info("Cancelado — no se tocó nada."); return; }
   }
 
-  if (crearBranch) {
-    try { git(["checkout", "-b", nombreBranch]); ok(`branch ${nombreBranch}`); }
-    catch (e) { fail(`no pude crear '${nombreBranch}': ${String(e.message).split("\n")[0]}`, 1); }
+  if (makeBranch) {
+    try { git(["checkout", "-b", releaseBranchName]); ok(`branch ${releaseBranchName}`); }
+    catch (e) { fail(`no pude crear '${releaseBranchName}': ${String(e.message).split("\n")[0]}`, 1); }
   }
-  const tocados = [];
-  for (const e of espejos) {
+  const touched = [];
+  for (const e of mirrors) {
     if (!e.changed) continue;
     writeFileSync(e.path, e.text);
-    tocados.push(e.file);
+    touched.push(e.file);
     ok(`${e.file}: ${e.from} → ${version}`);
   }
 
   // CHANGELOG: el andamio y el material. La prosa la escribe una persona (o la skill).
   const chPath = join(process.cwd(), "CHANGELOG.md");
   const entry = changelogEntry({ version, date: new Date().toISOString().slice(0, 10), manifest: m });
-  const previo = existsSync(chPath) ? readFileSync(chPath, "utf8") : "# Changelog\n";
+  const previousChangelog = existsSync(chPath) ? readFileSync(chPath, "utf8") : "# Changelog\n";
   const repoUrl = (() => { const p = parseRemote(gitRemote()); return p ? `https://${p.host}/${p.path}` : null; })();
-  const res = insertChangelogEntry(previo, entry, { version, repoUrl });
-  if (res.changed) { writeFileSync(chPath, res.text); tocados.push("CHANGELOG.md"); ok(`CHANGELOG.md: entrada para ${version}`); }
+  const res = insertChangelogEntry(previousChangelog, entry, { version, repoUrl });
+  if (res.changed) { writeFileSync(chPath, res.text); touched.push("CHANGELOG.md"); ok(`CHANGELOG.md: entrada para ${version}`); }
   else warn(`CHANGELOG.md sin tocar — ${res.reason}.`);
 
-  if (tocados.length === 0) { warn("no hubo nada que cambiar: no hago un commit vacío."); return; }
-  git(["add", ...tocados]);
+  if (touched.length === 0) { warn("no hubo nada que cambiar: no hago un commit vacío."); return; }
+  git(["add", ...touched]);
   git(["commit", "-m", `chore(release): v${version}`, "-m", `Manifiesto: ${m.counts.stories} US · ${m.counts.commits} commits desde ${from || "el principio"}.`]);
   ok(`commit chore(release): v${version}`);
 
   process.stdout.write("\n");
   info("Falta lo que dai no puede escribir por vos: repartí el manifiesto del CHANGELOG y contá el porqué.");
-  info(`Después:  dai pr${crearBranch ? "" : ""}   →   se mergea   →   dai release done ${version}`);
+  info(`Después:  dai pr${makeBranch ? "" : ""}   →   se mergea   →   dai release done ${version}`);
 }
 
 // ── release done: cerrar la versión ────────────────────────────────────────
@@ -1481,20 +1481,24 @@ async function cmdReleaseDone(versionArg, opts = {}) {
   const notes = existsSync(join(process.cwd(), "CHANGELOG.md"))
     ? changelogSection(readFileSync(join(process.cwd(), "CHANGELOG.md"), "utf8"), version) : null;
   const cfg = (() => { try { return notifyConfig(process.env); } catch (e) { warn(String(e.message)); return null; } })();
-  const avisar = cfg && !opts.noNotify;
+  const willNotify = cfg && !opts.noNotify;
 
   process.stdout.write(`\n  ── Cerrar la versión ${version} ──────────────────────────\n`);
   process.stdout.write(`  tag:      ${tag} → ${prod} @ ${String(head).slice(0, 8)}\n`);
   process.stdout.write(`  release:  ${opts.noRelease ? C.dim("no (--no-release)") : `nota en el forge${notes ? "" : C.dim(" (sin sección del CHANGELOG: sale con las notas del forge)")}`}\n`);
   process.stdout.write(`  back-merge: ${dev ? `${prod} → ${dev}` : C.dim("no (DAI_BRANCH_DEV no declarada)")}\n`);
   const relBranch = releaseBranch(version);
-  const hayLocal = Boolean(safeGit(["rev-parse", "--verify", "--quiet", relBranch]));
-  const hayRemota = Boolean(safeGit(["rev-parse", "--verify", "--quiet", `origin/${relBranch}`]));
-  const limpiar = (hayLocal || hayRemota) && !opts.keepBranch;
-  process.stdout.write(`  limpieza: ${limpiar
-    ? `borrar ${relBranch}${hayLocal ? " (local)" : ""}${hayLocal && hayRemota ? " +" : ""}${hayRemota ? " (remota)" : ""}`
-    : C.dim(hayLocal || hayRemota ? "no (--keep-branch)" : "nada que borrar")}\n`);
-  process.stdout.write(`  aviso:    ${avisar ? describeTarget(cfg) : C.dim(cfg ? "no (--no-notify)" : "no (DAI_NOTIFY no declarado)")}\n`);
+  const hasLocal = Boolean(safeGit(["rev-parse", "--verify", "--quiet", relBranch]));
+  // Se pregunta al REMOTO, no a `origin/<branch>`: esa ref local queda desactualizada
+  // cuando el forge borra la rama al mergear (auto-delete on merge, que es lo normal), y
+  // dai terminaba intentando borrar algo que ya no estaba y reportando un ⚠ por un estado
+  // que en realidad era el correcto. Avisar de un problema inexistente enseña a ignorar los avisos.
+  const hasRemote = Boolean(safeGit(["ls-remote", "--heads", "origin", relBranch])?.trim());
+  const willCleanup = (hasLocal || hasRemote) && !opts.keepBranch;
+  process.stdout.write(`  limpieza: ${willCleanup
+    ? `borrar ${relBranch}${hasLocal ? " (local)" : ""}${hasLocal && hasRemote ? " +" : ""}${hasRemote ? " (remota)" : ""}`
+    : C.dim(hasLocal || hasRemote ? "no (--keep-branch)" : "nada que borrar")}\n`);
+  process.stdout.write(`  aviso:    ${willNotify ? describeTarget(cfg) : C.dim(cfg ? "no (--no-notify)" : "no (DAI_NOTIFY no declarado)")}\n`);
   process.stdout.write(`  ─────────────────────────────────────────────────────\n`);
   if (opts.dryRun) { info("[dry-run] no se tocó nada."); return; }
   if (!opts.yes) {
@@ -1552,33 +1556,40 @@ async function cmdReleaseDone(versionArg, opts = {}) {
   // no pasa acá, se acumulan — y una rama de release que sobrevive a su release es un fork.
   // Misma disciplina que `dai done`: `git branch -d` (minúscula) se niega si no está
   // mergeada, así que la red de seguridad la pone git, no una suposición nuestra.
-  if (limpiar) {
-    if (hayLocal) {
+  if (willCleanup) {
+    if (hasLocal) {
       try { git(["branch", "-d", relBranch]); ok(`borrada la branch local ${relBranch}`); }
       catch (e) {
         warn(`no borré '${relBranch}' local: ${String(e.message).split("\n")[0]}`);
         process.stdout.write(`  git se niega a borrar una branch sin mergear. Revisala: quizá tiene commits que no llegaron a '${prod}'.\n`);
       }
     }
-    if (hayRemota) {
+    if (hasRemote) {
       try {
         git(["push", "origin", "--delete", relBranch], { stdio: ["inherit", "pipe", "inherit"], env: { ...process.env, GIT_TERMINAL_PROMPT: "1" } });
         ok(`borrada la branch remota origin/${relBranch}`);
       } catch (e) {
         warn(`no borré 'origin/${relBranch}': ${String(e.message).split("\n")[0]}`);
-        process.stdout.write(`  Puede que ya la haya borrado el forge al mergear. Si no:  git push origin --delete ${relBranch}\n`);
+        process.stdout.write(`  Borrala a mano:  git push origin --delete ${relBranch}\n`);
+      }
+    } else if (hasLocal) {
+      // La ref local puede seguir apuntando a una rama que el forge ya borró. Se limpia
+      // para que el próximo `git branch -r` no muestre un fantasma.
+      if (safeGit(["rev-parse", "--verify", "--quiet", `origin/${relBranch}`])) {
+        safeGit(["branch", "-dr", `origin/${relBranch}`]);
+        info(`la branch remota ya no estaba (la borró el forge al mergear); limpié la referencia local`);
       }
     }
   }
 
   // 5. El aviso. Lo último a propósito: anunciar algo que después falla es peor que no anunciar.
-  if (avisar) {
+  if (willNotify) {
     const ev = {
       event: "released", app: releaseApp(opts), version, environment: null,
       author: gitUser(), date: formatFecha(), url: releaseUrl,
       stories: m.stories.map((s) => ({ id: s.id, title: s.title })),
     };
-    await confirmarYAvisar(cfg, ev, opts);
+    await confirmAndNotify(cfg, ev, opts);
   }
   process.stdout.write("\n");
   ok(`versión ${version} cerrada.`);
@@ -1609,11 +1620,11 @@ async function cmdReleaseStamp(versionArg, opts = {}) {
 
   // El manifiesto de ESA versión: lo que entró entre el tag anterior y este. Se pide por
   // tag, no por rama, porque estampar es contar qué se desplegó — y lo desplegado es el tag.
-  const previo = safeGit(["describe", "--tags", "--abbrev=0", `${tag}^`])?.trim() || null;
+  const previousTag = safeGit(["describe", "--tags", "--abbrev=0", `${tag}^`])?.trim() || null;
   if (!safeGit(["rev-parse", "--verify", "--quiet", `${tag}^{commit}`])) {
     fail(`no existe el tag ${tag} en este repo.\n  Cerrá la versión primero:  dai release done ${version}\n  (o traé los tags:  git fetch --tags)`, 1);
   }
-  const { manifest: m } = await releaseManifest(opts, { from: previo, to: tag });
+  const { manifest: m } = await releaseManifest(opts, { from: previousTag, to: tag });
 
   // ¿Cuáles ya están estampadas? Sin poder leer los comentarios dai NO afirma que no las
   // estampó: lo dice, y quien decide es la persona. Afirmar de más acá se paga en duplicados.
@@ -1631,42 +1642,42 @@ async function cmdReleaseStamp(versionArg, opts = {}) {
   const plan = stampPlan({ stories: m.stories, stamped, unknown });
   process.stdout.write("\n" + renderStampPlan(plan, { app, version, environment, tracker: adapter.kind }) + "\n");
   warn(stampWarning(plan));
-  if (plan.pendientes.length === 0) { info("Nada que hacer."); return; }
+  if (plan.pending.length === 0) { info("Nada que hacer."); return; }
 
   if (opts.dryRun) { info("[dry-run] no se escribió nada."); return; }
   if (!opts.yes) {
     if (!process.stdin.isTTY) {
-      info(`Sin TTY y sin --yes: no estampo. Re-ejecutá con --yes si querés los ${plan.pendientes.length} comentarios.`);
+      info(`Sin TTY y sin --yes: no estampo. Re-ejecutá con --yes si querés los ${plan.pending.length} comentarios.`);
       return;
     }
-    const a = (await askOrCancel(`  ¿Estampo ${plan.pendientes.length} comentario(s)? (s/N) `) || "").toLowerCase();
+    const a = (await askOrCancel(`  ¿Estampo ${plan.pending.length} comentario(s)? (s/N) `) || "").toLowerCase();
     if (!["s", "si", "sí", "y", "yes"].includes(a)) {
       info("No se estampó nada — la release está hecha igual.");
-      info(SIN_ESTAMPAR);
+      info(NOT_STAMPED_NOTE);
       return;   // salida 0: decir que no es una respuesta válida, no un error
     }
   }
 
-  const cuerpo = renderReleaseStamp({
+  const body = renderReleaseStamp({
     app, version, environment, date: formatFecha(), commit: safeGit(["rev-list", "-n", "1", tag])?.trim(),
     url: textOpt(opts, "url") || null,
   });
-  let hechos = 0;
-  const fallados = [];
-  for (const s of plan.pendientes) {
-    try { await adapter.comment(s.id, cuerpo); hechos++; ok(`${s.id} estampada`); }
-    catch (e) { fallados.push(s.id); warn(`${s.id}: ${String(e.message).split("\n")[0]}`); }
+  let stampedCount = 0;
+  const failed = [];
+  for (const s of plan.pending) {
+    try { await adapter.comment(s.id, body); stampedCount++; ok(`${s.id} estampada`); }
+    catch (e) { failed.push(s.id); warn(`${s.id}: ${String(e.message).split("\n")[0]}`); }
   }
-  if (fallados.length) {
-    warn(`quedaron ${fallados.length} sin estampar: ${fallados.join(", ")}. Volvé a correr el comando — las ya hechas se saltean.`);
+  if (failed.length) {
+    warn(`quedaron ${failed.length} sin estampar: ${failed.join(", ")}. Volvé a correr el comando — las ya hechas se saltean.`);
     process.exitCode = 1;
-  } else ok(`${hechos} US estampada(s) con ${app} ${tag} → ${environment.toUpperCase()}.`);
+  } else ok(`${stampedCount} US estampada(s) con ${app} ${tag} → ${environment.toUpperCase()}.`);
 
   // El aviso al canal es del EVENTO de despliegue, no del estampado: sale aunque no se
   // haya estampado nada (para eso está `--only-notify`), y no sale si el repo no lo declaró.
   const cfg = (() => { try { return notifyConfig(process.env); } catch (e) { warn(String(e.message)); return null; } })();
   if (cfg && !opts.noNotify) {
-    await confirmarYAvisar(cfg, {
+    await confirmAndNotify(cfg, {
       event: "deployed", app, version, environment, author: gitUser(), date: formatFecha(),
       url: textOpt(opts, "url") || null, stories: m.stories.map((x) => ({ id: x.id, title: x.title })),
     }, opts);
@@ -1703,21 +1714,21 @@ async function cmdReleaseStatus(opts = {}) {
 
   // Back-merge pendiente: producción adelante de integración es el olvido clásico.
   if (prod && flow.dev) {
-    const pendiente = safeGit(["rev-list", "--count", `${flow.dev}..${prod}`])?.trim();
-    if (pendiente && Number(pendiente) > 0) {
-      warn(`'${prod}' está ${pendiente} commit(s) adelante de '${flow.dev}': falta el back-merge.`);
+    const behind = safeGit(["rev-list", "--count", `${flow.dev}..${prod}`])?.trim();
+    if (behind && Number(behind) > 0) {
+      warn(`'${prod}' está ${behind} commit(s) adelante de '${flow.dev}': falta el back-merge.`);
       process.stdout.write(`    git checkout ${flow.dev} && git merge ${prod} && git push origin ${flow.dev}\n`);
     }
   }
 
   // Branches de release abiertas (model B): una que sobrevive a su release es un fork.
-  const abiertas = (safeGit(["branch", "--list", "release/*", "--format=%(refname:short)"]) || "")
+  const openBranches = (safeGit(["branch", "--list", "release/*", "--format=%(refname:short)"]) || "")
     .split("\n").map((x) => x.trim()).filter(Boolean);
-  if (abiertas.length) {
-    warn(`${abiertas.length} branch(es) de release sin borrar: ${abiertas.join(", ")}`);
+  if (openBranches.length) {
+    warn(`${openBranches.length} branch(es) de release sin borrar: ${openBranches.join(", ")}`);
     process.stdout.write(`    Una rama de release que sobrevive a su release es un fork. Desde 0.15.0 las borra\n`);
     process.stdout.write(`    \`dai release done\`; las de antes se limpian a mano (git se niega si alguna no está mergeada):\n`);
-    process.stdout.write(`      git branch -d ${abiertas.join(" ")}\n`);
+    process.stdout.write(`      git branch -d ${openBranches.join(" ")}\n`);
   }
 
   const cfg = (() => { try { return notifyConfig(process.env); } catch { return null; } })();
@@ -1730,8 +1741,8 @@ async function cmdReleaseStatus(opts = {}) {
     try {
       const out = execFileSync(tool, ["release", "list", ...(tool === "gh" ? ["--limit", "3"] : ["--per-page", "3"])],
         { encoding: "utf8", cwd: process.cwd(), stdio: ["ignore", "pipe", "pipe"] });
-      const lineas = String(out).split("\n").filter(Boolean).slice(0, 3);
-      if (lineas.length) { info("últimos releases publicados:"); for (const l of lineas) process.stdout.write(`    ${l}\n`); }
+      const outLines = String(out).split("\n").filter(Boolean).slice(0, 3);
+      if (outLines.length) { info("últimos releases publicados:"); for (const l of outLines) process.stdout.write(`    ${l}\n`); }
     } catch { /* sin binario, sin auth o sin releases: no es un problema que resolver acá */ }
   }
 }
@@ -1745,7 +1756,7 @@ async function cmdReleaseNotify(opts = {}) {
   try { cfg = notifyConfig(process.env); } catch (e) { fail(String(e.message), 1); }
   if (!cfg) fail("no hay canal declarado: poné DAI_NOTIFY (y DAI_NOTIFY_WEBHOOK) en el .env.dai.", 1);
   if (!opts.test) fail("por ahora `dai release notify` solo sabe probar el canal:  dai release notify --test", 2);
-  await confirmarYAvisar(cfg, { event: "test" }, opts);
+  await confirmAndNotify(cfg, { event: "test" }, opts);
 }
 
 // El nombre de la app en los avisos y en el stamp. Sale del repo, no de una variable
@@ -1756,7 +1767,7 @@ function releaseApp(opts) {
 
 // Mostrar el mensaje EXACTO que va a salir y pedir confirmación. Un mensaje a un canal de
 // equipo no se desmanda: se muestra antes, siempre, aunque el aviso sea de una sola línea.
-async function confirmarYAvisar(cfg, ev, opts = {}) {
+async function confirmAndNotify(cfg, ev, opts = {}) {
   const msg = renderNotice(ev);
   process.stdout.write(`\n  ── Aviso a ${describeTarget(cfg)} ──\n`);
   process.stdout.write(msg.split("\n").map((l) => `  │ ${l}`).join("\n") + "\n");
@@ -2169,14 +2180,14 @@ function cmdDocs(dest) {
   // repo de nadie: las capturas de los tutoriales ni siquiera viajan en el paquete npm
   // (issue #37). Se saltea, y los links que las nombran se absolutizan contra el sitio.
   cpSync(join(ROOT, "docs"), dest, { recursive: true, filter: (src) => !/[/\\]public([/\\]|$)/.test(src) });
-  let reescritos = 0;
+  let rewritten = 0;
   for (const f of walkMd(dest)) {
     const md = readFileSync(f, "utf8");
     const out = absolutizeSiteLinks(md);
-    if (out !== md) { writeFileSync(f, out); reescritos++; }
+    if (out !== md) { writeFileSync(f, out); rewritten++; }
   }
   ok(`documentación copiada a ${dest}`);
-  if (reescritos) info(`${reescritos} documento(s) con capturas: los links apuntan al sitio publicado.`);
+  if (rewritten) info(`${rewritten} documento(s) con capturas: los links apuntan al sitio publicado.`);
 }
 
 // Los .md de un árbol, para la reescritura de links de cmdDocs.
@@ -2437,13 +2448,13 @@ function cmdDoctor() {
   if (localActive.length && existsSync(join(cwd, "openspec"))) {
     info("OpenSpec — los comandos van en el chat del asistente, no en la terminal:");
     for (const a of localActive) {
-      const faltan = OPSX_IDS.filter((id) => !existsSync(opsxPath(a.kind, id)));
-      if (faltan.length === OPSX_IDS.length) {
+      const missing = OPSX_IDS.filter((id) => !existsSync(opsxPath(a.kind, id)));
+      if (missing.length === OPSX_IDS.length) {
         warn(`${a.label}: no hay comandos opsx. Generalos:  openspec init --tools ${OPENSPEC_TOOL[a.kind]} --force`);
       } else {
         const hay = OPSX_IDS.filter((id) => existsSync(opsxPath(a.kind, id)));
         ok(`${a.label}: ${hay.map((id) => opsxCommand(a.kind, id)).join(" · ")}`);
-        if (faltan.length) warn(`${a.label}: faltan ${faltan.join(", ")} — regenerá con \`openspec init --tools ${OPENSPEC_TOOL[a.kind]} --force\``);
+        if (missing.length) warn(`${a.label}: faltan ${missing.join(", ")} — regenerá con \`openspec init --tools ${OPENSPEC_TOOL[a.kind]} --force\``);
       }
     }
     process.stdout.write("    (el nombre sale del archivo que genera OpenSpec: solo Claude usa los dos puntos)\n");

@@ -3,6 +3,61 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
+## [0.15.1] — 2026-09-10
+
+**Una US puede estar impecable y dai igual no leerla. El molde de trazabilidad pide que la
+metadata viva en una tabla, y cuando la US se escribe a mano en Jira esa tabla es una tabla
+de verdad — que dai no sabía leer. El `spec_version` declarado se perdía en el camino y el
+link quedaba estampado en `pendiente`, con un mensaje que mandaba a agregar una fila que ya
+estaba ahí. Esta versión le enseña a dai a leer y escribir tablas.**
+
+### Corregido
+- **El `spec_version` que la US declaraba y dai no veía.** `adfToMarkdown` no tenía caso
+  para las tablas de Jira Cloud, así que caían al `default` y cada celda terminaba en su
+  propia línea: `spec_version` en una, `v1` en la siguiente. Como el regex que lee la
+  versión no cruza saltos de línea —a propósito, para no capturar un `v2` de veinte líneas
+  más abajo— no encontraba nada, y el link se estampaba en `version: pendiente`. El aviso
+  era el peor de todos: uno que **acusa al usuario** de no haber hecho algo que sí hizo.
+  Ahora una fila de tabla llega como una fila de markdown. El `ac_hash` **no se mueve** —la
+  metadata vive arriba del bloque de criterios—, así que ningún `implements.yaml` ya
+  estampado queda atrasado por este cambio: lo único que cambia es que `pendiente` pasa a
+  ser la versión que la US declara. Es el hermano del #46: aquel era el campo escrito
+  `specversion`, este es el campo escrito en la tabla que el propio molde pide.
+- **La otra mitad del mismo bug: dai tampoco escribía tablas.** `markdownToAdf` mandaba la
+  metadata del molde —y el comentario de cobertura de `dai release stamp`, que también es
+  una tabla— como párrafos con pipes adentro. Ilegibles, y encima invitaban a rehacerlos
+  como tabla de Jira a mano, que es justo lo que del otro lado no se sabía leer. Ahora
+  viajan como nodo `table` y el ida y vuelta de `dai edit-us` no destruye la metadata.
+- **`dai release done` avisaba de un problema inexistente.** Miraba `origin/release/X.Y.Z`,
+  una ref local que sobrevive desactualizada hasta el próximo prune, en vez de preguntarle
+  al remoto. Cuando GitHub ya había borrado la rama al mergear —su comportamiento por
+  default— intentaba borrar algo que no estaba y reportaba un ⚠ sobre un estado que era el
+  correcto. Ahora pregunta con `git ls-remote --heads`, que es autoritativo, limpia la ref
+  fantasma y explica en una línea por qué no hubo nada que borrar. Un aviso falso es caro:
+  enseña a ignorar los avisos.
+
+### Cambiado
+- **`dai release plan --json` expone `counts.stale`, antes `counts.atrasadas`.** Era una
+  clave en español en una salida que lee un script — la única que quedaba — y sigue el
+  glosario que ADR-0008 ya había fijado (*atrasado* → *stale*). Si escribiste algo contra
+  el `--json` de la 0.15.0 (publicada un día antes), es el único nombre que tenés que
+  cambiar.
+
+### Interno
+- **Convención de idioma, ahora escrita.** El repo siempre fue código en inglés y
+  comentarios en español, pero no estaba en ningún lado: al escribir el ciclo de release se
+  rompió sistemáticamente (25% de identificadores en español en lo nuevo, contra ~2%
+  preexistente). Se renombraron 209 identificadores al inglés y la regla quedó como sexta
+  regla de oro en `CONTRIBUTING.md`, con una excepción deliberada: **`autor` se queda**. No
+  es código, es un campo del `implements.yaml` y parte del contrato del método (ADR-0004);
+  renombrarlo sería romper un contrato para ganar consistencia interna.
+- **ADR-0008** documenta el relevamiento que falta para poder ejecutar el i18n.
+- **484 tests** (+9 desde la 0.15.0): las tablas ADF en las dos direcciones —incluido el
+  ida y vuelta markdown → ADF → markdown, que es el que protege la metadata de `dai
+  edit-us`— y la primera cobertura de integración de `dai release done`, que era casi todo
+  efecto y no tenía ninguna: el ciclo completo contra un repo con remoto de verdad, el caso
+  del forge que se adelantó, y las dos negativas a taguear.
+
 ## [0.15.0] — 2026-09-09
 
 **Un equipo puede tener el link QUÉ↔CÓMO perfecto y seguir sin poder contestar la pregunta
@@ -988,6 +1043,7 @@ ClickUp y Jira Cloud.
 - Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
   `files` de npm sin tests ni secretos.
 
+[0.15.1]: https://github.com/dforce2055/dai/releases/tag/v0.15.1
 [0.15.0]: https://github.com/dforce2055/dai/releases/tag/v0.15.0
 [0.14.0]: https://github.com/dforce2055/dai/releases/tag/v0.14.0
 [0.13.3]: https://github.com/dforce2055/dai/releases/tag/v0.13.3

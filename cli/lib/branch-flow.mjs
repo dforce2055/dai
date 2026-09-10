@@ -29,7 +29,7 @@ export function branchFlow(env = {}) {
 
 // Los tipos de branch que van contra producción: una release que se corta y un hotfix
 // que sale del tag que está en PRO. El resto integra.
-const HACIA_PROD = new Set(["release", "hotfix"]);
+const PROD_BOUND_TYPES = new Set(["release", "hotfix"]);
 
 // Resuelve la base de una PR y —tan importante como el valor— POR QUÉ es esa.
 //   --base > el mapa de ramas según el tipo de branch > rama default del remoto > main
@@ -38,9 +38,9 @@ export function resolveBase({ flag, branch = null, env = {}, originHead = null }
   if (explicit) return { base: explicit, source: "--base", reason: null };
 
   const flow = branchFlow(env);
-  const tipo = branchType(branch);
-  if (HACIA_PROD.has(tipo) && flow.prod) {
-    return { base: flow.prod, source: "DAI_BRANCH_PROD (.env.dai)", reason: `la branch es ${tipo}/` };
+  const branchKind = branchType(branch);
+  if (PROD_BOUND_TYPES.has(branchKind) && flow.prod) {
+    return { base: flow.prod, source: "DAI_BRANCH_PROD (.env.dai)", reason: `la branch es ${branchKind}/` };
   }
   if (flow.dev) {
     return { base: flow.dev, source: "DAI_BRANCH_DEV (.env.dai)", reason: null };
@@ -61,12 +61,12 @@ export function isProdBranch(base, env = {}) {
 }
 
 // Las fuentes que YA son una decisión de alguien: no hay nada que avisar.
-const DECIDIDAS = new Set(["--base", "DAI_BRANCH_DEV (.env.dai)", "DAI_BRANCH_PROD (.env.dai)", "lo respondiste vos"]);
+const DECIDED_SOURCES = new Set(["--base", "DAI_BRANCH_DEV (.env.dai)", "DAI_BRANCH_PROD (.env.dai)", "lo respondiste vos"]);
 
 // El aviso que va debajo del preview cuando la base salió de un default. Desaparece en
 // cuanto el repo declara su mapa de ramas, que es justo lo que se le pide.
 export function baseHint(source, base) {
-  if (DECIDIDAS.has(source)) return null;
+  if (DECIDED_SOURCES.has(source)) return null;
   return `la base '${base}' salió de ${source} — dai no sabe cuáles son las ramas de vida larga de este repo. Declaralas una vez en el .env.dai:\n` +
          `    DAI_BRANCH_DEV=<rama-que-integra>   ·   DAI_BRANCH_PROD=<rama-que-despliega-a-PRO>\n` +
          `    Con eso: feature/ y fix/ van contra DEV; release/ y hotfix/ contra PROD (con confirmación).`;

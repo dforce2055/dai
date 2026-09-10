@@ -62,8 +62,8 @@ test("changelogGaps avisa mientras el andamio siga sin repartir", () => {
 });
 
 test("insertChangelogEntry la pone arriba y agrega el link al pie", () => {
-  const previo = "# Changelog\n\n## [0.4.2] — 2026-08-01\n\nvieja\n\n[0.4.2]: https://github.com/acme/b/releases/tag/v0.4.2\n";
-  const r = insertChangelogEntry(previo, "## [0.5.0] — 2026-09-09\n\nnueva\n", { version: "0.5.0", repoUrl: "https://github.com/acme/b" });
+  const previousTag = "# Changelog\n\n## [0.4.2] — 2026-08-01\n\nvieja\n\n[0.4.2]: https://github.com/acme/b/releases/tag/v0.4.2\n";
+  const r = insertChangelogEntry(previousTag, "## [0.5.0] — 2026-09-09\n\nnueva\n", { version: "0.5.0", repoUrl: "https://github.com/acme/b" });
   assert.equal(r.changed, true);
   assert.ok(r.text.indexOf("[0.5.0] — 2026-09-09") < r.text.indexOf("[0.4.2] — 2026-08-01"));
   assert.match(r.text, /\[0\.5\.0\]: https:\/\/github\.com\/acme\/b\/releases\/tag\/v0\.5\.0/);
@@ -71,8 +71,8 @@ test("insertChangelogEntry la pone arriba y agrega el link al pie", () => {
 });
 
 test("insertChangelogEntry no duplica una versión que ya está", () => {
-  const previo = "# Changelog\n\n## [0.5.0] — 2026-09-09\n\nya estaba\n";
-  const r = insertChangelogEntry(previo, "## [0.5.0] — 2026-09-09\n\notra\n", { version: "0.5.0" });
+  const previousTag = "# Changelog\n\n## [0.5.0] — 2026-09-09\n\nya estaba\n";
+  const r = insertChangelogEntry(previousTag, "## [0.5.0] — 2026-09-09\n\notra\n", { version: "0.5.0" });
   assert.equal(r.changed, false);
   assert.match(r.reason, /ya tiene una entrada/);
 });

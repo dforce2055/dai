@@ -169,7 +169,7 @@ export function envFor(pm) {
   // Flujo de branches: sin esto, `dai pr` tiene que adivinar la base, y en un repo con
   // ramas de ambiente adivinar significa proponer un merge a producción (issue #46).
   // Van vacías a propósito: vacío = "no declarada", y dai cae a la default del remoto.
-  const flujo =
+  const flowBlock =
     "\n# ── Flujo de branches (dai pr · dai done) ─────────────────────────────────\n" +
     "# Las DOS ramas de vida larga del repo. La base de una PR sale del TIPO de branch:\n" +
     "#   feature/ · fix/     → PR contra DAI_BRANCH_DEV\n" +
@@ -178,7 +178,7 @@ export function envFor(pm) {
     "DAI_BRANCH_DEV=\n" +
     "DAI_BRANCH_PROD=\n";
   if (pm === "clickup") {
-    return head + "DAI_PM=clickup\nDAI_CLICKUP_TOKEN=\nDAI_CLICKUP_LIST_ID=\n" + flujo;
+    return head + "DAI_PM=clickup\nDAI_CLICKUP_TOKEN=\nDAI_CLICKUP_LIST_ID=\n" + flowBlock;
   }
   if (pm === "jira") {
     return head +
@@ -192,9 +192,9 @@ export function envFor(pm) {
       "# Solo si tu Jira exige campos propios AL CREAR una US (lo usa grill-user-story,\n" +
       "# no hace falta para leerlas). El default ya es .dai/jira-fields.json; descomentá\n" +
       "# solo para apuntar a otra ruta. Si el archivo no existe, se ignora.\n" +
-      "# DAI_JIRA_FIELDS_FILE=.dai/jira-fields.json\n" + flujo;
+      "# DAI_JIRA_FIELDS_FILE=.dai/jira-fields.json\n" + flowBlock;
   }
-  return head + "DAI_PM=md\nDAI_MD_US_DIR=.dai/us\n" + flujo;
+  return head + "DAI_PM=md\nDAI_MD_US_DIR=.dai/us\n" + flowBlock;
 }
 
 // ── Helpers aditivos para `dai init` — no destruir la config de un repo vivo ──

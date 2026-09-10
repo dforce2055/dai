@@ -46,6 +46,64 @@ Adoptamos un modelo de **fuente única + traducciones derivadas**, por superfici
    core (MANIFIESTO, METODOLOGIA, glosario, EJEMPLO, guías) · (3) CLI i18n + skills · (4) el
    resto (detalle/, ADRs, templates). Se prioriza por alcance, no por completitud.
 
+## Estado medido — 2026-09-10
+
+El ADR sigue en **propuesto**; esto es el relevamiento que hace falta para poder ejecutarlo,
+tomado al auditar la convención de naming después de la 0.15.0.
+
+### Cuánto es el trabajo de la fase 3 (CLI)
+
+| Superficie | Volumen |
+|---|---|
+| `ok()` / `info()` / `warn()` / `fail()` en `cli/dai.mjs` | 348 llamadas |
+| `process.stdout.write` con texto en `cli/dai.mjs` | 99 |
+| `cli/lib/help.mjs` (es **todo** texto al usuario) | 524 líneas |
+| `throw new Error(...)` / `fail(...)` en `cli/lib/` | 67 |
+
+Del orden de **mil literales**. Es mecánico, pero confirma lo que el ADR ya anticipaba: se
+hace de una sola vez, no a pedazos. El ciclo de release (0.15.0) le sumó volumen: los
+comandos nuevos, su ayuda y el manifiesto son texto al usuario de punta a punta.
+
+### Lo que ya está resuelto y no hay que rehacer
+
+- **Los identificadores del código están en inglés** (auditado y corregido en la 0.15.x). El
+  refactor de i18n toca strings, no nombres.
+- **Las salidas de máquina ya usan claves en inglés**: el manifiesto de `dai release plan
+  --json` y el payload del webhook genérico.
+- **El glosario ES→EN de §5 ya existe** y se usó: `atrasado → stale` fue el término que se
+  aplicó al renombrar `counts.atrasadas`.
+
+### La decisión de contrato que falta tomar, y su costo real
+
+`coverageStatus()` devuelve valores **en español** —`"al-dia"`, `"atrasado"`, `"sin-us"`,
+`"sin-respuesta"`— y esos valores **salen por `--json`**: son parte de la API que puede estar
+parseando el CI de alguien.
+
+Lo interesante es que el costo interno de cambiarlos es **casi cero**: ya están separados de
+lo que se muestra (`statusLabel()` los traduce a `✅ al día` y compañía), así que el i18n de
+la *presentación* no necesita tocarlos. La única razón para renombrarlos es que una API en
+inglés se lea en inglés.
+
+Entonces la decisión es puramente de contrato, y hay tres caminos:
+
+1. **Dejarlos.** Son un enum opaco; el consumidor los compara, no los lee. Costo cero,
+   inconsistencia visible en cada `--json`.
+2. **Renombrarlos en una major** (`up-to-date`, `stale`, `no-story`, `unreachable`). Limpio,
+   pero obliga a una major solo por esto.
+3. **Emitir los dos** por un tiempo (`status` en inglés + `status_es` deprecado), y sacar el
+   viejo en la próxima major. Es el camino habitual para no romper, y el que menos duele si
+   ya hay alguien parseando.
+
+No se decide acá: se decide **junto con** la fase 3, porque hacer dos cambios de la salida
+`--json` en versiones distintas es peor que hacer uno solo.
+
+### Recomendación de orden
+
+Mantener el orden del ADR y **no empezar por el CLI**. Un CLI traducido con un README en
+español no lo encuentra nadie: lo que abre la herramienta a usuarios anglófonos es la fase 1
+(README + landing), porque es lo que se ve en npm y en GitHub. La fase 3 recién rinde cuando
+ya hay alguien de habla inglesa llegando.
+
 ## Consecuencias
 
 - ✅ Alcance internacional con el README/landing en inglés (fase 1) sin reescribir todo.

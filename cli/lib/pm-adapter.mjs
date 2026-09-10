@@ -65,8 +65,8 @@ function mdAdapter(env) {
     comment(id, markdown) {
       const p = join(dir, `${id}.deploys.md`);
       mkdirSync(dirname(p), { recursive: true });
-      const previo = existsSync(p) ? readFileSync(p, "utf8") : `# Despliegues de ${id}\n`;
-      writeFileSync(p, `${previo.replace(/\s*$/, "")}\n\n${markdown}\n`);
+      const previousTag = existsSync(p) ? readFileSync(p, "utf8") : `# Despliegues de ${id}\n`;
+      writeFileSync(p, `${previousTag.replace(/\s*$/, "")}\n\n${markdown}\n`);
       return p;
     },
     listComments(id) {
