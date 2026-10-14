@@ -1,5 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { composePrBody, prTitle, forgeTool, replaceSection, upsertLinksBlock, renderLinks, bodyGaps, isPlaceholder, sectionBody } from "../lib/pr.mjs";
 
 const TPL = `## 🔗 Implementa
@@ -296,4 +299,25 @@ test("cuando el tracker no responde, la PR dice que no se pudo verificar — no 
   const b = composePrBody(tpl, { id: "ACME-1", version: "v2", ac_hash: "abc", status: "sin-respuesta", description: "x", commits: ["y"] });
   assert.match(b, /no verificado \(el tracker no respondió\)/);
   assert.doesNotMatch(b, /sin US/);
+});
+
+// Issue #60: con el template en CRLF (checkout de Windows, core.autocrlf=true) cada línea
+// terminaba en `\r`, el heading no matcheaba y dai APENDEABA las secciones llenas al final:
+// el molde crudo arriba y la copia rellena abajo. Se prueba con el template real.
+test("composePrBody con template CRLF llena las secciones en su lugar, sin duplicarlas", () => {
+  const real = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "..", "templates", "pull-request.md"), "utf8");
+  const crlf = real.replace(/\r?\n/g, "\r\n");
+  const d = { id: "ABC-1", version: "v1", ac_hash: "abcd1234", status: "al-dia",
+    description: "Arregla el login.", commits: ["fix: login"] };
+  const body = composePrBody(crlf, d);
+  assert.equal(body.match(/^## Descripción/gm).length, 1, "una sola sección Descripción");
+  assert.equal(body.match(/^## Cambios realizados/gm).length, 1, "una sola sección Cambios realizados");
+  assert.match(sectionBody(body, "Descripción"), /Arregla el login\./);
+  assert.deepEqual(bodyGaps(body), []);
+  assert.equal(body, composePrBody(real, d), "CRLF y LF dan el mismo body");
+});
+
+test("bodyGaps reconoce un body CRLF lleno (p. ej. editado en la web de GitHub)", () => {
+  const body = "## Descripción\r\n\r\nTexto.\r\n\r\n## Cambios realizados\r\n\r\n- [x] algo\r\n";
+  assert.deepEqual(bodyGaps(body), []);
 });
