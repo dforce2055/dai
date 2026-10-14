@@ -28,7 +28,7 @@ import { parsePrRef, getPR, postComment, postReview } from "./lib/forge-api.mjs"
 import { trackerUrl } from "./lib/tracker-url.mjs";
 import { parseFindings, diffPositions, validateFindings, filterFindings, renderFindingBody, renderReviewSummary } from "./lib/review-findings.mjs";
 import { composePrBody, prTitle, forgeTool, bodyGaps } from "./lib/pr.mjs";
-import { resolveBase, isProdBranch, branchFlow, baseHint, parseOriginHead } from "./lib/branch-flow.mjs";
+import { resolveBase, isProdBranch, branchFlow, baseHint, parseOriginHead, emptyBranchAdvice, missingBaseAdvice, unrelatedHistoryAdvice } from "./lib/branch-flow.mjs";
 import { listPrCmd, parsePrList, updatePrCmd, updatePrApiCmd, isAlreadyExistsError, describeUpdate } from "./lib/pr-remote.mjs";
 import { parseCommitLog, proposeBump, nextVersion, buildManifest, renderManifest, BUMP_CAVEAT } from "./lib/release-plan.mjs";
 import { bumpPackageJson, bumpVersionFile, changelogEntry, insertChangelogEntry, changelogSection, changelogGaps, releaseBranch, tagName, normalizeVersion } from "./lib/release-files.mjs";
@@ -242,6 +242,17 @@ function gitCommit() { try { return git(["rev-parse", "HEAD"]); } catch { return
 // `main` a `origin/main` sin adivinar: en muchos repos la base solo existe en el remoto.
 function resolveRev(ref) {
   try { git(["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]); return ref; } catch { return null; }
+}
+// ¿Existe la branch en origin? Pregunta al remoto (ls-remote), no a la copia local de
+// las refs: un `origin/develop` viejo en el clone no dice que siga existiendo allá.
+// Sin red, se asume que sí: mejor no hablar de publicar una base que quizás existe.
+function remoteHasBranch(name) {
+  try { return git(["ls-remote", "--heads", "origin", name]).trim() !== ""; } catch { return true; }
+}
+// Imprime un { warn, lines } de los diagnósticos de branch-flow.mjs.
+function printAdvice({ warn: w, lines }) {
+  warn(w);
+  for (const l of lines) process.stdout.write(`  ${l}\n`);
 }
 // La rama default del remoto (`origin/HEAD`). Es mejor fallback que un `main` fijo, pero
 // sigue siendo un fallback: en un repo con ramas de ambiente, la default del remoto suele
@@ -996,14 +1007,24 @@ async function cmdPr(opts) {
   // trabaja sobre develop y la base es main, corporativos con la base solo en origin).
   // Antes el catch vacío se comía el error y seguía de largo: ni se contaban los commits
   // (→ "Cambios realizados" salía con el molde) ni frenaba el chequeo de abajo.
-  const baseRev = resolveRev(base) || resolveRev(`origin/${base}`);
+  // Se mide contra origin/<base> primero: es la base que ve el forge. Medir contra la LOCAL
+  // escondía el caso del issue #62 —commits en `develop` local en vez de en la branch— y
+  // después gh fallaba con "No commits between" y dai sugería empujar develop.
+  const remoteBaseRev = resolveRev(`origin/${base}`);
+  const localBaseRev = resolveRev(base);
+  const baseRev = remoteBaseRev || localBaseRev;
   if (!baseRev) warn(`no encuentro la branch base '${base}' (ni local ni en origin/${base}). Trae la base primero:  git fetch origin ${base}`);
 
-  // Sin commits sobre la base no hay PR.
-  let ahead = null;
-  try { ahead = Number(git(["rev-list", "--count", `${baseRev}..HEAD`])); } catch { /* base ausente */ }
+  // Sin commits sobre la base no hay PR. Se corta ANTES de pushear la branch, con el
+  // diagnóstico de por qué está vacía — nunca con un push a la base.
+  const countRevs = (range) => { try { return Number(git(["rev-list", "--count", range])); } catch { return null; } };
+  const ahead = baseRev ? countRevs(`${baseRev}..HEAD`) : null;
   if (ahead === 0) {
-    fail(`no hay commits en '${branch}' por encima de '${base}'. Una PR necesita cambios: haz commit primero (git commit).`, 1);
+    closeRl();
+    if (!remoteBaseRev) fail(`no hay commits en '${branch}' por encima de '${base}'. Una PR necesita cambios: haz commit primero (git commit).`, 1);
+    const localUnpushed = localBaseRev ? countRevs(`${remoteBaseRev}..${localBaseRev}`) || 0 : 0;
+    printAdvice(emptyBranchAdvice({ base, branch, localUnpushed }));
+    fail("no creo la PR: la branch no tiene cambios propios.", 1);
   }
 
   // 1. Resolver el link (US) de ESTA branch (issues #31, #32, #33).
@@ -1257,8 +1278,18 @@ async function cmdPr(opts) {
       warn(`'${tool}' no está instalado. El body quedó en ${bodyFile}.`);
       process.stdout.write(`  Instalá ${tool} (${doc}) y autenticá con \`${tool} auth login\`${tool === "glab" ? " --hostname " + (parseRemote(remote)?.host || "tu-gitlab") : ""}, o creá la PR a mano.\n${manual}`);
     } else if (/no history in common|no commits between|not found.*base|base.*not found/i.test(msg)) {
-      warn(`la branch no comparte historia con '${base}' en el remoto (o '${base}' no existe allá).`);
-      process.stdout.write(`  Suele pasar cuando el repo local y el remoto son distintos. Empuja la base primero:\n    git push origin ${base}\n  y vuelve a correr:  dai pr\n`);
+      // Tres situaciones distintas detrás de la misma familia de errores, y se distinguen
+      // con git, no con el texto. Antes iban todas a "empuja la base": un push directo a
+      // develop/main sin PR ni review, que en el caso real disparó un deploy (issue #62).
+      process.exitCode = 1;
+      if (!remoteHasBranch(base)) printAdvice(missingBaseAdvice({ base, env: process.env }));
+      else if (/no history in common/i.test(msg)) printAdvice(unrelatedHistoryAdvice({ base, branch }));
+      else {
+        try { git(["fetch", "--quiet", "origin", base]); } catch { /* sin red: se usa lo que haya */ }
+        const remoteBase = resolveRev(`origin/${base}`);
+        const unpushed = remoteBase && localBaseRev ? countRevs(`${remoteBase}..${localBaseRev}`) || 0 : 0;
+        printAdvice(emptyBranchAdvice({ base, branch, localUnpushed: unpushed }));
+      }
     } else {
       warn(`no pude crear la PR con ${tool}. El body quedó en ${bodyFile}.`);
       // El stderr real de gh/glab (auth vencida, host no configurado, flag desconocido…).
