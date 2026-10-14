@@ -160,6 +160,18 @@ test("bumpSpecVersion: v1 → v2, y sin versión asume v1", () => {
   assert.equal(bumpSpecVersion(null), "v2", "sin versión, la US vivía implícitamente en v1");
 });
 
+// ClickUp escapa el guion bajo en `markdown_description`: llega `spec\_version`, y el
+// regex de antes no lo matcheaba → `version: pendiente` con la versión en la US (#58/#59).
+test("parseSpecVersion: acepta el `spec\\_version` escapado que devuelve ClickUp", () => {
+  assert.equal(parseSpecVersion("| spec\\_version | `v2` |"), "v2");
+  assert.equal(parseSpecVersion("| **spec\\_version** | v5 |"), "v5");
+});
+
+test("setSpecVersion: reescribe también la forma escapada, sin duplicarla", () => {
+  const out = setSpecVersion("# T\n\n| spec\\_version | `v1` |\n", "v2");
+  assert.equal(out, "# T\n\n| spec\\_version | `v2` |\n");
+});
+
 test("setSpecVersion: reescribe la que ya está, sin tocar el resto", () => {
   const out = setSpecVersion(CANONICA, "v3");
   assert.equal(parseSpecVersion(out), "v3");

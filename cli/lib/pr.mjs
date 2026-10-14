@@ -23,6 +23,15 @@ export const OWNED_SECTIONS = ["Descripción", "Cambios realizados"];
 const norm = (s) => String(s).normalize("NFD").replace(/[\u0300-\u036f]/gu, "")
   .replace(/[^\p{L}\p{N}]+/gu, " ").trim().toLowerCase();
 
+// Las líneas de un body, con los fines de línea normalizados a LF. Un template CRLF
+// (checkout de Windows con core.autocrlf=true, o un body editado en la web de GitHub)
+// deja un `\r` al final de cada línea, el heading no matcheaba, findSection no
+// encontraba "## Descripción" y upsertSection la APENDEABA al final: el template crudo
+// arriba y la sección llena repetida abajo (issue #60). Por eso "pasar a LF lo arregla"
+// en un reporte y no en otro: hay dos templates, y alcanzaba con que uno quedara CRLF.
+const toLf = (s) => String(s ?? "").replace(/\r\n?/g, "\n");
+const splitLines = (body) => toLf(body).split("\n");
+
 // Ubica una sección markdown (## Heading … hasta el próximo heading de igual o menor
 // nivel). Ignora lo que esté dentro de un bloque de código: un `## ` en un fence es
 // texto, no estructura. Devuelve null si no está.
@@ -42,7 +51,7 @@ function findSection(lines, heading) {
 
 // El cuerpo crudo de una sección, o null si la sección no existe.
 export function sectionBody(body, heading) {
-  const lines = body.split("\n");
+  const lines = splitLines(body);
   const at = findSection(lines, heading);
   return at ? lines.slice(at.start + 1, at.end).join("\n") : null;
 }
@@ -50,7 +59,7 @@ export function sectionBody(body, heading) {
 // Reemplaza el cuerpo de una sección por content. Tolerante: si no encuentra la
 // sección, devuelve el body igual (para eso está upsertSection).
 export function replaceSection(body, heading, content) {
-  const lines = body.split("\n");
+  const lines = splitLines(body);
   const at = findSection(lines, heading);
   if (!at) return body;
   return [...lines.slice(0, at.start + 1), "", content, "", ...lines.slice(at.end)].join("\n");
@@ -62,7 +71,7 @@ export function replaceSection(body, heading, content) {
 // nada → no toco (y bodyGaps lo va a reportar; dai no inventa contenido).
 export function upsertSection(body, heading, content) {
   if (content == null || !String(content).trim()) return body;
-  if (findSection(body.split("\n"), heading)) return replaceSection(body, heading, content);
+  if (findSection(splitLines(body), heading)) return replaceSection(body, heading, content);
   return `${body.replace(/\s*$/, "")}\n\n## ${heading}\n\n${content}\n`;
 }
 
@@ -114,7 +123,8 @@ export function changesFor(d) {
 // Rellena el template del PR con los datos precargados. Tolerante con el resto del
 // template (checklists, secciones propias del repo): dai suma, no borra.
 export function composePrBody(template, d) {
-  let b = d.id ? fillUsHeader(template, d) : fillNoUsHeader(template, d);
+  const tpl = toLf(template);
+  let b = d.id ? fillUsHeader(tpl, d) : fillNoUsHeader(tpl, d);
   b = upsertSection(b, "Descripción", descriptionFor(d));
   b = upsertSection(b, "Cambios realizados", changesFor(d));
   return upsertLinksBlock(b, d);

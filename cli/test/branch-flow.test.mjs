@@ -1,6 +1,42 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveBase, branchFlow, isProdBranch, baseHint, parseOriginHead, DEFAULT_BASE } from "../lib/branch-flow.mjs";
+import { resolveBase, branchFlow, isProdBranch, baseHint, parseOriginHead, DEFAULT_BASE,
+  isProtectedBranch, emptyBranchAdvice, missingBaseAdvice, unrelatedHistoryAdvice } from "../lib/branch-flow.mjs";
+
+// ── issue #62: dai nunca sugiere empujar a una rama protegida ──────────────────
+const pushesTo = (advice, b) => advice.lines.some((l) => new RegExp(`git push\\b.*\\b${b}\\b`).test(l));
+
+test("isProtectedBranch: las de vida larga por default y las declaradas en el .env.dai", () => {
+  for (const b of ["main", "master", "develop", "stage", "qa"]) assert.ok(isProtectedBranch(b), b);
+  assert.ok(isProtectedBranch("integracion", { DAI_BRANCH_DEV: "integracion" }));
+  assert.ok(isProtectedBranch("pro", { DAI_BRANCH_PROD: "pro" }));
+  assert.ok(!isProtectedBranch("feature/ABC-1-x"));
+  assert.ok(!isProtectedBranch(""));
+});
+
+test("emptyBranchAdvice: commits en la base local → moverlos a la branch, sin pushear la base", () => {
+  const a = emptyBranchAdvice({ base: "develop", branch: "feature/ABC-1-x", localUnpushed: 3 });
+  assert.match(a.warn, /no tiene commits propios respecto de origin\/develop/);
+  assert.ok(a.lines.some((l) => /3 sin publicar/.test(l)));
+  assert.ok(a.lines.some((l) => /git branch -f feature\/ABC-1-x develop/.test(l)));
+  assert.ok(!pushesTo(a, "develop"));
+});
+
+test("emptyBranchAdvice: branch == origin/base → nada que proponer, sin ningún push", () => {
+  const a = emptyBranchAdvice({ base: "develop", branch: "feature/ABC-1-x", localUnpushed: 0 });
+  assert.match(a.warn, /no hay nada que proponer/);
+  assert.ok(!a.lines.some((l) => /git push/.test(l)));
+});
+
+test("missingBaseAdvice: solo sugiere publicar la base si NO es protegida", () => {
+  assert.ok(!pushesTo(missingBaseAdvice({ base: "develop" }), "develop"));
+  assert.ok(!pushesTo(missingBaseAdvice({ base: "integ", env: { DAI_BRANCH_DEV: "integ" } }), "integ"));
+  assert.ok(pushesTo(missingBaseAdvice({ base: "epic/pagos" }), "epic/pagos"));
+});
+
+test("unrelatedHistoryAdvice: no sugiere ningún push", () => {
+  assert.ok(!unrelatedHistoryAdvice({ base: "main", branch: "feature/x" }).lines.some((l) => /git push/.test(l)));
+});
 
 const FLUJO = { DAI_BRANCH_DEV: "testing", DAI_BRANCH_PROD: "main" };
 

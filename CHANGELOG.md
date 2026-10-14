@@ -3,6 +3,54 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/). Versionado semver
 (ver `VERSION`).
 
+## [0.15.2] — 2026-10-14
+
+**Cuatro promesas que dai hacía y no cumplía, todas reportadas desde repos reales. Un
+`--dry-run` que escribía, una versión que la US declaraba y dai no veía, una PR con las
+secciones repetidas, y —la más cara— un consejo de `git push` a la rama base que terminó
+en un deploy sin review.**
+
+### Corregido
+- **`dai pr` sugería empujar la base, y alguien lo hizo** (#62). Ante "No commits between",
+  dai diagnosticaba historias sin relación y aconsejaba `git push origin <base>`. Casi
+  siempre quiere decir otra cosa: la branch no tiene commits propios. En un repo real el
+  consejo subió el trabajo de dos US directo a `develop`, y eso fue un deploy a TEST sin PR
+  ni review. Ahora el chequeo mide contra `origin/<base>` —la base que ve el forge, no la
+  local— y corta **antes** de pushear la branch, con el diagnóstico que corresponde: si tus
+  commits quedaron en la base local, cuántos son y cómo moverlos a la branch; si la branch
+  es igual a la base remota, que no hay nada que proponer; si la base no existe en el
+  remoto, recién ahí se habla de publicarla — y nunca si es una rama de vida larga (`main`,
+  `develop`, `qa`, `stage`… o las de `DAI_BRANCH_DEV`/`DAI_BRANCH_PROD`). La regla quedó
+  general: dai no sugiere un push a una rama protegida.
+- **`dai stamp --dry-run` comentaba en la US igual** (#57, #61). El flag estaba en el help
+  y en el parser, y `cmdStamp` no lo leía nunca: el "preview" ya dejaba el comentario de
+  cobertura en el tracker de todo el equipo, con una salida idéntica a la real. Ahora corta
+  justo antes de escribir —después de leer la US viva, así el preview muestra el mismo
+  ✅/⚠️— y lo dice: `[dry-run] … — no se escribió nada`, en condicional.
+- **El `spec_version` de ClickUp no se leía** (#58, #59). ClickUp escapa el guion bajo al
+  devolver el markdown: llega `spec\_version`, y el regex no aceptaba la barra. La US
+  declaraba la versión y el link quedaba en `version: pendiente`. Se acepta la forma
+  escapada sin des-escapar el markdown entero, a propósito: el `ac_hash` no quita la `\`,
+  y des-escaparlo le habría cambiado el hash a toda US de ClickUp ya linkeada. **El
+  `ac_hash` no se mueve.**
+- **`dai link-us --resync` no arreglaba un `pendiente`.** Con el hash al día cortaba con
+  "nada que resincronizar", sin mirar la versión. Ahora re-estampa también cuando lo único
+  que cambió es la versión.
+- **`dai pr` duplicaba "Descripción" y "Cambios realizados"** (#60). Con el template de PR
+  en CRLF —un checkout de Windows con `core.autocrlf=true`, o un body editado en la web de
+  GitHub— cada línea terminaba en `\r`, dai no encontraba el heading y agregaba la sección
+  llena **al final**: el molde crudo arriba y la copia abajo. Explica los reportes
+  contradictorios sobre "pasar a LF lo arregla": hay dos templates, y alcanzaba con que uno
+  siguiera en CRLF. Ahora los fines de línea se normalizan antes de buscar secciones.
+
+### Interno
+- **499 tests** (+15 desde la 0.15.1). Tres archivos de integración nuevos que corren el CLI
+  en subproceso: `dai stamp` con el backend md (con `--dry-run` no aparece el archivo de
+  cobertura), `link-us --resync` de `pendiente` a `v2`, y `dai pr` contra un remoto bare,
+  que verifica además que la `develop` remota no se movió. Los fixtures de ClickUp pasan a
+  ser el markdown tal como lo devuelve la API, con el `\_`: con el sin escapar, el test
+  pasaba contra una entrada que no existe en producción.
+
 ## [0.15.1] — 2026-09-10
 
 **Una US puede estar impecable y dai igual no leerla. El molde de trazabilidad pide que la
@@ -1043,6 +1091,7 @@ ClickUp y Jira Cloud.
 - Tests de las rutas de red (jira/clickup/forge) con `fetch` mockeado. Sin links rotos;
   `files` de npm sin tests ni secretos.
 
+[0.15.2]: https://github.com/dforce2055/dai/releases/tag/v0.15.2
 [0.15.1]: https://github.com/dforce2055/dai/releases/tag/v0.15.1
 [0.15.0]: https://github.com/dforce2055/dai/releases/tag/v0.15.0
 [0.14.0]: https://github.com/dforce2055/dai/releases/tag/v0.14.0
