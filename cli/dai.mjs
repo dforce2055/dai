@@ -192,14 +192,17 @@ async function cmdLinkUs(key, opts) {
     const target = discoverImplements(process.cwd())
       .find((f) => (f.implements || []).some((im) => im.id === key));
     if (!target) fail(`no encontré un implements.yaml que implemente ${key}. ¿Estás en la branch correcta?`, 1);
-    const prev = (target.implements.find((im) => im.id === key) || {}).ac_hash;
-    if (prev === hash) { ok(`${key} ya estaba al día (${hash}). Nada que resincronizar.`); return; }
+    const { ac_hash: prev, version: prevVersion } = target.implements.find((im) => im.id === key) || {};
+    // Con el hash al día igual puede faltar la versión: el link que quedó en 'pendiente'
+    // porque dai no supo leerla (issue #58) se arregla con --resync, y antes cortaba acá.
+    if (prev === hash && String(prevVersion) === version) { ok(`${key} ya estaba al día (${hash}, ${version}). Nada que resincronizar.`); return; }
     let txt = readFileSync(target.path, "utf8");
     txt = txt.replace(/^(\s*ac_hash:\s*).*$/m, `$1${hash}`).replace(/^(\s*version:\s*).*$/m, `$1${version}`);
-    if (opts.dryRun) { process.stdout.write(`[dry-run] ${target.path}: ac_hash ${prev} → ${hash} (version ${version})\n`); return; }
+    const what = prev === hash ? `version ${prevVersion} → ${version}` : `ac_hash ${prev} → ${hash} (version ${version})`;
+    if (opts.dryRun) { process.stdout.write(`[dry-run] ${target.path}: ${what}\n`); return; }
     writeFileSync(target.path, txt);
-    ok(`${key} resincronizado: ac_hash ${prev} → ${hash} (${version}) en ${target.path}`);
-    warn("revisa si tu implementación cubre el criterio nuevo, y ejecuta tus tests.");
+    ok(`${key} resincronizado: ${what} en ${target.path}`);
+    if (prev !== hash) warn("revisa si tu implementación cubre el criterio nuevo, y ejecuta tus tests.");
     return;
   }
 

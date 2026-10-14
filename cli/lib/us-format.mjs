@@ -112,7 +112,11 @@ export function validateUS(md) {
 // `spec_version`, `spec version`, `spec-version` y —visto en un Jira real— `specversion`
 // pegado. Con el `[_ ]` obligatorio de antes, `| specversion | v4 |` no matcheaba y el
 // link se estampaba en `v1` sin que nada avisara (issue #46). El separador es opcional.
-export const SPEC_VERSION_RE = /spec[\s_-]*version[^\n]*?\b(v\d+)\b/i;
+// Y ClickUp ESCAPA el guion bajo al devolver `markdown_description`: lo que llega es
+// `spec\_version`, así que la barra entra en la clase (issues #58/#59). Se acepta acá y
+// no se des-escapa el markdown entero: el ac_hash no quita la `\`, y des-escapar antes de
+// hashear le cambiaría el hash a toda US de ClickUp ya linkeada.
+export const SPEC_VERSION_RE = /spec[\s\\_-]*version[^\n]*?\b(v\d+)\b/i;
 
 // El valor que se escribe cuando la US NO declara versión. Un placeholder VISIBLE es
 // mejor que un `v1` que parece correcto: el `v1` se publica en la PR y se estampa en el
@@ -135,7 +139,7 @@ export const bumpSpecVersion = (v) => {
 export function setSpecVersion(md, version) {
   const text = String(md || "");
   if (SPEC_VERSION_RE.test(text)) {
-    return text.replace(/(spec[\s_-]*version[^\n]*?\b)v\d+\b/i, `$1${version}`);
+    return text.replace(/(spec[\s\\_-]*version[^\n]*?\b)v\d+\b/i, `$1${version}`);
   }
   const lines = text.split(/\r?\n/);
   const i = lines.findIndex((l) => /^#\s+\S/.test(l));

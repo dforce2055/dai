@@ -9,7 +9,7 @@ const ENV = { DAI_CLICKUP_TOKEN: "pk_1" };
 test("[red] clickup fetchUS pega a la URL, con auth, y mapea la US", async () => {
   await withMockFetch(
     () => mockResponse(200, { id: "abc", name: "Finalizar la compra",
-      markdown_description: "spec_version v3\n\n## Criterios de aceptación\n- Dado x\n- Cuando y\n- Entonces z" }),
+      markdown_description: "| Campo | Valor |\n| --- | --- |\n| spec\\_version | `v3` |\n\n## Criterios de aceptación\n- Dado x\n- Cuando y\n- Entonces z" }),
     async (calls) => {
       const us = await clickupAdapter(ENV).fetchUS("abc");
       assert.match(calls[0].url, /\/task\/abc\?include_markdown_description=true$/);
@@ -68,7 +68,7 @@ test("clickupTaskToText + parseUS extraen la US", () => {
   const json = {
     id: "abc123",
     name: "Finalizar la compra del carrito",
-    markdown_description: "spec_version v2\n\n## Criterios de aceptación\n- Dado un carrito vacío\n- Cuando se finaliza\n- Entonces se rechaza",
+    markdown_description: "| Campo | Valor |\n| --- | --- |\n| spec\\_version | `v2` |\n\n## Criterios de aceptación\n- Dado un carrito vacío\n- Cuando se finaliza\n- Entonces se rechaza",
   };
   const us = parseUS(clickupTaskToText(json));
   assert.equal(us.title, "Finalizar la compra del carrito");
