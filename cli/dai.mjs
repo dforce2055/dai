@@ -437,7 +437,7 @@ async function cmdStamp(ids = [], opts = {}) {
       targets = picked.map((n) => scope.candidates[n - 1]);
     }
   } else if (scope.mode !== "all") {
-    info(`${scope.reason} → estampo ${targets.map((t) => t.id).join(", ")}.`);
+    info(`${scope.reason} → ${opts.dryRun ? "estamparía" : "estampo"} ${targets.map((t) => t.id).join(", ")}.`);
   }
 
   for (const r of targets) {
@@ -451,6 +451,13 @@ async function cmdStamp(ids = [], opts = {}) {
       repo: r.repo, change: r.change, version: r.version, ac_hash: r.ac_hash, status,
       branch, branchUrl: branchUrl(remote, branch), commit, commitUrl: commitUrl(remote, commit),
     };
+    // --dry-run corta ACÁ, después de fetchLiveUS a propósito: leer el tracker no escribe
+    // nada, y así el preview muestra el mismo ✅/⚠️ que la corrida real. Antes el flag se
+    // documentaba y no se leía: el "preview" ya comentaba en la US (issues #57, #61).
+    if (opts.dryRun) {
+      process.stdout.write(`[dry-run] ${r.id} → ${adapter.kind}  (${statusLabel(status)}) — no se escribió nada\n`);
+      continue;
+    }
     const where = await adapter.stamp(r.id, record);
     process.stdout.write(`✓ ${r.id} → ${where}  (${statusLabel(status)})\n`);
   }
